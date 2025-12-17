@@ -4,6 +4,8 @@ using System.Threading;
 using Microsoft.VisualStudio.Shell;
 using Task = System.Threading.Tasks.Task;
 using AgenteIALocal.Commands;
+using AgenteIALocal.ToolWindows;
+using AgenteIALocal.Options;
 
 namespace AgenteIALocal
 {
@@ -13,6 +15,8 @@ namespace AgenteIALocal
         productDetails: "Agente IA local para Visual Studio",
         productId: "1.0")]
     [ProvideMenuResource("Menus.ctmenu", 1)]
+    [ProvideToolWindow(typeof(AgenteIALocalToolWindow))]
+    [ProvideOptionPage(typeof(AgentOptions), "Agente IA Local", "General", 0, 0, true)]
     [Guid(PackageGuidString)]
     public sealed class AgenteIALocalPackage : AsyncPackage
     {
