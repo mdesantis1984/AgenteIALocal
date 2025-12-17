@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Vsix xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
+
+	<Identifier>
+		<Id>AgenteIALocal</Id>
+		<Name>Agente IA Local</Name>
+		<Author>YourCompany</Author>
+		<Version>1.0.0</Version>
+		<Description xml:space="preserve">
+      Extensión de Visual Studio para interacción con modelos de IA locales y remotos en modo Chat y Agente.
+    </Description>
+		<Language>es-ES</Language>
+	</Identifier>
+
+	<Installation>
+		<InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 19.0)" />
+		<InstallationTarget Id="Microsoft.VisualStudio.Pro" Version="[17.0, 19.0)" />
+		<InstallationTarget Id="Microsoft.VisualStudio.Enterprise" Version="[17.0, 19.0)" />
+	</Installation>
+
+	<Dependencies>
+		<Dependency Id="Microsoft.Framework.NDP" DisplayName=".NET Framework" Version="[4.8,)" />
+	</Dependencies>
+
+	<Assets>
+		<Asset Type="Microsoft.VisualStudio.VsPackage"
+			   d:Source="Project"
+			   Path="|AgenteIALocal.Vsix|" />
+	</Assets>
+
+</Vsix>
