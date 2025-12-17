@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.VisualStudio.Shell;
 using Task = System.Threading.Tasks.Task;
+using AgenteIALocal.Commands;
 
 namespace AgenteIALocal
 {
@@ -25,6 +26,9 @@ namespace AgenteIALocal
 
             // Inicialización mínima.
             // Comandos y ToolWindow se registrarán en pasos posteriores.
+
+            // Register commands (Phase 1: command shell)
+            await OpenAgenteIALocalCommand.InitializeAsync(this);
         }
     }
 }
