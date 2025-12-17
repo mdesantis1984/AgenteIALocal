@@ -48,3 +48,57 @@ Los proyectos apuntan a .NET Framework 4.8 y .NET Standard 2.0 cuando correspond
 - Publicar una extensión VSIX lista para producción en el Visual Studio Marketplace en esta etapa.
 - Proveer inferencia de IA alojada en la nube o servicios de IA externos gestionados.
 - Modificar la estructura de proyectos, archivos `.csproj`, archivos de solución o recursos `.vsct` como parte de estas fases iniciales.
+
+---
+
+## Fase 1 – VSIX Shell (Notas técnicas)
+
+Alcance de la Fase 1
+
+- Establecer un esqueleto mínimo de VSIX para desarrollo y pruebas locales.
+- Proveer un punto de entrada (comando de menú) y una ToolWindow acoplable con UI mínima para ampliar en fases posteriores.
+
+Qué está implementado
+
+- Una clase de comando (`OpenAgenteIALocalCommand`) registrada en el package y expuesta en el menú `View` mediante el archivo VSCT existente.
+- Una implementación mínima de ToolWindow (`AgenteIALocalToolWindow`) y su control de usuario asociado (`AgenteIALocalToolWindowControl`).
+- Un ViewModel ligero (`AgenteIALocalToolWindowViewModel`) que implementa `INotifyPropertyChanged` con la propiedad `StatusText`.
+- Binding desde el control al ViewModel (actualmente realizado desde el code-behind para mantener la simplicidad inicial).
+- Eliminación de `App.xaml` del proyecto VSIX para mantener el proyecto como librería de clases (resuelve errores de construcción relacionados con ApplicationDefinition).
+
+Qué NO está implementado intencionalmente
+
+- No hay lógica de negocio, servicios ni inyección de dependencias.
+- No hay análisis del workspace, modelo de documentos ni integración con servicios de IA externos.
+- No hay persistencia, telemetría ni configuración de CI/CD.
+- El VSIX no está publicado ni listo para producción; está orientado únicamente a desarrollo y pruebas locales.
+
+Decisiones técnicas clave
+
+- El proyecto VSIX se implementa como una librería de clases (sin `ApplicationDefinition` / `App.xaml`). Esto evita la semántica de aplicación WPF en el paquete.
+- La superficie principal de UI es una ToolWindow; esto mantiene la extensión mínima y compatible con patrones de UI de Visual Studio.
+- La activación se realiza mediante comandos definidos en el VSCT; la clase de comando registra el comando de menú y abre la ToolWindow cuando se invoca.
+- Se establece un patrón MVVM simple sin frameworks externos: un ViewModel con `INotifyPropertyChanged` y un objetivo de binding. El binding inicial se realiza desde el code-behind del control para simplicidad y evitar un cableado XAML prematuro.
+- No se introducen servicios ni frameworks de DI en esta fase para reducir la complejidad y mantener el esqueleto transferible.
+
+Estado funcional actual
+
+- La solución se compila con éxito apuntando a .NET Framework 4.8 y .NET Standard 2.0 donde corresponda.
+- El ítem de menú `View -> Abrir Agente IA Local` está registrado y es visible al ejecutar el VSIX en la Instancia Experimental de Visual Studio.
+- Invocar el comando abre la ToolWindow acoplable con contenido placeholder enlazado a `StatusText`.
+
+Cómo esta fase prepara la Fase 2
+
+- Provee un shell de UI estable y visible (comando + ToolWindow) donde se podrán añadir capacidades de awareness del workspace.
+- Establece un contrato ViewModel sencillo (`INotifyPropertyChanged`) que se extenderá con servicios y proveedores de datos en la Fase 2.
+- Mantiene la base de código limpia de decisiones de infraestructura (sin DI ni servicios) para permitir evaluar enfoques en la siguiente fase sin refactorings costosos.
+
+No objetivos explícitos (repetido)
+
+- No asumir capacidades en la nube ni de IA externa.
+- No publicar ni liberar este VSIX como artefacto de producción en este estado.
+
+Notas
+
+- Todos los cambios durante la Fase 1 se limitaron a agregar comando/ToolWindow y un ViewModel mínimo; no se modificaron archivos de proyecto, solución ni recursos VSCT más allá de utilizar identificadores de comando existentes en `AgenteIALocal.vsct`.
+- El proyecto evita intencionalmente adicionar paquetes o frameworks en esta fase.
