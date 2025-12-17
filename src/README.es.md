@@ -192,3 +192,40 @@ Cómo esta fase prepara la Fase 4
 
 - Provee contratos estables y adaptadores (mock + real) para que la Fase 4 pueda centrarse en orquestación, encadenado de proveedores, invocación de herramientas y políticas sin rehacer las interfaces.
 - Mantiene la base de código testeable permitiendo que los tests sustituyan `MockAIProvider` para comportamiento determinista.
+
+---
+
+## Fase 4 – Orquestación del Agente (Notas técnicas)
+
+Objetivo de la orquestación del agente
+
+- Coordinar planificación, generación de prompts y ejecución de acciones en modo read-only para ofrecer un comportamiento de agente determinista y testeable.
+- Mantener la lógica de decisión separada de la ejecución para permitir extensiones seguras e integración con proveedores en fases posteriores.
+
+Roles del planner, prompt builder y executor
+
+- Planner (`IAgentPlanner`): decide *qué* acción(es) ejecutar en función del `IAgentContext` actual.
+- Prompt builder (`AgentPromptBuilder`): construye un prompt determinista y estructurado a partir del `IAgentContext` y la `IAgentAction` elegida.
+- Executor (`AgentActionExecutor`): realiza *cómo* ejecutar acciones read-only (por ejemplo, resumir el workspace) y devuelve `IAgentResult`.
+
+Acciones soportadas y comportamiento
+
+- `idle`: el executor devuelve éxito con un mensaje explicativo; no se realiza ninguna operación.
+- `analyze-workspace`: el executor lee `IWorkspaceContext` (solución, proyectos, documentos abiertos, documento activo) y devuelve un resumen más una vista previa del prompt generada por el prompt builder.
+
+Flujo de decisión end-to-end
+
+1. El planner recibe un `IAgentContext` y devuelve una o más instancias `IAgentAction` (el planner básico devuelve actualmente una única acción).
+2. Para la acción elegida, el prompt builder construye un string de prompt estructurado que describe la intención y el contexto.
+3. El executor ejecuta la acción en modo read-only y devuelve un `IAgentResult` con estado, salida y errores si los hubiera.
+
+Qué NO está implementado intencionalmente
+
+- No hay bucles autónomos, llamadas a herramientas, ejecución de funciones ni gestión de memoria persistente en esta fase.
+- Los executors no realizan escrituras ni mutan el workspace.
+- No se incluyen políticas de orquestación, lógica de reintentos ni respuestas por streaming.
+
+Cómo esta fase prepara la Fase 5
+
+- Establece una separación clara de responsabilidades para que la Fase 5 pueda enfocarse en UX, bucles controlados de ejecución, memoria y políticas de orquestación seguras.
+- Proporciona bloques de construcción testeables (planner, prompt builder, executor) que pueden componerse en flujos de agente de mayor nivel.
