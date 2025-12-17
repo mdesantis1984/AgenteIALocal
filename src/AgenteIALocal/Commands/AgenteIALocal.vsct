@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable">
+  <Extern href="stdidcmd.h"/>
+  <Extern href="vsshlids.h"/>
+
+  <Commands package="guidAgenteIALocalPackage">
+    <Groups>
+      <Group
+        guid="guidAgenteIALocalCmdSet"
+        id="MyMenuGroup"
+        priority="0x0600">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_VIEW"/>
+      </Group>
+    </Groups>
+
+    <Buttons>
+      <Button
+        guid="guidAgenteIALocalCmdSet"
+        id="OpenToolWindowCommand"
+        priority="0x0100"
+        type="Button">
+        <Parent guid="guidAgenteIALocalCmdSet" id="MyMenuGroup"/>
+        <Icon guid="guidImages" id="icon1"/>
+        <Strings>
+          <ButtonText>Abrir Agente IA Local</ButtonText>
+        </Strings>
+      </Button>
+    </Buttons>
+  </Commands>
+
+  <Symbols>
+    <!-- Package -->
+    <GuidSymbol
+      name="guidAgenteIALocalPackage"
+      value="{9F6C3B2E-7A3D-4A2B-9E7A-8E5B6A4D2F10}" />
+
+    <!-- Command set -->
+    <GuidSymbol
+      name="guidAgenteIALocalCmdSet"
+      value="{D2A1C9B4-5C3E-4C88-9E6C-3F2A8A7B1E21}">
+      <IDSymbol name="MyMenuGroup" value="0x1020"/>
+      <IDSymbol name="OpenToolWindowCommand" value="0x0100"/>
+    </GuidSymbol>
+
+    <!-- Images (placeholder) -->
+    <GuidSymbol
+      name="guidImages"
+      value="{F1A8B7C6-4E5D-4C3B-9A2F-1E0D9C8B7A65}">
+      <IDSymbol name="icon1" value="1"/>
+    </GuidSymbol>
+  </Symbols>
+</CommandTable>
