@@ -8,14 +8,6 @@ using AgenteIALocal.Core.Interfaces;
 
 namespace AgenteIALocal.Infrastructure.Workspace
 {
-    /// <summary>
-    /// File-system based read-only implementation of ISolutionContext.
-    /// This implementation does not depend on the Visual Studio SDK: it searches
-    /// for a solution file (*.sln) by scanning parent directories from the executing assembly
-    /// and parses project entries to provide Name, Path and Projects list.
-    /// This is intentionally conservative and read-only; it is a fallback implementation
-    /// for environments where IVsSolution is not available.
-    /// </summary>
     public class VisualStudioSolutionContext : ISolutionContext
     {
         public VisualStudioSolutionContext()
@@ -28,13 +20,9 @@ namespace AgenteIALocal.Infrastructure.Workspace
 
         public IReadOnlyList<IProjectInfo> Projects { get; private set; } = Array.Empty<IProjectInfo>();
 
-        /// <summary>
-        /// Initialize the solution context by locating a .sln file and parsing project entries.
-        /// If no solution is found, properties remain null/empty.
-        /// </summary>
         public Task InitializeAsync(CancellationToken cancellationToken = default)
         {
-            // Synchronous operations wrapped in Task for API compatibility.
+            // Keep existing fallback behavior
             try
             {
                 var assemblyDir = AppContext.BaseDirectory;
@@ -63,6 +51,30 @@ namespace AgenteIALocal.Infrastructure.Workspace
             return Task.CompletedTask;
         }
 
+        public static ISolutionContext CreateBestEffort(object vsServices = null)
+        {
+            // If VS SDK types are available and a solution service is provided, prefer the SDK adapter.
+            try
+            {
+                if (vsServices != null && VsSdkAvailability.IsVsSdkPresent())
+                {
+                    var vsSolution = vsServices;
+                    var adapterType = Type.GetType("AgenteIALocal.Infrastructure.Workspace.VsSdkSolutionContextAdapter, AgenteIALocal.Infrastructure");
+                    if (adapterType != null)
+                    {
+                        var adapter = Activator.CreateInstance(adapterType, new[] { vsSolution }) as ISolutionContext;
+                        return adapter ?? new VisualStudioSolutionContext();
+                    }
+                }
+            }
+            catch
+            {
+                // ignore and fall back
+            }
+
+            return new VisualStudioSolutionContext();
+        }
+
         private static string FindSolutionFileUpwards(string startDirectory)
         {
             var dir = new DirectoryInfo(startDirectory);
@@ -88,7 +100,6 @@ namespace AgenteIALocal.Infrastructure.Workspace
 
             foreach (var line in lines)
             {
-                // Project lines look like: Project("{...}") = "Name", "path\to\project.csproj", "{...}"
                 if (!line.StartsWith("Project(", StringComparison.Ordinal))
                     continue;
 
@@ -96,14 +107,12 @@ namespace AgenteIALocal.Infrastructure.Workspace
                 if (parts.Length < 2) continue;
 
                 var rhs = parts[1].Trim();
-                // rhs is like: "Name", "path\to\project.csproj", "{GUID}"
                 var tokens = SplitCsvPreservingQuotes(rhs);
                 if (tokens.Length >= 2)
                 {
                     var projectName = TrimQuotes(tokens[0]);
                     var projectPath = TrimQuotes(tokens[1]);
 
-                    // Make project path absolute based on solution directory
                     var solutionDir = System.IO.Path.GetDirectoryName(solutionFile);
                     var absolutePath = projectPath;
                     if (!System.IO.Path.IsPathRooted(projectPath) && !string.IsNullOrEmpty(solutionDir))

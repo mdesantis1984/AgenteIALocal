@@ -47,6 +47,54 @@ namespace AgenteIALocal.Infrastructure.Workspace
                 default: return null;
             }
         }
+
+        public static IReadOnlyList<IDocumentContext> GetOpenDocumentsBestEffort(object dte = null)
+        {
+            try
+            {
+                if (dte != null && VsSdkAvailability.IsVsSdkPresent())
+                {
+                    var adapterType = Type.GetType("AgenteIALocal.Infrastructure.Workspace.VsSdkDocumentContextAdapter, AgenteIALocal.Infrastructure");
+                    if (adapterType != null)
+                    {
+                        var adapter = Activator.CreateInstance(adapterType, new[] { dte });
+                        var method = adapterType.GetMethod("GetOpenDocuments");
+                        var result = method?.Invoke(adapter, null) as IReadOnlyList<IDocumentContext>;
+                        if (result != null) return result;
+                    }
+                }
+            }
+            catch
+            {
+                // Fall back to empty
+            }
+
+            return VisualStudioDocumentContextProvider.GetOpenDocuments();
+        }
+
+        public static IDocumentContext GetActiveDocumentBestEffort(object dte = null)
+        {
+            try
+            {
+                if (dte != null && VsSdkAvailability.IsVsSdkPresent())
+                {
+                    var adapterType = Type.GetType("AgenteIALocal.Infrastructure.Workspace.VsSdkDocumentContextAdapter, AgenteIALocal.Infrastructure");
+                    if (adapterType != null)
+                    {
+                        var adapter = Activator.CreateInstance(adapterType, new[] { dte });
+                        var method = adapterType.GetMethod("GetActiveDocument");
+                        var result = method?.Invoke(adapter, null) as IDocumentContext;
+                        if (result != null) return result;
+                    }
+                }
+            }
+            catch
+            {
+                // fall back
+            }
+
+            return VisualStudioDocumentContextProvider.GetActiveDocument();
+        }
     }
 
     /// <summary>
