@@ -13,4 +13,8 @@
   <ItemGroup>
     <None Include="Commands\AgenteIALocal.vsct" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AgenteIALocal.Core\AgenteIALocal.Core.csproj" />
+  </ItemGroup>
 </Project>
