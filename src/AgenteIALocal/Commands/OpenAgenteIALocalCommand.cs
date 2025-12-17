@@ -4,13 +4,14 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.VisualStudio;
 
 namespace AgenteIALocal.Commands
 {
     /// <summary>
     /// Command handler for the "Abrir Agente IA Local" menu command.
-    /// This is a non-functional placeholder (no-op) that registers the menu command
-    /// and exposes a static InitializeAsync to be called by the package initialization.
+    /// Registers the menu command and opens the associated ToolWindow when invoked.
     /// </summary>
     internal sealed class OpenAgenteIALocalCommand
     {
@@ -53,8 +54,21 @@ namespace AgenteIALocal.Commands
         private void Execute(object sender, EventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            Debug.WriteLine("OpenAgenteIALocalCommand executed (no-op placeholder).");
-            // No-op: ToolWindow not implemented yet.
+            // Open the ToolWindow asynchronously
+            package.JoinableTaskFactory.RunAsync(async () =>
+            {
+                await package.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+                var window = await package.FindToolWindowAsync(typeof(AgenteIALocal.ToolWindows.AgenteIALocalToolWindow), 0, true, CancellationToken.None);
+                if ((window == null) || (window.Frame == null))
+                {
+                    Debug.WriteLine("Failed to create or find AgenteIALocal tool window.");
+                    return;
+                }
+
+                var windowFrame = (IVsWindowFrame)window.Frame;
+                ErrorHandler.ThrowOnFailure(windowFrame.Show());
+            });
         }
     }
 }

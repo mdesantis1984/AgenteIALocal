@@ -230,4 +230,40 @@ How this phase prepares Phase 5
 - Establishes a clear separation of concerns so Phase 5 can focus on UX, controlled execution loops, memory, settings and safe orchestration policies.
 - Provides testable building blocks (planner, prompt builder, executor) that can be composed into higher-level agent workflows.
 
+---
+
+## Phase 5 – UX and Productization (Technical Notes)
+
+Agent settings and configuration
+
+- Configuration is available via Tools → Options → Agente IA Local → General (DialogPage). Settings include enable/disable, default provider, default model, and an optional OpenAI API key.
+- Settings are persisted by Visual Studio and can be used to influence runtime behavior when provider adapters are instantiated.
+
+Provider and model selection
+
+- The ToolWindow exposes simple selectors for Provider (MockAI or OpenAI) and Model (provider-specific identifiers). Selections update `AgentOptions` and are reflected in the experimental instance.
+- No provider selection logic or DI container is implemented; provider instantiation is explicit in code and intended to be wired in higher-level composition.
+
+Manual execution (Run / Stop)
+
+- Users trigger execution manually via the ToolWindow Run button. Execution is single-shot: Planner → Prompt Builder → Executor.
+- Stop cancels in-progress execution via CancellationToken; there are no autonomous loops or background agents.
+
+Execution logs and observability
+
+- An in-memory logger captures Info and Error events with timestamps. Logs are displayed in the ToolWindow and auto-scroll to the latest entry.
+- Logs cover Run start, planner decision, action start/completion, cancellations and errors.
+
+Current limitations
+
+- No streaming, no function/tool calling, no persistent memory or long-running orchestration.
+- OpenAI integration is available but requires supplying an API key; the OpenAI adapter is conservative and not optimized for production throughput.
+- No DI, no global provider registry, and no centralized telemetry or security features implemented in this phase.
+
+What would come next
+
+- Add provider selection wiring, DI and secure secret storage (KeyVault/System credential manager) as needed.
+- Implement controlled execution loops with safety policies, retry strategies, and function/tool invocation.
+- Enhance logging, add persisted history, and provide UX for results, tasks and memory management.
+
 

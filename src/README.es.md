@@ -229,3 +229,39 @@ Cómo esta fase prepara la Fase 5
 
 - Establece una separación clara de responsabilidades para que la Fase 5 pueda enfocarse en UX, bucles controlados de ejecución, memoria y políticas de orquestación seguras.
 - Proporciona bloques de construcción testeables (planner, prompt builder, executor) que pueden componerse en flujos de agente de mayor nivel.
+
+---
+
+## Fase 5 – UX y Productización (Notas técnicas)
+
+Configuración del agente
+
+- La configuración está disponible en Tools → Options → Agente IA Local → General (DialogPage). Las opciones incluyen habilitar/deshabilitar, proveedor por defecto, modelo por defecto y una clave API OpenAI opcional.
+- Las opciones se persisten mediante Visual Studio y pueden influir en el comportamiento en tiempo de ejecución cuando se instancien adaptadores de proveedor.
+
+Selección de provider y modelo
+
+- La ToolWindow expone selectores simples para Provider (MockAI u OpenAI) y Model (identificadores por proveedor). Las selecciones actualizan `AgentOptions` y se reflejan en la instancia experimental.
+- No existe lógica de selección de proveedor ni contenedor DI; la instanciación de proveedores es explícita y se espera que se realice en la composición de capas superiores.
+
+Ejecución manual (Run / Stop)
+
+- Los usuarios desencadenan la ejecución manualmente a través del botón Run de la ToolWindow. La ejecución es de un solo disparo: Planner → Prompt Builder → Executor.
+- Stop cancela la ejecución en curso mediante CancellationToken; no hay bucles autónomos ni agentes en background.
+
+Logs y observabilidad
+
+- Un logger en memoria captura eventos Info y Error con marcas de tiempo. Los logs se muestran en la ToolWindow y avanzan automáticamente hacia la entrada más reciente.
+- Los logs incluyen inicio de Run, decisión del planner, inicio/fin de ejecución de acciones, cancelaciones y errores.
+
+Limitaciones actuales
+
+- No hay streaming, ni invocación de funciones/herramientas, ni memoria persistente ni orquestación de larga duración.
+- La integración con OpenAI está disponible pero requiere una clave API; el adaptador OpenAI es conservador y no está optimizado para alto rendimiento en producción.
+- No hay DI, ni registro global de proveedores, ni telemetría o seguridad centralizada implementada en esta fase.
+
+Próximos pasos posibles
+
+- Añadir wiring de selección de proveedor, DI y almacenamiento seguro de secretos (KeyVault/gestor de credenciales) según sea necesario.
+- Implementar bucles de ejecución controlados con políticas de seguridad, estrategias de reintentos e invocación de herramientas/funciones.
+- Mejorar el logging, agregar historial persistente y ofrecer UX para resultados, tareas y gestión de memoria.
