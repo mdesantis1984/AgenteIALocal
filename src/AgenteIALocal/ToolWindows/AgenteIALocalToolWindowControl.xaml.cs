@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using AgenteIALocal.Options;
 using AgenteIALocal.Core.Interfaces.Agent;
 using Microsoft.VisualStudio.Shell;
+using AgenteIALocal.Logging;
 
 namespace AgenteIALocal.ToolWindows
 {
@@ -28,10 +29,13 @@ namespace AgenteIALocal.ToolWindows
         private Button stopButton;
         private TextBox outputBox;
         private TextBox goalBox;
+        private InMemoryAgentLogger logger;
+        private ListBox logListBox;
 
         public AgenteIALocalToolWindowControl()
         {
             InitializeComponent();
+            logger = new InMemoryAgentLogger();
 
             // Attempt to load AgentOptions from the package. Fall back to a new instance.
             try
@@ -111,8 +115,15 @@ namespace AgenteIALocal.ToolWindows
             panel.Children.Add(buttonsPanel);
 
             // Output box
-            outputBox = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Height = 200, IsReadOnly = true };
+            outputBox = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Height = 120, IsReadOnly = true };
             panel.Children.Add(outputBox);
+
+            // Log section
+            var logLabel = new TextBlock { Text = "Logs:", Margin = new Thickness(0, 10, 0, 2) };
+            panel.Children.Add(logLabel);
+
+            logListBox = new ListBox { Height = 150 };
+            panel.Children.Add(logListBox);
 
             var note = new TextBlock { Text = "Note: execution is manual and read-only. No external calls are made from this UI.", Margin = new Thickness(0, 10, 0, 0), TextWrapping = TextWrapping.Wrap };
             panel.Children.Add(note);
@@ -125,6 +136,8 @@ namespace AgenteIALocal.ToolWindows
             runButton.IsEnabled = false;
             stopButton.IsEnabled = true;
             outputBox.Text = string.Empty;
+            logger.Info("Run started");
+            RefreshLog();
             cts = new CancellationTokenSource();
 
             try
@@ -137,15 +150,21 @@ namespace AgenteIALocal.ToolWindows
                 if (string.IsNullOrWhiteSpace(goal))
                 {
                     actionType = "idle";
+                    logger.Info("Planner decision: idle");
                 }
                 else
                 {
                     actionType = "analyze-workspace";
                     parameters = new Dictionary<string, object> { { "goal", goal } };
+                    logger.Info("Planner decision: analyze-workspace");
                 }
 
                 // Execute action
+                logger.Info($"Action execution started: {actionType}");
+                RefreshLog();
                 var result = await Task.Run(() => ExecuteAction(actionType, parameters, cts.Token), cts.Token);
+                logger.Info($"Action execution completed: {actionType} Success={result?.Success}");
+                RefreshLog();
 
                 if (result != null)
                 {
@@ -154,11 +173,15 @@ namespace AgenteIALocal.ToolWindows
             }
             catch (OperationCanceledException)
             {
+                logger.Info("Execution canceled");
                 outputBox.Text = "Execution canceled.";
+                RefreshLog();
             }
             catch (Exception ex)
             {
+                logger.Error("Execution error: " + ex.Message);
                 outputBox.Text = "Execution error: " + ex.Message;
+                RefreshLog();
             }
             finally
             {
@@ -173,8 +196,20 @@ namespace AgenteIALocal.ToolWindows
             try
             {
                 cts?.Cancel();
+                logger.Info("Cancellation requested by user");
+                RefreshLog();
             }
             catch { }
+        }
+
+        private void RefreshLog()
+        {
+            var entries = logger.GetEntries();
+            logListBox.ItemsSource = entries.Select(e => e.ToString()).ToList();
+            if (logListBox.Items.Count > 0)
+            {
+                logListBox.ScrollIntoView(logListBox.Items[logListBox.Items.Count - 1]);
+            }
         }
 
         private IAgentResult ExecuteAction(string actionType, Dictionary<string, object> parameters, CancellationToken cancellationToken)
