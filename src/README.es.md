@@ -148,3 +148,47 @@ Decisiones técnicas (resumen)
 - No hay dependencia de compilación del VS SDK fuera de `AgenteIALocal.Infrastructure`.
 - Detección e invocación basada en reflexión para evitar referencias duras al SDK.
 - Acceso en modo sólo lectura; no se introdujeron eventos ni caches en la Fase 2.
+
+---
+
+## Fase 3 – Capa de Abstracción de IA (Notas técnicas)
+
+Objetivo de la capa de abstracción de IA
+
+- Proveer contratos y DTOs independientes del proveedor para que las capas superiores puedan usar capacidades de IA sin depender de APIs específicas.
+- Permitir desarrollo seguro y testeable con un proveedor mock determinista y adaptadores inyectables en infraestructura.
+
+Contratos y DTOs en Core
+
+- Las interfaces del core están en `AgenteIALocal.Core.Interfaces.AI` (`IAIProvider`, `IAIModel`, `IAIRequest`, `IAIResponse`).
+- Los DTOs neutrales están en `AgenteIALocal.Core.Models.AI` (`AIMessage`, `AIMessageRole`, `AIRequestOptions`, `AIUsage`).
+- Estos contratos son mínimos e independientes del proveedor por diseño.
+
+Estrategia de proveedores (Mock vs OpenAI)
+
+- Infraestructura contiene implementaciones de proveedores. Se incluyen dos proveedores:
+  - `MockAIProvider` (determinista, offline, para desarrollo y pruebas).
+  - `OpenAIProvider` (realiza llamadas al endpoint de Chat Completions de OpenAI cuando se configura una clave API).
+- La aplicación o las pruebas deciden qué proveedor instanciar; el core no conoce proveedores concretos.
+
+Configuración y manejo de secretos
+
+- `OpenAIOptions` permite proporcionar una clave API o usar la variable de entorno `OPENAI_API_KEY`.
+- No se almacenan secretos en el código fuente. El proveedor falla de forma clara si no hay clave configurada.
+
+Manejo de errores y limitaciones
+
+- Los proveedores retornan `IAIResponse` con `IsSuccess`, `ErrorMessage` y `Duration` para que los llamantes puedan inspeccionar fallos.
+- Esta fase evita streaming, reintentos y recuperación avanzada; el comportamiento es simple y explícito.
+- El adaptador OpenAI usa un generador JSON conservador y llamadas HTTP; no está optimizado para alto rendimiento.
+
+Qué NO está implementado intencionalmente
+
+- No hay respuestas por streaming, ni función/llamadas a herramientas, ni orquestación, ni utilidades de prompt engineering complejas.
+- No hay logging centralizado ni telemetría; los mensajes de error básicos se devuelven en `IAIResponse.ErrorMessage`.
+- No hay contenedor DI ni selección global de proveedor; la instanciación de proveedores es explícita.
+
+Cómo esta fase prepara la Fase 4
+
+- Provee contratos estables y adaptadores (mock + real) para que la Fase 4 pueda centrarse en orquestación, encadenado de proveedores, invocación de herramientas y políticas sin rehacer las interfaces.
+- Mantiene la base de código testeable permitiendo que los tests sustituyan `MockAIProvider` para comportamiento determinista.

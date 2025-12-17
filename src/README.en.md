@@ -149,4 +149,48 @@ Technical decisions (summary)
 - Reflection-based detection and invocation to avoid hard SDK references.
 - Read-only access by design; no events nor caching introduced in Phase 2.
 
+---
+
+## Phase 3 – AI Abstraction Layer (Technical Notes)
+
+Purpose of the AI abstraction layer
+
+- Provide provider-agnostic contracts and DTOs so higher-level features can use AI capabilities without depending on provider-specific APIs.
+- Enable safe, testable development with a deterministic mock provider and pluggable infrastructure adapters.
+
+Core contracts and DTOs
+
+- Core interfaces live in `AgenteIALocal.Core.Interfaces.AI` (`IAIProvider`, `IAIModel`, `IAIRequest`, `IAIResponse`).
+- Neutral DTOs live in `AgenteIALocal.Core.Models.AI` (`AIMessage`, `AIMessageRole`, `AIRequestOptions`, `AIUsage`).
+- These contracts are intentionally minimal and provider-agnostic to maximize reuse.
+
+Provider strategy (Mock vs OpenAI)
+
+- Infrastructure contains provider implementations. Two providers are included:
+  - `MockAIProvider` (deterministic, offline, used for development and tests).
+  - `OpenAIProvider` (calls the OpenAI Chat Completions endpoint when an API key is configured).
+- The application or tests decide which provider to instantiate; the core remains unaware of concrete providers.
+
+Configuration and secrets handling
+
+- `OpenAIOptions` allows providing an API key or falling back to the `OPENAI_API_KEY` environment variable.
+- No secrets are stored in source code. The provider fails gracefully if no API key is available.
+
+Error handling and limitations
+
+- Providers return `IAIResponse` containing `IsSuccess`, `ErrorMessage` and `Duration` so callers can inspect failures.
+- This phase avoids streaming, retries and advanced error recovery; the behavior is simple and explicit.
+- The OpenAI adapter uses a conservative JSON builder and HTTP calls; it is not optimized for high throughput.
+
+What is intentionally not implemented
+
+- No streaming responses, no function/tool calling, no orchestration, and no complex prompt engineering utilities.
+- No centralized logging or telemetry; basic error messages are returned in `IAIResponse.ErrorMessage`.
+- No DI container or global provider selection; provider instantiation is explicit.
+
+How this phase prepares Phase 4
+
+- Provides stable contracts and a working mock + real adapter so Phase 4 can focus on orchestration, chaining providers, tool invocation and policies without reworking core interfaces.
+- Keeps the codebase testable by allowing tests to substitute `MockAIProvider` for deterministic behavior.
+
 
