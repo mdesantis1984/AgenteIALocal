@@ -102,3 +102,49 @@ Notas
 
 - Todos los cambios durante la Fase 1 se limitaron a agregar comando/ToolWindow y un ViewModel mínimo; no se modificaron archivos de proyecto, solución ni recursos VSCT más allá de utilizar identificadores de comando existentes en `AgenteIALocal.vsct`.
 - El proyecto evita intencionalmente adicionar paquetes o frameworks en esta fase.
+
+---
+
+## Fase 2 – Workspace Awareness (Notas técnicas)
+
+Objetivo del Workspace Awareness
+
+- Proveer contratos y implementaciones read-only y testeables que expongan metadata de la solución, proyectos y documentos abiertos en el entorno de desarrollo.
+- Permitir futuras capacidades que requieran contexto del workspace sin acoplar capas superiores a tipos del Visual Studio SDK.
+
+Contratos e interfaces
+
+- `IWorkspaceContext`, `ISolutionContext`, `IDocumentContext` están definidos en `AgenteIALocal.Core` y proporcionan acceso read-only a metadata de solución y documentos.
+- Los contratos exponen propiedades simples (p. ej., nombre de la solución, ruta, lista de proyectos, documentos abiertos, documento activo) y evitan intencionalmente APIs de ciclo de vida o mutación.
+
+Estrategia híbrida: adaptadores VS SDK + fallback
+
+- La infraestructura provee una estrategia híbrida: preferir adaptadores basados en el SDK cuando la extensión se ejecute dentro de Visual Studio; en caso contrario usar fallbacks conservadores basados en filesystem.
+- `VsSdkAvailability` detecta la presencia del SDK en tiempo de ejecución mediante reflexión; los adaptadores usan reflexión para acceder a `IVsSolution` y `EnvDTE.DTE` cuando estén disponibles.
+- Las implementaciones fallback operan sin el SDK: `VisualStudioSolutionContext` parsea el archivo `.sln` más cercano para extraer proyectos y `VisualStudioDocumentContextProvider` devuelve valores vacíos/seguros cuando no es posible obtener información del editor.
+
+Datos disponibles (solución, proyectos, documentos)
+
+- Solución: nombre y ruta (nulo cuando no se encuentra o no es determinable).
+- Proyectos: lista de `IProjectInfo` con nombre, ruta absoluta e idioma inferido (a partir de la extensión del archivo de proyecto).
+- Documentos abiertos: el proveedor devuelve cero o más entradas `IDocumentContext`; el documento activo se devuelve cuando el adaptador puede determinarlo.
+
+Qué NO está implementado intencionalmente
+
+- No hay eventos en vivo ni notificaciones de cambios para solución/proyecto/documento.
+- No hay cachés, escaneo en segundo plano ni APIs de mutación (solo lectura).
+- No se introduce inyección de dependencias ni registro de servicios en esta fase; los adaptadores y fábricas son simples y explícitos.
+- No se intenta normalizar tipos de proyecto complejos más allá de la extracción básica de rutas.
+
+Cómo esta fase prepara la Fase 3
+
+- Provee contratos y adaptadores desacoplados que permiten a la Fase 3 implementar abstracciones de proveedores de IA sin acoplarse a APIs específicas del IDE.
+- Asegura que los servicios de nivel superior puedan solicitar metadata del workspace desde una única capa de abstracción y seguir siendo testeables mediante mocks de las interfaces del Core.
+- El patrón híbrido permite que la siguiente fase añada integraciones más ricas usando servicios del VS SDK mientras se mantiene la testabilidad mediante los fallbacks.
+
+Decisiones técnicas (resumen)
+
+- Patrón de adaptador híbrido (SDK preferido, fallback en caso contrario).
+- No hay dependencia de compilación del VS SDK fuera de `AgenteIALocal.Infrastructure`.
+- Detección e invocación basada en reflexión para evitar referencias duras al SDK.
+- Acceso en modo sólo lectura; no se introdujeron eventos ni caches en la Fase 2.

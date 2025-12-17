@@ -103,4 +103,50 @@ Notes
 - All changes made during Phase 1 are limited to adding the command/ToolWindow and minimal ViewModel; no project files, solution files, or VSCT resources were modified beyond using the existing `AgenteIALocal.vsct` command identifiers.
 - The project intentionally avoids introducing new packages or frameworks in this phase.
 
+---
+
+## Phase 2 – Workspace Awareness (Technical Notes)
+
+Purpose of Workspace Awareness
+
+- Provide read-only, testable contracts and implementations that expose solution, project and open-document metadata from the development environment.
+- Enable future features that require contextual information about the workspace without coupling higher layers to Visual Studio SDK types.
+
+Interfaces and contracts overview
+
+- `IWorkspaceContext`, `ISolutionContext`, `IDocumentContext` are defined in `AgenteIALocal.Core` and provide read-only access to solution and document metadata.
+- Contracts expose simple properties (e.g., solution name, solution path, project list, open documents, active document) and intentionally avoid lifecycle or mutation APIs.
+
+Hybrid strategy: VS SDK adapters + fallback
+
+- Infrastructure provides a hybrid strategy: prefer runtime VS SDK adapters when the extension runs inside Visual Studio, otherwise use conservative filesystem-based fallbacks.
+- `VsSdkAvailability` detects presence of SDK types at runtime using reflection; adapter classes use reflection to access `IVsSolution` and `EnvDTE.DTE` when available.
+- The fallback implementations operate without the VS SDK: `VisualStudioSolutionContext` parses the nearest `.sln` file to extract project entries and `VisualStudioDocumentContextProvider` returns safe empty/default values when editor information is not available.
+
+Available data (solution, projects, documents)
+
+- Solution: name and path (null when no solution found or determinable).
+- Projects: list of `IProjectInfo` with project name, absolute path and inferred language (based on project file extension).
+- Open documents: provider returns zero or more `IDocumentContext` entries; active document is returned when determinable by the adapter.
+
+What is intentionally not implemented
+
+- No live events or change notifications for solution/project/document changes.
+- No caches, no background scanning, and no mutation APIs (read-only only).
+- No service registration or dependency injection in this phase; adapters and factories are simple and explicit.
+- No attempt to normalize complex project types or workspace models beyond basic file-path extraction.
+
+How this phase prepares Phase 3
+
+- Provides stable, language-agnostic contracts and adapters so Phase 3 can implement IA provider abstractions without coupling to IDE-specific APIs.
+- Ensures that higher-level services can request workspace metadata from a single abstraction layer and remain unit-testable by mocking core interfaces.
+- The hybrid adapter pattern allows the next phase to implement richer integrations using VS SDK services while preserving testability via the fallback implementations.
+
+Technical decisions (summary)
+
+- Hybrid adapter pattern (SDK preferred, fallback otherwise).
+- No compile-time dependency on VS SDK outside the `AgenteIALocal.Infrastructure` project.
+- Reflection-based detection and invocation to avoid hard SDK references.
+- Read-only access by design; no events nor caching introduced in Phase 2.
+
 
