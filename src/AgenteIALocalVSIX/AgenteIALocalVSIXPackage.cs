@@ -3,6 +3,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Task = System.Threading.Tasks.Task;
+using AgenteIALocalVSIX.Commands;
 
 
 
@@ -49,6 +50,9 @@ namespace AgenteIALocalVSIX
             // When initialized asynchronously, the current thread may be a background thread at this point.
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+            // Initialize commands (register menu commands). OpenAgenteIALocalCommand.InitializeAsync will add commands to the OleMenuCommandService.
+            await OpenAgenteIALocalCommand.InitializeAsync(this);
         }
 
         #endregion
