@@ -1,0 +1,267 @@
+Agente IA Local para Visual Studio — Español
+
+🔎 Visión general
+
+Agente IA Local es una solución de extensión para Visual Studio diseñada para reunir componentes que soporten herramientas de ayuda basadas en IA ejecutadas localmente. El repositorio se organiza en múltiples proyectos (librerías núcleo, capa de aplicación, infraestructura, UI y pruebas) y está estructurado para producir un VSIX y librerías de soporte para desarrollo local.
+
+📋 Estado actual
+
+- Línea base de solución y estructura de proyectos consolidada.
+- Esqueleto VSIX y proyecto de paquete presentes para desarrollo y pruebas locales.
+- Se añadió un comando (sin lógica funcional) y se registró en el package; el comando aparece en el menú View cuando se ejecuta el VSIX en una instancia experimental.
+- No se ha implementado ToolWindow ni UI visible más allá del ítem de menú en esta fase.
+
+🏗 Arquitectura de la solución
+
+La solución está organizada en proyectos separados por responsabilidad:
+- `AgenteIALocal` — Package e integración para el VSIX
+- `AgenteIALocal.Application` — Capa de aplicación
+- `AgenteIALocal.Core` — Lógica de dominio y compartida
+- `AgenteIALocal.Infrastructure` — Implementaciones específicas de plataforma
+- `AgenteIALocal.UI` — Extensión de Visual Studio / proyecto VSIX
+- `AgenteIALocal.Tests` — Pruebas unitarias e integración
+
+Los proyectos apuntan a .NET Framework 4.8 y .NET Standard 2.0 cuando corresponde. El artefacto de compilación esperado para la extensión es un paquete VSIX generado desde el proyecto UI.
+
+🛠 Requisitos de build
+
+1. Visual Studio 2019 o 2022 con las cargas de trabajo "Visual Studio extension development" y ".NET desktop development" instaladas.
+2. Paquetes de destino para .NET Framework 4.8 y .NET Standard 2.0 disponibles en el sistema.
+3. (Opcional) Componentes del SDK de Visual Studio para desarrollo de VSIX.
+
+📦 Compilación y ejecución (pasos manuales)
+
+1. Abra la solución en Visual Studio.
+2. Restaure paquetes NuGet si se le solicita.
+3. Seleccione la configuración `Debug`.
+4. Compile la solución (`Build -> Build Solution` o `Ctrl+Shift+B`).
+5. Establezca `AgenteIALocal.UI` como proyecto de inicio y ejecute el VSIX en la Instancia Experimental (`F5`).
+
+🐞 Depuración
+
+- Coloque puntos de interrupción en UI u otros proyectos antes de lanzar la instancia experimental.
+- Los registros y salidas de diagnóstico son emitidos por los proyectos; no hay telemetría centralizada configurada.
+- Si la extensión no se carga, confirme que el proyecto VSIX se compiló correctamente y que Visual Studio está lanzando la instancia experimental.
+
+🚫 No objetivos
+
+- Publicar una extensión VSIX lista para producción en el Visual Studio Marketplace en esta etapa.
+- Proveer inferencia de IA alojada en la nube o servicios de IA externos gestionados.
+- Modificar la estructura de proyectos, archivos `.csproj`, archivos de solución o recursos `.vsct` como parte de estas fases iniciales.
+
+---
+
+## Fase 1 – VSIX Shell (Notas técnicas)
+
+Alcance de la Fase 1
+
+- Establecer un esqueleto mínimo de VSIX para desarrollo y pruebas locales.
+- Proveer un punto de entrada (comando de menú) y una ToolWindow acoplable con UI mínima para ampliar en fases posteriores.
+
+Qué está implementado
+
+- Una clase de comando (`OpenAgenteIALocalCommand`) registrada en el package y expuesta en el menú `View` mediante el archivo VSCT existente.
+- Una implementación mínima de ToolWindow (`AgenteIALocalToolWindow`) y su control de usuario asociado (`AgenteIALocalToolWindowControl`).
+- Un ViewModel ligero (`AgenteIALocalToolWindowViewModel`) que implementa `INotifyPropertyChanged` con la propiedad `StatusText`.
+- Binding desde el control al ViewModel (actualmente realizado desde el code-behind para mantener la simplicidad inicial).
+- Eliminación de `App.xaml` del proyecto VSIX para mantener el proyecto como librería de clases (resuelve errores de construcción relacionados con ApplicationDefinition).
+
+Qué NO está implementado intencionalmente
+
+- No hay lógica de negocio, servicios ni inyección de dependencias.
+- No hay análisis del workspace, modelo de documentos ni integración con servicios de IA externos.
+- No hay persistencia, telemetría ni configuración de CI/CD.
+- El VSIX no está publicado ni listo para producción; está orientado únicamente a desarrollo y pruebas locales.
+
+Decisiones técnicas clave
+
+- El proyecto VSIX se implementa como una librería de clases (sin `ApplicationDefinition` / `App.xaml`). Esto evita la semántica de aplicación WPF en el paquete.
+- La superficie principal de UI es una ToolWindow; esto mantiene la extensión mínima y compatible con patrones de UI de Visual Studio.
+- La activación se realiza mediante comandos definidos en el VSCT; la clase de comando registra el comando de menú y abre la ToolWindow cuando se invoca.
+- Se establece un patrón MVVM simple sin frameworks externos: un ViewModel con `INotifyPropertyChanged` y un objetivo de binding. El binding inicial se realiza desde el code-behind del control para simplicidad y evitar un cableado XAML prematuro.
+- No se introducen servicios ni frameworks de DI en esta fase para reducir la complejidad y mantener el esqueleto transferible.
+
+Estado funcional actual
+
+- La solución se compila con éxito apuntando a .NET Framework 4.8 y .NET Standard 2.0 donde corresponda.
+- El ítem de menú `View -> Abrir Agente IA Local` está registrado y es visible al ejecutar el VSIX en la Instancia Experimental de Visual Studio.
+- Invocar el comando abre la ToolWindow acoplable con contenido placeholder enlazado a `StatusText`.
+
+Cómo esta fase prepara la Fase 2
+
+- Provee un shell de UI estable y visible (comando + ToolWindow) donde se podrán añadir capacidades de awareness del workspace.
+- Establece un contrato ViewModel sencillo (`INotifyPropertyChanged`) que se extenderá con servicios y proveedores de datos en la Fase 2.
+- Mantiene la base de código limpia de decisiones de infraestructura (sin DI ni servicios) para permitir evaluar enfoques en la siguiente fase sin refactorings costosos.
+
+No objetivos explícitos (repetido)
+
+- No asumir capacidades en la nube ni de IA externa.
+- No publicar ni liberar este VSIX como artefacto de producción en este estado.
+
+Notas
+
+- Todos los cambios durante la Fase 1 se limitaron a agregar comando/ToolWindow y un ViewModel mínimo; no se modificaron archivos de proyecto, solución ni recursos VSCT más allá de utilizar identificadores de comando existentes en `AgenteIALocal.vsct`.
+- El proyecto evita intencionalmente adicionar paquetes o frameworks en esta fase.
+
+---
+
+## Fase 2 – Workspace Awareness (Notas técnicas)
+
+Objetivo del Workspace Awareness
+
+- Proveer contratos y implementaciones read-only y testeables que expongan metadata de la solución, proyectos y documentos abiertos en el entorno de desarrollo.
+- Permitir futuras capacidades que requieran contexto del workspace sin acoplar capas superiores a tipos del Visual Studio SDK.
+
+Contratos e interfaces
+
+- `IWorkspaceContext`, `ISolutionContext`, `IDocumentContext` están definidos en `AgenteIALocal.Core` y proporcionan acceso read-only a metadata de solución y documentos.
+- Los contratos exponen propiedades simples (p. ej., nombre de la solución, ruta, lista de proyectos, documentos abiertos, documento activo) y evitan intencionalmente APIs de ciclo de vida o mutación.
+
+Estrategia híbrida: adaptadores VS SDK + fallback
+
+- La infraestructura provee una estrategia híbrida: preferir adaptadores basados en el SDK cuando la extensión se ejecute dentro de Visual Studio; en caso contrario usar fallbacks conservadores basados en filesystem.
+- `VsSdkAvailability` detecta la presencia del SDK en tiempo de ejecución mediante reflexión; los adaptadores usan reflexión para acceder a `IVsSolution` y `EnvDTE.DTE` cuando estén disponibles.
+- Las implementaciones fallback operan sin el SDK: `VisualStudioSolutionContext` parsea el archivo `.sln` más cercano para extraer proyectos y `VisualStudioDocumentContextProvider` devuelve valores vacíos/seguros cuando no es posible obtener información del editor.
+
+Datos disponibles (solución, proyectos, documentos)
+
+- Solución: nombre y ruta (nulo cuando no se encuentra o no es determinable).
+- Proyectos: lista de `IProjectInfo` con nombre, ruta absoluta e idioma inferido (a partir de la extensión del archivo de proyecto).
+- Documentos abiertos: el proveedor devuelve cero o más entradas `IDocumentContext`; el documento activo se devuelve cuando el adaptador puede determinarlo.
+
+Qué NO está implementado intencionalmente
+
+- No hay eventos en vivo ni notificaciones de cambios para solución/proyecto/documento.
+- No hay cachés, escaneo en segundo plano ni APIs de mutación (solo lectura).
+- No se introduce inyección de dependencias ni registro de servicios en esta fase; los adaptadores y fábricas son simples y explícitos.
+- No se intenta normalizar tipos de proyecto complejos más allá de la extracción básica de rutas.
+
+Cómo esta fase prepara la Fase 3
+
+- Provee contratos y adaptadores desacoplados que permiten a la Fase 3 implementar abstracciones de proveedores de IA sin acoplarse a APIs específicas del IDE.
+- Asegura que los servicios de nivel superior puedan solicitar metadata del workspace desde una única capa de abstracción y seguir siendo testeables mediante mocks de las interfaces del Core.
+- El patrón híbrido permite que la siguiente fase añada integraciones más ricas usando servicios del VS SDK mientras se mantiene la testabilidad mediante los fallbacks.
+
+Decisiones técnicas (resumen)
+
+- Patrón de adaptador híbrido (SDK preferido, fallback en caso contrario).
+- No hay dependencia de compilación del VS SDK fuera de `AgenteIALocal.Infrastructure`.
+- Detección e invocación basada en reflexión para evitar referencias duras al SDK.
+- Acceso en modo sólo lectura; no se introdujeron eventos ni caches en la Fase 2.
+
+---
+
+## Fase 3 – Capa de Abstracción de IA (Notas técnicas)
+
+Objetivo de la capa de abstracción de IA
+
+- Proveer contratos y DTOs independientes del proveedor para que las capas superiores puedan usar capacidades de IA sin depender de APIs específicas.
+- Permitir desarrollo seguro y testeable con un proveedor mock determinista y adaptadores inyectables en infraestructura.
+
+Contratos y DTOs en Core
+
+- Las interfaces del core están en `AgenteIALocal.Core.Interfaces.AI` (`IAIProvider`, `IAIModel`, `IAIRequest`, `IAIResponse`).
+- Los DTOs neutrales están en `AgenteIALocal.Core.Models.AI` (`AIMessage`, `AIMessageRole`, `AIRequestOptions`, `AIUsage`).
+- Estos contratos son mínimos e independientes del proveedor por diseño.
+
+Estrategia de proveedores (Mock vs OpenAI)
+
+- Infraestructura contiene implementaciones de proveedores. Se incluyen dos proveedores:
+  - `MockAIProvider` (determinista, offline, para desarrollo y pruebas).
+  - `OpenAIProvider` (realiza llamadas al endpoint de Chat Completions de OpenAI cuando se configura una clave API).
+- La aplicación o las pruebas deciden qué proveedor instanciar; el core no conoce proveedores concretos.
+
+Configuración y manejo de secretos
+
+- `OpenAIOptions` permite proporcionar una clave API o usar la variable de entorno `OPENAI_API_KEY`.
+- No se almacenan secretos en el código fuente. El proveedor falla de forma clara si no hay clave configurada.
+
+Manejo de errores y limitaciones
+
+- Los proveedores retornan `IAIResponse` con `IsSuccess`, `ErrorMessage` y `Duration` para que los llamantes puedan inspeccionar fallos.
+- Esta fase evita streaming, reintentos y recuperación avanzada; el comportamiento es simple y explícito.
+- El adaptador OpenAI usa un generador JSON conservador y llamadas HTTP; no está optimizado para alto rendimiento.
+
+Qué NO está implementado intencionalmente
+
+- No hay respuestas por streaming, ni función/llamadas a herramientas, ni orquestación, ni utilidades de prompt engineering complejas.
+- No hay logging centralizado ni telemetría; los mensajes de error básicos se devuelven en `IAIResponse.ErrorMessage`.
+- No hay contenedor DI ni selección global de proveedor; la instanciación de proveedores es explícita.
+
+Cómo esta fase prepara la Fase 4
+
+- Provee contratos estables y adaptadores (mock + real) para que la Fase 4 pueda centrarse en orquestación, encadenado de proveedores, invocación de herramientas y políticas sin rehacer las interfaces.
+- Mantiene la base de código testeable permitiendo que los tests sustituyan `MockAIProvider` para comportamiento determinista.
+
+---
+
+## Fase 4 – Orquestación del Agente (Notas técnicas)
+
+Objetivo de la orquestación del agente
+
+- Coordinar planificación, generación de prompts y ejecución de acciones en modo read-only para ofrecer un comportamiento de agente determinista y testeable.
+- Mantener la lógica de decisión separada de la ejecución para permitir extensiones seguras e integración con proveedores en fases posteriores.
+
+Roles del planner, prompt builder y executor
+
+- Planner (`IAgentPlanner`): decide *qué* acción(es) ejecutar en función del `IAgentContext` actual.
+- Prompt builder (`AgentPromptBuilder`): construye un prompt determinista y estructurado a partir del `IAgentContext` y la `IAgentAction` elegida.
+- Executor (`AgentActionExecutor`): realiza *cómo* ejecutar acciones read-only (por ejemplo, resumir el workspace) y devuelve `IAgentResult`.
+
+Acciones soportadas y comportamiento
+
+- `idle`: el executor devuelve éxito con un mensaje explicativo; no se realiza ninguna operación.
+- `analyze-workspace`: el executor lee `IWorkspaceContext` (solución, proyectos, documentos abiertos, documento activo) y devuelve un resumen más una vista previa del prompt generada por el prompt builder.
+
+Flujo de decisión end-to-end
+
+1. El planner recibe un `IAgentContext` y devuelve una o más instancias `IAgentAction` (el planner básico devuelve actualmente una única acción).
+2. Para la acción elegida, el prompt builder construye un string de prompt estructurado que describe la intención y el contexto.
+3. El executor ejecuta la acción en modo read-only y devuelve un `IAgentResult` con estado, salida y errores si los hubiera.
+
+Qué NO está implementado intencionalmente
+
+- No hay bucles autónomos, llamadas a herramientas, ejecución de funciones ni gestión de memoria persistente en esta fase.
+- Los executors no realizan escrituras ni mutan el workspace.
+- No se incluyen políticas de orquestación, lógica de reintentos ni respuestas por streaming.
+
+Cómo esta fase prepara la Fase 5
+
+- Establece una separación clara de responsabilidades para que la Fase 5 pueda enfocarse en UX, bucles controlados de ejecución, memoria y políticas de orquestación seguras.
+- Proporciona bloques de construcción testeables (planner, prompt builder, executor) que pueden componerse en flujos de agente de mayor nivel.
+
+---
+
+## Fase 5 – UX y Productización (Notas técnicas)
+
+Configuración del agente
+
+- La configuración está disponible en Tools → Options → Agente IA Local → General (DialogPage). Las opciones incluyen habilitar/deshabilitar, proveedor por defecto, modelo por defecto y una clave API OpenAI opcional.
+- Las opciones se persisten mediante Visual Studio y pueden influir en el comportamiento en tiempo de ejecución cuando se instancien adaptadores de proveedor.
+
+Selección de provider y modelo
+
+- La ToolWindow expone selectores simples para Provider (MockAI u OpenAI) y Model (identificadores por proveedor). Las selecciones actualizan `AgentOptions` y se reflejan en la instancia experimental.
+- No existe lógica de selección de proveedor ni contenedor DI; la instanciación de proveedores es explícita y se espera que se realice en la composición de capas superiores.
+
+Ejecución manual (Run / Stop)
+
+- Los usuarios desencadenan la ejecución manualmente a través del botón Run de la ToolWindow. La ejecución es de un solo disparo: Planner → Prompt Builder → Executor.
+- Stop cancela la ejecución en curso mediante CancellationToken; no hay bucles autónomos ni agentes en background.
+
+Logs y observabilidad
+
+- Un logger en memoria captura eventos Info y Error con marcas de tiempo. Los logs se muestran en la ToolWindow y avanzan automáticamente hacia la entrada más reciente.
+- Los logs incluyen inicio de Run, decisión del planner, inicio/fin de ejecución de acciones, cancelaciones y errores.
+
+Limitaciones actuales
+
+- No hay streaming, ni invocación de funciones/herramientas, ni memoria persistente ni orquestación de larga duración.
+- La integración con OpenAI está disponible pero requiere una clave API; el adaptador OpenAI es conservador y no está optimizado para alto rendimiento en producción.
+- No hay DI, ni registro global de proveedores, ni telemetría o seguridad centralizada implementada en esta fase.
+
+Próximos pasos posibles
+
+- Añadir wiring de selección de proveedor, DI y almacenamiento seguro de secretos (KeyVault/gestor de credenciales) según sea necesario.
+- Implementar bucles de ejecución controlados con políticas de seguridad, estrategias de reintentos e invocación de herramientas/funciones.
+- Mejorar el logging, agregar historial persistente y ofrecer UX para resultados, tareas y gestión de memoria.

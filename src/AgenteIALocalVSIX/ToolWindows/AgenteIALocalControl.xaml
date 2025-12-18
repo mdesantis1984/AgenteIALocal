@@ -1,0 +1,51 @@
+<UserControl x:Class="AgenteIALocalVSIX.ToolWindows.AgenteIALocalControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+            <TextBlock Text="Agente IA Local" FontWeight="Bold" FontSize="16" />
+            <TextBlock Width="12" />
+            <TextBlock Text="State:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,4,0" />
+            <TextBlock x:Name="StateText" Text="Idle" VerticalAlignment="Center" FontFamily="Consolas" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Solution:" FontWeight="SemiBold" Width="80" />
+            <TextBlock x:Name="SolutionNameText" Text="(no solution)" />
+            <TextBlock Text="    " />
+            <TextBlock Text="Projects:" FontWeight="SemiBold" Width="80" />
+            <TextBlock x:Name="ProjectCountText" Text="0" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button x:Name="RunButton" Content="Run" Width="80" Click="RunButton_Click" />
+            <Button x:Name="ClearButton" Content="Clear" Width="80" Margin="8,0,0,0" Click="ClearButton_Click" />
+        </StackPanel>
+
+        <GroupBox Grid.Row="3" Header="Request JSON" Margin="0,0,0,8">
+            <ScrollViewer Height="140">
+                <TextBlock x:Name="RequestJsonText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" />
+            </ScrollViewer>
+        </GroupBox>
+
+        <GroupBox Grid.Row="4" Header="Response JSON">
+            <ScrollViewer>
+                <TextBlock x:Name="ResponseJsonText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" />
+            </ScrollViewer>
+        </GroupBox>
+
+        <TextBlock Grid.Row="5" x:Name="LogText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" Margin="0,8,0,0" />
+    </Grid>
+</UserControl>

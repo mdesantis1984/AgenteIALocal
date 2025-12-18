@@ -1,5 +1,15 @@
-﻿################################################################################
-# Este archivo .gitignore ha sido creado automáticamente por Microsoft(R) Visual Studio.
-################################################################################
+﻿# Visual Studio
+.vs/
+*.user
+*.suo
 
-/.vs/AgenteIALocal/CopilotIndices/18.3.277.3498
+# Build artifacts
+**/bin/
+**/obj/
+
+# VSIX / SDK caches
+*.vsidx
+
+# OS
+Thumbs.db
+.DS_Store
