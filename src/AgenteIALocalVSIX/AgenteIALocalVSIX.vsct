@@ -17,7 +17,7 @@
 
       <Groups>
         <Group guid="guidAgenteIALocalCmdSet" id="MyMenuGroup" priority="0x0600">
-          <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_VIEW" />
+          <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS" />
         </Group>
       </Groups>
 
