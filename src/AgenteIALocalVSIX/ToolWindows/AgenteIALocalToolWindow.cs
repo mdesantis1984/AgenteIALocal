@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.Shell;
+using AgenteIALocalVSIX.Application;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -10,7 +11,27 @@ namespace AgenteIALocalVSIX.ToolWindows
         public AgenteIALocalToolWindow() : base(null)
         {
             this.Caption = "Agente IA Local";
-            this.Content = new AgenteIALocalControl();
+
+            object ws = null;
+
+            try
+            {
+                ws = VisualStudioWorkspaceProvider.TryGetWorkspaceContext();
+                var initMethod = ws?.GetType().GetMethod("InitializeAsync");
+                if (initMethod != null)
+                {
+                    try { initMethod.Invoke(ws, null); } catch { }
+                }
+            }
+            catch
+            {
+                ws = null;
+            }
+
+            var adapter = new ApplicationContextAdapter(ws);
+            var control = new AgenteIALocalControl();
+            control.SetSolutionInfo(adapter.GetSolutionName(), adapter.GetProjectCount());
+            this.Content = control;
         }
     }
 }

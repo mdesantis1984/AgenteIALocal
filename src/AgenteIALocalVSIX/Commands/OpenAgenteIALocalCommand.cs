@@ -25,7 +25,8 @@ namespace AgenteIALocalVSIX.Commands
         {
             if (package == null) throw new ArgumentNullException(nameof(package));
 
-            // Switch to UI thread - required for AddCommand
+            // When initialized asynchronously, the current thread may be a background thread at this point.
+            // Do any initialization that requires the UI thread after switching to the UI thread.
             await package.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
 
             var commandService = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
@@ -34,7 +35,7 @@ namespace AgenteIALocalVSIX.Commands
 
         private void Execute(object sender, EventArgs e)
         {
-            // Show the tool window asynchronously without blocking
+            // Fire-and-forget: show tool window asynchronously on UI thread
             package.JoinableTaskFactory.RunAsync(async () =>
             {
                 await package.ShowToolWindowAsync(typeof(ToolWindows.AgenteIALocalToolWindow), 0, true, package.DisposalToken);
