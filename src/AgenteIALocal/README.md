@@ -1,1 +1,0 @@
-Scaffold controlado: stubs WPF/MVVM. No incluir .csproj ni .vsixmanifest. El humano debe crear los archivos del proyecto y confirmar compilación antes de commits.
