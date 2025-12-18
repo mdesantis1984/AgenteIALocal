@@ -34,7 +34,7 @@ namespace AgenteIALocalVSIX
         /// <summary>
         /// AgenteIALocalVSIXPackage GUID string.
         /// </summary>
-        public const string PackageGuidString = "f992748b-da75-48e4-9041-e95f8c2ced83";
+        public const string PackageGuidString = "12e93cca-8723-4160-ac43-96fe08854111";
 
         #region Package Members
 
