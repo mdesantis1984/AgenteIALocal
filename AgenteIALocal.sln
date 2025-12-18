@@ -4,6 +4,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 18.3.11312.210
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}"
+	ProjectSection(SolutionItems) = preProject
+		src\README.en.md = src\README.en.md
+		src\README.es.md = src\README.es.md
+		src\README.md = src\README.md
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgenteIALocal.Application", "src\AgenteIALocal.Application\AgenteIALocal.Application.csproj", "{665CAEDD-900F-1F40-2E92-C4A28BEAC487}"
 EndProject
