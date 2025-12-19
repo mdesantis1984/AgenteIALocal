@@ -1,0 +1,14 @@
+<UserControl x:Class="AgenteIALocalVSIX.Options.AgenteIALocalOptionsControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="10" Orientation="Vertical">
+        <TextBlock Text="Base URL" />
+        <TextBox Text="{Binding BaseUrl, Mode=TwoWay}" Margin="0,0,0,10" />
+
+        <TextBlock Text="Model" />
+        <TextBox Text="{Binding Model, Mode=TwoWay}" Margin="0,0,0,10" />
+
+        <TextBlock Text="API Key" />
+        <PasswordBox Password="{Binding ApiKey, Mode=TwoWay}" />
+    </StackPanel>
+</UserControl>

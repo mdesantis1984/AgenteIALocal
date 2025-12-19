@@ -5,7 +5,8 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Task = System.Threading.Tasks.Task;
 using AgenteIALocalVSIX.Commands;
-
+using AgenteIALocal.Core.Settings;
+using AgenteIALocalVSIX.Settings;
 
 
 namespace AgenteIALocalVSIX
@@ -33,12 +34,15 @@ namespace AgenteIALocalVSIX
     [ProvideAutoLoad(UIContextGuids80.SolutionExists, PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideToolWindow(typeof(ToolWindows.AgenteIALocalToolWindow))]
+    [ProvideOptionPage(typeof(AgenteIALocalVSIX.Options.AgenteIALocalOptionsPage), "Agente IA Local", "General", 0, 0, true)]
     public sealed class AgenteIALocalVSIXPackage : AsyncPackage
     {
         /// <summary>
         /// AgenteIALocalVSIXPackage GUID string.
         /// </summary>
         public const string PackageGuidString = "12e93cca-8723-4160-ac43-96fe08854111";
+
+        internal IAgentSettingsProvider AgentSettingsProvider { get; private set; }
 
         #region Package Members
 
@@ -54,6 +58,16 @@ namespace AgenteIALocalVSIX
             // When initialized asynchronously, the current thread may be a background thread at this point.
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+            // Initialize IAgentSettingsProvider and expose it for Options Page
+            AgentSettingsProvider = new Settings.VsWritableSettingsStoreAgentSettingsProvider(this);
+
+            // Assign provider to options page instance so it can load/save settings
+            var options = (AgenteIALocalVSIX.Options.AgenteIALocalOptionsPage)GetDialogPage(typeof(AgenteIALocalVSIX.Options.AgenteIALocalOptionsPage));
+            if (options != null)
+            {
+                options.SettingsProvider = AgentSettingsProvider;
+            }
 
             // Initialize commands (register menu commands). OpenAgenteIALocalCommand.InitializeAsync will add commands to the OleMenuCommandService.
             await OpenAgenteIALocalCommand.InitializeAsync(this);
