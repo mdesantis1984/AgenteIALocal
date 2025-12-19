@@ -26,6 +26,7 @@ Documentación completa por idioma
 
 - Español (canónica): `./README.es.md`
 - English (full translation): `./README.en.md`
+- Architecture / Arquitectura: `./README.architecture.md`
 
 Aviso importante
 
