@@ -2,63 +2,151 @@ Agente IA Local para Visual Studio
 
 ---
 
-Estado del proyecto
+Descripción general del proyecto
 
-MVP: Extensión clásica de Visual Studio (VSIX) targeting .NET Framework 4.7.2 (proyecto no SDK). Se compila con MSBuild y genera un paquete VSIX. El paquete presenta una ToolWindow de ejemplo que muestra un pipeline simulado basado en JSON (petición / respuesta) para prototipar la experiencia de integración de un LLM local.
+Qué es
 
-Requisitos
+Agente IA Local es una extensión clásica de Visual Studio (VSIX, no SDK-style) que aloja capacidades de agente de IA sobre el contexto real del IDE (solución, proyectos y documentos). El objetivo es validar una arquitectura desacoplada entre UI, orquestación y proveedor de IA, con un MVP que demuestre empaquetado VSIX, registro de comandos y una ToolWindow base.
 
-- Visual Studio 2022 (instalar la workload "Desarrollo de extensiones de Visual Studio").
-- .NET Framework Developer Pack 4.7.2.
-- Git (para operaciones de repositorio).
+Por qué VSIX clásico
 
-Cómo compilar
+Se eligió VSIX clásico para mantener compatibilidad con APIs históricas del Visual Studio SDK y controlar explícitamente el empaquetado (csproj clásico, VSCT compilado a recurso) y el registro de menús/ToolWindows.
 
-Usar MSBuild desde la raíz del repositorio:
+Estado actual del proyecto
 
-msbuild src/AgenteIALocalVSIX/AgenteIALocalVSIX.csproj /t:Build /p:Configuration=Debug
+Qué funciona hoy
 
-Cómo ejecutar / debug
+- Build: OK con MSBuild.
+- VSIX: generado en `src/AgenteIALocalVSIX/bin/Debug/AgenteIALocalVSIX.vsix` e instalable en la Experimental Instance.
+- Menú: el comando aparece en `Tools` cuando la extensión está instalada.
 
-1. Abrir la solución en Visual Studio.
-2. Establecer el proyecto `AgenteIALocalVSIX` como proyecto de inicio.
-3. Presionar F5 para iniciar la instancia experimental de Visual Studio (la ejecución de VSIX abre una instancia con `/rootsuffix Exp`).
-4. En la instancia experimental, abrir la ToolWindow desde el menú correspondiente.
+Qué no funciona hoy / incompleto
 
-Comportamiento esperado en el MVP:
+- ToolWindow: el click en el menú no abre la ToolWindow en el entorno actual (limitación observada). Debe verificarse el registro de ToolWindow en el Package.
 
-- Interfaz simple con botones `Run` y `Clear`.
-- Área de texto que muestra la petición JSON enviada por la UI y el JSON de respuesta simulado.
-- El flujo es mock: el pipeline de ejecución es de ejemplo para validar la experiencia de UI y la serialización/deserialización de JSON.
+Lo que se ve en Visual Studio
+
+- Menú `Tools` con la entrada "Agente IA Local".
+- No se visualiza la ToolWindow al ejecutar el comando (estado actual).
 
 Estructura de la solución
 
-- `AgenteIALocal.Core` — Modelos y utilidades compartidas (tipos de datos, contratos).
-- `AgenteIALocal.Application` — Lógica de aplicación y orquestación del pipeline (mock en el MVP).
-- `AgenteIALocal.Infrastructure` — Implementaciones de infraestructura (accesos, adaptadores, serialización).
-- `AgenteIALocal.UI` — Componentes y controles compartidos para la UI (WPF, helpers de binding).
-- `AgenteIALocal.Tests` — Pruebas unitarias y de integración ligeras.
-- `AgenteIALocalVSIX` — Proyecto VSIX clásico que empaqueta la extensión y define la ToolWindow y comandos.
+- `AgenteIALocal.Core` — Contratos y modelos neutrales (DTOs y interfaces).
+- `AgenteIALocal.Application` — Orquestación de pipeline y lógica de alto nivel (mock en MVP).
+- `AgenteIALocal.Infrastructure` — Adaptadores concretos para IDE/Filesystem y utilidades.
+- `AgenteIALocal.UI` — Controles WPF y helpers compartidos.
+- `AgenteIALocal.Tests` — Pruebas unitarias e integración ligera.
+- `AgenteIALocalVSIX` — Host VSIX clásico: Package, comandos, ToolWindow y empaquetado.
 
-Notas importantes (VSIX clásico)
+Dependencias entre capas
 
-- El proyecto VSIX es clásico (no SDK-style). Los archivos deben estar incluidos explícitamente en el `csproj` para aparecer en el Solution Explorer.
-- Algunas APIs históricas (p. ej. servicios de comandos) requieren referencias a assemblies del framework como `System.Design` en proyectos no SDK.
-- Para la serialización/deserialización en este target se usa `Newtonsoft.Json` (compatible con net472).
+- VSIX (host) compone UI e integra adaptadores de `Infrastructure` que consumen contratos de `Core`.
+- `Application` coordina flujos sobre `Core`; en MVP puede llamar a mocks.
+- `UI` y `VSIX` no deben acoplarse a proveedores de IA concretos.
 
-Próximos pasos
+Arquitectura de la extensión VSIX
 
-1. Hardenizar el manejo de concurrencia y advertencias de VSTHRD usando `JoinableTaskFactory`/`JoinableTaskContext` donde sea necesario.
-2. Añadir configuración y seguridad para endpoints y modelos (p. ej. LLM Studio) — mover a settings seguros y variables de entorno.
-3. Implementar el pipeline de ejecución real con control de errores seguro y limitación de tiempo/recursos.
-4. Checklist de empaquetado y release: firmar, versionado, notas de release, pruebas en distintas versiones de VS.
+Rol del Package
 
-Reglas de trabajo del proyecto
+- El `AsyncPackage` registra menús, comandos y ToolWindows, y expone recursos provenientes del VSCT.
 
-- Operación: una acción/command a la vez — ejecutar un único comando y esperar el resultado antes de la siguiente acción.
-- Siempre mostrar la salida del comando ejecutado (logs/resultados) y decidir el siguiente paso basándose en ese resultado.
-- Copilot (o scripts automatizados) no debe modificar archivos `*.csproj`, `*.vsixmanifest` ni archivos de código fuente a menos que se indique explícitamente y con autorización.
+Inicialización y autoload
 
-No-go / Alcance
+- El package puede autoloadearse en contextos como `SolutionExists` (según atributos). La inicialización llama a `OpenAgenteIALocalCommand.InitializeAsync(this)` para registrar el comando.
 
-El repositorio actual contiene solo un MVP de UX/integación. No se han integrado modelos reales ni pipelines de producción.
+Registro de comandos
+
+- El comando se crea con `CommandID(CommandSet, CommandId)` y se registra vía `OleMenuCommandService`.
+
+Relación VSCT / Package / CommandSet
+
+- El VSCT define `GuidSymbol` para el package y el `CommandSet`.
+- El GUID del package debe coincidir exactamente con el `[Guid(...)]`/`PackageGuidString` del `AsyncPackage` y con el Id del `.vsixmanifest`.
+- El `CommandSet` del VSCT debe coincidir con el GUID usado en el código.
+
+`Menus.ctmenu` no es archivo físico
+
+- Es el nombre de recurso generado al compilar el `.vsct`, y se registra con `[ProvideMenuResource("Menus.ctmenu", 1)]`. No existe en el repositorio como archivo.
+
+Errores VSCT comunes y causa real
+
+- VSCT1102: símbolo GUID referenciado no definido (falta `GuidSymbol` o mismatch nombre/valor).
+- VSCT1103: definición inválida o IDs duplicados (IDs no coinciden con el código o están repetidos).
+
+Comandos, menús y UI
+
+Qué comandos existen
+
+- `OpenAgenteIALocalCommand` (id `0x0100`) bajo el `CommandSet` definido en VSCT.
+
+Dónde deberían aparecer
+
+- En el menú `Tools` (placement actual del VSCT para pruebas de visibilidad).
+
+Qué código los registra
+
+- `OpenAgenteIALocalCommand.InitializeAsync(this)` desde `Package.InitializeAsync` agrega el `OleMenuCommand`.
+
+Por qué el menú aparece pero la ToolWindow no
+
+- Falta o error en el registro de la ToolWindow en el Package: sin `[ProvideToolWindow(typeof(AgenteIALocalToolWindow))]`, `ShowToolWindowAsync` puede no crear la ventana y fallar de forma silenciosa.
+
+Qué falta implementar
+
+- Confirmar y aplicar el registro de la ToolWindow y validar su creación al invocar el comando.
+
+Diseño del Agente IA
+
+Qué es el Agente aquí
+
+- Conjunto de contratos y flujos que operan sobre el contexto de la solución, con ejecución mock en el MVP.
+
+Contratos existentes
+
+- `CopilotRequest`, `CopilotResponse` (DTOs) y contratos en `Core`.
+
+Rol de `MockCopilotExecutor`
+
+- Emula respuestas JSON deterministas para validar la UI y el pipeline sin proveedor de IA real.
+
+Qué partes son mock
+
+- Orquestación y proveedor de IA: sin integración real, solo simulación.
+
+Compilación y depuración
+
+Requisitos de entorno
+
+- Visual Studio 2022 + workload de extensiones.
+- .NET Framework Developer Pack 4.7.2.
+- MSBuild disponible.
+
+Comando MSBuild real
+
+msbuild src/AgenteIALocalVSIX/AgenteIALocalVSIX.csproj /t:Build /p:Configuration=Debug
+
+Instancia experimental
+
+- F5 lanza Visual Studio con `/rootsuffix Exp`.
+
+Diagnóstico de VSIX
+
+- Verificar instalación en `Extensions -> Manage Extensions`.
+- Si el menú no aparece o no abre la ToolWindow, revisar `ActivityLog.xml` en:
+  `%LOCALAPPDATA%\\Microsoft\\VisualStudio\\<version>_Exp\\ActivityLog.xml` o `%APPDATA%\\Microsoft\\VisualStudio\\<version>_Exp\\ActivityLog.xml`.
+
+Lecciones aprendidas y errores comunes
+
+- Autoload insuficiente del Package: comandos no visibles.
+- No inicializar comandos desde el Package: el menú no se registra.
+- GUIDs desalineados: menús invisibles sin errores.
+- Asumir archivos físicos inexistentes (`Menus.ctmenu`).
+- Mezclar patrones SDK-style con clásico sin ajustar el build/registro.
+
+Roadmap técnico
+
+- Habilitar ToolWindow correctamente y validar apertura.
+- Resolver warnings VSTHRD (uso consistente de `JoinableTaskFactory`).
+- Integrar proveedor LLM real con configuración segura.
+- Endurecer threading y ciclo de vida en el VSIX.
+- Preparar release (firma, versionado, notas y pruebas multi-VS).

@@ -29,6 +29,7 @@ namespace AgenteIALocalVSIX
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(AgenteIALocalVSIXPackage.PackageGuidString)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
+    [ProvideToolWindow(typeof(ToolWindows.AgenteIALocalToolWindow))]
     public sealed class AgenteIALocalVSIXPackage : AsyncPackage
     {
         /// <summary>

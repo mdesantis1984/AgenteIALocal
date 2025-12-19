@@ -1,26 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable">
-  <Extern href="vsshlids.h" />
-  <Commands>
-    <GuidSymbol name="guidAgenteIALocalCmdSet" value="{B1A6E1D0-3F4B-4C2B-9E1A-2C7F9D4F6A2B}" />
 
-    <CommandTable>
-      <Buttons>
-        <Button guid="guidAgenteIALocalCmdSet" id="0x0100" priority="0x0100" type="Button">
-          <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_VIEW" />
-          <Icon guid="guidImages" id="bmpPic1" />
-          <Strings>
-            <ButtonText>Agente IA Local</ButtonText>
-          </Strings>
-        </Button>
-      </Buttons>
+	<Extern href="vsshlids.h" />
 
-      <Groups>
-        <Group guid="guidAgenteIALocalCmdSet" id="MyMenuGroup" priority="0x0600">
-          <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS" />
-        </Group>
-      </Groups>
+	<Commands package="guidAgenteIALocalPackage">
 
-    </CommandTable>
-  </Commands>
+		<Groups>
+			<Group guid="guidAgenteIALocalCmdSet" id="MyMenuGroup" priority="0x0600">
+				<Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS" />
+			</Group>
+		</Groups>
+
+		<Buttons>
+			<Button guid="guidAgenteIALocalCmdSet"
+					id="cmdidOpenAgenteIALocal"
+					priority="0x0100"
+					type="Button">
+				<Parent guid="guidAgenteIALocalCmdSet" id="MyMenuGroup" />
+				<Strings>
+					<ButtonText>Agente IA Local</ButtonText>
+				</Strings>
+			</Button>
+		</Buttons>
+
+	</Commands>
+
+	<Symbols>
+
+		<!-- Package GUID -->
+		<GuidSymbol name="guidAgenteIALocalPackage"
+					value="{F992748B-DA75-48E4-9041-E95F8C2CED83}" />
+
+		<!-- Command set -->
+		<GuidSymbol name="guidAgenteIALocalCmdSet"
+					value="{B1A6E1D0-3F4B-4C2B-9E1A-2C7F9D4F6A2B}">
+			<IDSymbol name="MyMenuGroup" value="0x1000" />
+			<IDSymbol name="cmdidOpenAgenteIALocal" value="0x0100" />
+		</GuidSymbol>
+
+	</Symbols>
+
 </CommandTable>

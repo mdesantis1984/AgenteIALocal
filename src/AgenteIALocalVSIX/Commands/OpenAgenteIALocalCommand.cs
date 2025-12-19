@@ -38,7 +38,13 @@ namespace AgenteIALocalVSIX.Commands
             // Fire-and-forget: show tool window asynchronously on UI thread
             package.JoinableTaskFactory.RunAsync(async () =>
             {
-                await package.ShowToolWindowAsync(typeof(ToolWindows.AgenteIALocalToolWindow), 0, true, package.DisposalToken);
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
+
+                var window = await package.ShowToolWindowAsync(typeof(ToolWindows.AgenteIALocalToolWindow), 0, true, package.DisposalToken);
+                if (window == null || window.Frame == null)
+                {
+                    throw new InvalidOperationException("Cannot create tool window");
+                }
             });
         }
     }
