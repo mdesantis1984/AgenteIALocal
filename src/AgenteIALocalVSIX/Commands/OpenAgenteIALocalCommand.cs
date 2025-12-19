@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel.Design;
 using Microsoft.VisualStudio.Shell;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace AgenteIALocalVSIX.Commands
 {
@@ -35,7 +36,7 @@ namespace AgenteIALocalVSIX.Commands
 
         private void Execute(object sender, EventArgs e)
         {
-            // Fire-and-forget: show tool window asynchronously on UI thread
+            // Show tool window asynchronously on UI thread
             package.JoinableTaskFactory.RunAsync(async () =>
             {
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
