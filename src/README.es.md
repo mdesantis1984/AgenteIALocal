@@ -139,3 +139,43 @@ Qué NO está hecho todavía
 Si falta detalle operativo (por ejemplo, scripts de build, instrucciones de instalación por versión de Visual Studio o diagramas de arquitectura adicionales), esos artefactos se deben añadir como PRs específicos y quedar referenciados desde `README.architecture` o desde la carpeta `docs/`.
 
 Gracias: este README refleja el estado actual y las decisiones recientes (hardening, wiring y logging) al momento de su última actualización.
+
+---
+
+### Sprint 2 — UI / UX, Observabilidad y Diagnóstico
+
+Alcance del sprint
+
+- Mejora de la ToolWindow (UX y navegación).
+- Acceso directo a Options desde la UI (botón y Page existente).
+- Mensajería de estado clara para el usuario: estado "configurado", "incompleto" y "backend no disponible".
+
+Observabilidad
+
+- Implementación del Tab "Log" con capacidades mínimas:
+  - Visualización completa del log en un TextBox de solo lectura.
+  - Botón "Copiar" para copiar todo el contenido al portapapeles.
+  - Botón "Borrar" para eliminar el archivo de log del disco y limpiar la vista.
+  - Información visible de ruta absoluta y tamaño del archivo (KB/MB).
+
+Estado del backend (diagnóstico)
+
+- Diagnóstico confirmado durante pruebas en la Experimental Instance:
+  - La assembly `AgenteIALocal.Infrastructure` no se cargaba en runtime dentro del VSIX.
+  - Como resultado, la composición del backend no se completó y `AgentService` quedó en `null`.
+
+Decisiones y alcance pendiente
+
+- El trabajo de backend (composición completa del `AgentService`) y el empaquetado/fine-tuning del VSIX se trasladan a Sprint 3 como deuda técnica.
+- El nuevo Tab "Config" queda en estado experimental: permite editar y persistir opciones, pero su integración y pruebas finales quedan en Sprint 3.
+
+Resultado
+
+- Sprint 2 cerrado con entrega de mejoras UI/UX en la ToolWindow y diagnóstico reproducible de observabilidad.
+- Las acciones de corrección del backend están planificadas para Sprint 3 con prioridad para estabilizar la extensión en Experimental Instance.
+
+Documentación relacionada
+
+- `src/README.es.md` (este documento)
+- `src/README.en.md`
+- `src/README.architecture.md`
