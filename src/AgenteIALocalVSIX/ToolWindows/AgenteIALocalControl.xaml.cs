@@ -8,6 +8,8 @@ using AgenteIALocal.Core.Settings;
 using Microsoft.VisualStudio.Shell;
 using System.Reflection;
 using System.Windows.Media;
+using System.IO;
+using System.Windows;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -60,6 +62,126 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             // Re-evaluate status when control is loaded in case options changed
             EvaluateAndDisplayStatus();
+        }
+
+        // Tab selection changed - when Log tab is selected, load the log file content
+        private void MainTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                if (MainTabControl.SelectedItem is TabItem ti && ti.Header != null && ti.Header.ToString() == "Log")
+                {
+                    LoadLogFile();
+                }
+            }
+            catch { }
+        }
+
+        private void LoadLogFile()
+        {
+            var path = GetLogFilePath();
+            LogPathText.Text = path ?? "(sin ruta)";
+
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            {
+                LogViewerTextBox.Text = "Log vacío / no encontrado";
+                LogSizeText.Text = "0 KB";
+                CopyLogButton.IsEnabled = false;
+                DeleteLogButton.IsEnabled = false;
+                return;
+            }
+
+            try
+            {
+                var text = File.ReadAllText(path);
+                LogViewerTextBox.Text = string.IsNullOrEmpty(text) ? "Log vacío / no encontrado" : text;
+
+                var fi = new FileInfo(path);
+                LogSizeText.Text = FormatSize(fi.Length);
+
+                CopyLogButton.IsEnabled = true;
+                DeleteLogButton.IsEnabled = true;
+            }
+            catch
+            {
+                LogViewerTextBox.Text = "No se pudo leer el archivo de log.";
+                LogSizeText.Text = "0 KB";
+                CopyLogButton.IsEnabled = false;
+                DeleteLogButton.IsEnabled = false;
+            }
+        }
+
+        private string GetLogFilePath()
+        {
+            try
+            {
+                // Replicate the same path logic used by FileAgentLogger to avoid hardcoding a different path
+                var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) ?? string.Empty;
+                var dir = Path.Combine(baseDir, "AgenteIALocal", "logs");
+                var logFilePath = Path.Combine(dir, "AgenteIALocal.log");
+                return logFilePath;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string FormatSize(long bytes)
+        {
+            try
+            {
+                if (bytes < 1024) return bytes + " B";
+                double kb = bytes / 1024.0;
+                if (kb < 1024) return Math.Round(kb, 1) + " KB";
+                double mb = kb / 1024.0;
+                return Math.Round(mb, 2) + " MB";
+            }
+            catch
+            {
+                return "0 KB";
+            }
+        }
+
+        private void CopyLogButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            try
+            {
+                var text = LogViewerTextBox.Text ?? string.Empty;
+                if (string.IsNullOrEmpty(text)) return;
+                Clipboard.SetText(text);
+                try { AgentComposition.Logger?.Info("ToolWindowControl: Log copied to clipboard"); } catch { }
+            }
+            catch
+            {
+                // fail-safe: do not show raw exceptions
+            }
+        }
+
+        private void DeleteLogButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            var path = GetLogFilePath();
+            if (string.IsNullOrEmpty(path)) return;
+
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                    try { AgentComposition.Logger?.Info("ToolWindowControl: Log file deleted: " + path); } catch { }
+                }
+
+                // Update UI
+                LogViewerTextBox.Text = string.Empty;
+                LogSizeText.Text = "0 KB";
+                CopyLogButton.IsEnabled = false;
+                DeleteLogButton.IsEnabled = false;
+            }
+            catch
+            {
+                // If deletion failed, keep UI consistent but do not show exception details
+                LogViewerTextBox.Text = "No se pudo borrar el archivo de log.";
+            }
         }
 
         private void EvaluateAndDisplayStatus()
