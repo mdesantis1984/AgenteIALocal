@@ -51,18 +51,23 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="AgentComposition.cs" />
     <Compile Include="Application\ApplicationContextAdapter.cs" />
     <Compile Include="Application\VisualStudioWorkspaceProvider.cs" />
     <Compile Include="Commands\OpenAgenteIALocalCommand.cs" />
+    <Compile Include="Commands\VsctConsistencyValidator.cs" />
     <Compile Include="Contracts\CopilotRequest.cs" />
     <Compile Include="Contracts\CopilotResponse.cs" />
     <Compile Include="Execution\MockCopilotExecutor.cs" />
+    <Compile Include="Logging\ActivityLogHelper.cs" />
+    <Compile Include="Logging\FileAgentLogger.cs" />
     <Compile Include="Options\AgenteIALocalOptionsControl.xaml.cs">
       <DependentUpon>AgenteIALocalOptionsControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="Options\AgenteIALocalOptionsPage.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Options\AgentOptionsViewModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AgenteIALocalVSIXPackage.cs" />
     <Compile Include="Settings\VsWritableSettingsStoreAgentSettingsProvider.cs" />
@@ -82,8 +87,10 @@
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Design" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="WindowsBase" />
     <Reference Include="System.Xaml" />
+    <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339" ExcludeAssets="runtime" NoWarn="NU1604" />

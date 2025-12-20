@@ -9,9 +9,20 @@ namespace AgenteIALocalVSIX.Settings
     public sealed class VsWritableSettingsStoreAgentSettingsProvider : IAgentSettingsProvider
     {
         private const string CollectionPath = "AgenteIALocal";
-        private const string BaseUrlKey = "BaseUrl";
-        private const string ModelKey = "Model";
-        private const string ApiKeyKey = "ApiKey";
+
+        // LmStudio keys
+        private const string LmBaseUrlKey = "LmStudio.BaseUrl";
+        private const string LmModelKey = "LmStudio.Model";
+        private const string LmApiKeyKey = "LmStudio.ApiKey";
+        private const string LmPathKey = "LmStudio.ChatCompletionsPath";
+
+        // JanServer keys
+        private const string JanBaseUrlKey = "JanServer.BaseUrl";
+        private const string JanApiKeyKey = "JanServer.ApiKey";
+        private const string JanPathKey = "JanServer.ChatCompletionsPath";
+
+        // Root provider
+        private const string ProviderKey = "Provider";
 
         private readonly WritableSettingsStore store;
 
@@ -28,19 +39,46 @@ namespace AgenteIALocalVSIX.Settings
 
         public AgentSettings Load()
         {
-            return new AgentSettings
+            var s = new AgentSettings();
+
+            // Provider
+            if (store.PropertyExists(CollectionPath, ProviderKey))
             {
-                BaseUrl = store.PropertyExists(CollectionPath, BaseUrlKey) ? store.GetString(CollectionPath, BaseUrlKey) : string.Empty,
-                Model = store.PropertyExists(CollectionPath, ModelKey) ? store.GetString(CollectionPath, ModelKey) : string.Empty,
-                ApiKey = store.PropertyExists(CollectionPath, ApiKeyKey) ? store.GetString(CollectionPath, ApiKeyKey) : string.Empty
-            };
+                var p = store.GetString(CollectionPath, ProviderKey);
+                if (int.TryParse(p, out var pi) && Enum.IsDefined(typeof(AgentProviderType), pi))
+                {
+                    s.Provider = (AgentProviderType)pi;
+                }
+            }
+
+            // LmStudio
+            s.LmStudio.BaseUrl = store.PropertyExists(CollectionPath, LmBaseUrlKey) ? store.GetString(CollectionPath, LmBaseUrlKey) : string.Empty;
+            s.LmStudio.Model = store.PropertyExists(CollectionPath, LmModelKey) ? store.GetString(CollectionPath, LmModelKey) : string.Empty;
+            s.LmStudio.ApiKey = store.PropertyExists(CollectionPath, LmApiKeyKey) ? store.GetString(CollectionPath, LmApiKeyKey) : string.Empty;
+            s.LmStudio.ChatCompletionsPath = store.PropertyExists(CollectionPath, LmPathKey) ? store.GetString(CollectionPath, LmPathKey) : "/v1/chat/completions";
+
+            // JanServer
+            s.JanServer.BaseUrl = store.PropertyExists(CollectionPath, JanBaseUrlKey) ? store.GetString(CollectionPath, JanBaseUrlKey) : string.Empty;
+            s.JanServer.ApiKey = store.PropertyExists(CollectionPath, JanApiKeyKey) ? store.GetString(CollectionPath, JanApiKeyKey) : string.Empty;
+            s.JanServer.ChatCompletionsPath = store.PropertyExists(CollectionPath, JanPathKey) ? store.GetString(CollectionPath, JanPathKey) : "/v1/chat/completions";
+
+            return s;
         }
 
         public void Save(AgentSettings settings)
         {
-            store.SetString(CollectionPath, BaseUrlKey, settings.BaseUrl ?? string.Empty);
-            store.SetString(CollectionPath, ModelKey, settings.Model ?? string.Empty);
-            store.SetString(CollectionPath, ApiKeyKey, settings.ApiKey ?? string.Empty);
+            if (settings == null) return;
+
+            store.SetString(CollectionPath, ProviderKey, ((int)settings.Provider).ToString());
+
+            store.SetString(CollectionPath, LmBaseUrlKey, settings.LmStudio?.BaseUrl ?? string.Empty);
+            store.SetString(CollectionPath, LmModelKey, settings.LmStudio?.Model ?? string.Empty);
+            store.SetString(CollectionPath, LmApiKeyKey, settings.LmStudio?.ApiKey ?? string.Empty);
+            store.SetString(CollectionPath, LmPathKey, settings.LmStudio?.ChatCompletionsPath ?? "/v1/chat/completions");
+
+            store.SetString(CollectionPath, JanBaseUrlKey, settings.JanServer?.BaseUrl ?? string.Empty);
+            store.SetString(CollectionPath, JanApiKeyKey, settings.JanServer?.ApiKey ?? string.Empty);
+            store.SetString(CollectionPath, JanPathKey, settings.JanServer?.ChatCompletionsPath ?? "/v1/chat/completions");
         }
     }
 }
