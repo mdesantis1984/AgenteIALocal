@@ -6,6 +6,8 @@ using AgenteIALocal.Core.Agents;
 using AgenteIALocal.Application.Agents;
 using AgenteIALocal.Core.Settings;
 using Microsoft.VisualStudio.Shell;
+using System.Reflection;
+using System.Windows.Media;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -44,23 +46,8 @@ namespace AgenteIALocalVSIX.ToolWindows
                 try { AgentComposition.Logger?.Error("ToolWindowControl: AgentService read failed", ex); } catch { }
             }
 
-            if (agentService == null)
-            {
-                try
-                {
-                    AgentComposition.Logger?.Warn("ToolWindowControl: AgentService NULL at load time");
-                }
-                catch { }
-
-                var msg = "Agent no inicializado. Configure proveedor en Tools → Options.";
-
-                try
-                {
-                    RunButton.IsEnabled = false;
-                    ErrorText.Text = msg;
-                }
-                catch { }
-            }
+            // Centralized decision: evaluate and display exactly one clear message for current configuration state
+            EvaluateAndDisplayStatus();
         }
 
         private void AgenteIALocalControl_Loaded(object sender, System.Windows.RoutedEventArgs e)
@@ -70,6 +57,91 @@ namespace AgenteIALocalVSIX.ToolWindows
                 AgentComposition.Logger?.Info("ToolWindowControl: Loaded");
             }
             catch { }
+
+            // Re-evaluate status when control is loaded in case options changed
+            EvaluateAndDisplayStatus();
+        }
+
+        private void EvaluateAndDisplayStatus()
+        {
+            // Default reset
+            ErrorText.Text = string.Empty;
+            ErrorText.Foreground = Brushes.Red;
+
+            // State 3 — Backend no disponible
+            if (agentService == null)
+            {
+                StateText.Text = "Backend: n/a";
+                ErrorText.Text = "Backend no disponible. Verificá la configuración o el proveedor.";
+                RunButton.IsEnabled = false;
+                return;
+            }
+
+            // Try to read settings via reflection on AgentComposition if available
+            object settingsObj = null;
+
+            var acType = typeof(AgentComposition);
+            var settingsProp = acType.GetProperty("Settings", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (settingsProp != null)
+            {
+                settingsObj = settingsProp.GetValue(null);
+            }
+            else
+            {
+                // fallback: try common alternatives
+                var optProp = acType.GetProperty("Options", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+                if (optProp != null)
+                {
+                    settingsObj = optProp.GetValue(null);
+                }
+            }
+
+            // If settings object not found, treat as incomplete configuration
+            if (settingsObj == null)
+            {
+                StateText.Text = "Configuración: incompleta";
+                ErrorText.Text = "Configuración incompleta. Revisá las Opciones.";
+                RunButton.IsEnabled = false;
+                return;
+            }
+
+            // Inspect required fields (BaseUrl and Model) via reflection against common property names
+            string baseUrl = GetStringProperty(settingsObj, "BaseUrl") ?? GetStringProperty(settingsObj, "ApiUrl") ?? GetStringProperty(settingsObj, "Endpoint");
+            string model = GetStringProperty(settingsObj, "Model") ?? GetStringProperty(settingsObj, "SelectedModel") ?? GetStringProperty(settingsObj, "ModelId");
+            string provider = GetStringProperty(settingsObj, "Provider") ?? GetStringProperty(settingsObj, "ProviderName");
+
+            bool hasBaseUrl = !string.IsNullOrWhiteSpace(baseUrl);
+            bool hasModel = !string.IsNullOrWhiteSpace(model);
+            bool hasProvider = !string.IsNullOrWhiteSpace(provider);
+
+            if (hasProvider && hasBaseUrl && hasModel)
+            {
+                // Estado 1 — Configurado
+                StateText.Text = "Configuración: OK";
+                ErrorText.Foreground = Brushes.Green;
+                ErrorText.Text = "Configuración OK. Listo para enviar mensajes.";
+                RunButton.IsEnabled = true;
+                return;
+            }
+            else
+            {
+                // Estado 2 — Configuración incompleta
+                StateText.Text = "Configuración: incompleta";
+                ErrorText.Foreground = Brushes.Orange;
+                ErrorText.Text = "Configuración incompleta. Revisá las Opciones.";
+                RunButton.IsEnabled = false;
+                return;
+            }
+        }
+
+        private string GetStringProperty(object obj, string propName)
+        {
+            if (obj == null) return null;
+            var t = obj.GetType();
+            var p = t.GetProperty(propName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            if (p == null) return null;
+            var val = p.GetValue(obj) as string;
+            return val;
         }
 
         public void SetSolutionInfo(string solutionName, int projectCount)
@@ -202,6 +274,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 catch { }
             }
+            finally
+            {
+                // Re-evaluate status to ensure UI stays consistent after an execution attempt
+                EvaluateAndDisplayStatus();
+            }
         }
 
         private void ClearButton_Click(object sender, System.Windows.RoutedEventArgs e)
@@ -212,6 +289,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             UpdateUiState(UiState.Idle);
 
             try { AgentComposition.Logger?.Info("ToolWindowControl: Clear click"); } catch { }
+
+            EvaluateAndDisplayStatus();
         }
 
         private void OptionsButton_Click(object sender, System.Windows.RoutedEventArgs e)
