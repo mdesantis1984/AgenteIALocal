@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFramework>net472</TargetFramework>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>
