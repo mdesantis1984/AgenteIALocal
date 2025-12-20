@@ -6,7 +6,6 @@ using AgenteIALocal.Core.Agents;
 using AgenteIALocal.Application.Agents;
 using AgenteIALocal.Core.Settings;
 using Microsoft.VisualStudio.Shell;
-using System.Reflection;
 using System.Windows.Media;
 using System.IO;
 using System.Windows;
@@ -184,7 +183,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        private void EvaluateAndDisplayStatus()
+        public void EvaluateAndDisplayStatus()
         {
             // Default reset
             ErrorText.Text = string.Empty;
@@ -253,14 +252,15 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 if (settings.Provider == AgentProviderType.JanServer)
                 {
+                    // JanServer: validate ONLY JanServer.BaseUrl; do NOT require model
                     hasBaseUrl = !string.IsNullOrWhiteSpace(settings.JanServer?.BaseUrl);
                     hasModel = true;
+                    return;
                 }
-                else
-                {
-                    hasBaseUrl = !string.IsNullOrWhiteSpace(settings.LmStudio?.BaseUrl);
-                    hasModel = !string.IsNullOrWhiteSpace(settings.LmStudio?.Model);
-                }
+
+                // LmStudio: validate ONLY LM Studio settings; completely ignore JanServer
+                hasBaseUrl = !string.IsNullOrWhiteSpace(settings.LmStudio?.BaseUrl);
+                hasModel = !string.IsNullOrWhiteSpace(settings.LmStudio?.Model);
             }
             catch
             {
@@ -281,16 +281,6 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 return null;
             }
-        }
-
-        private string GetStringProperty(object obj, string propName)
-        {
-            if (obj == null) return null;
-            var t = obj.GetType();
-            var p = t.GetProperty(propName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-            if (p == null) return null;
-            var val = p.GetValue(obj) as string;
-            return val;
         }
 
         public void SetSolutionInfo(string solutionName, int projectCount)
