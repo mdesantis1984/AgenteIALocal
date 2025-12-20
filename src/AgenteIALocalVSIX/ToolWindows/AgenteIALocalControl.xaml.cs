@@ -1,14 +1,14 @@
-using System.Windows.Controls;
-using System.Threading.Tasks;
 using System;
-using Newtonsoft.Json;
-using AgenteIALocal.Core.Agents;
+using System.IO;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using AgenteIALocal.Application.Agents;
+using AgenteIALocal.Core.Agents;
 using AgenteIALocal.Core.Settings;
 using Microsoft.VisualStudio.Shell;
-using System.Windows.Media;
-using System.IO;
-using System.Windows;
+using Newtonsoft.Json;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -18,11 +18,24 @@ namespace AgenteIALocalVSIX.ToolWindows
         private UiState state = UiState.Idle;
 
         private IAgentService agentService;
+        private readonly IAgentSettingsProvider settingsProvider;
+        private readonly AgenteIALocalConfigViewModel configViewModel;
 
-        public AgenteIALocalControl()
+        public AgenteIALocalControl(IAgentSettingsProvider settingsProvider)
         {
+            this.settingsProvider = settingsProvider;
+            this.configViewModel = new AgenteIALocalConfigViewModel(settingsProvider);
+
             InitializeComponent();
             UpdateUiState(UiState.Idle);
+
+            try
+            {
+                // Bind config tab content
+                var configControl = this.FindName("ConfigControl") as FrameworkElement;
+                if (configControl != null) configControl.DataContext = configViewModel;
+            }
+            catch { }
 
             try
             {
@@ -49,6 +62,25 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             // Centralized decision: evaluate and display exactly one clear message for current configuration state
             EvaluateAndDisplayStatus();
+        }
+
+        public AgenteIALocalControl() : this(null)
+        {
+        }
+
+        private void RootTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                var rootTabControl = sender as TabControl ?? (this.FindName("RootTabControl") as TabControl);
+                var configTab = this.FindName("ConfigTab") as TabItem;
+
+                if (rootTabControl != null && configTab != null && rootTabControl.SelectedItem == configTab)
+                {
+                    configViewModel?.Load();
+                }
+            }
+            catch { }
         }
 
         private void AgenteIALocalControl_Loaded(object sender, System.Windows.RoutedEventArgs e)

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:AgenteIALocalVSIX.ToolWindows"
              mc:Ignorable="d"
              Background="{DynamicResource BackgroundBrush}"
              Foreground="{DynamicResource PrimaryTextBrush}">
@@ -86,11 +87,7 @@
     <Grid Margin="8" Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="2*" />
-            <RowDefinition Height="2*" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" VerticalAlignment="Center" Margin="0,0,0,8">
@@ -120,62 +117,80 @@
                     Click="OptionsButton_Click" />
         </Grid>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="Solution:" FontWeight="SemiBold" Width="80" Foreground="{StaticResource SecondaryTextBrush}" />
-            <TextBlock x:Name="SolutionNameText" Text="(no solution)" Foreground="{StaticResource PrimaryTextBrush}" />
-            <TextBlock Text="    " />
-            <TextBlock Text="Projects:" FontWeight="SemiBold" Width="80" Foreground="{StaticResource SecondaryTextBrush}" />
-            <TextBlock x:Name="ProjectCountText" Text="0" Foreground="{StaticResource PrimaryTextBrush}" />
-        </StackPanel>
-
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button x:Name="RunButton" Content="Enviar" Width="80" Click="RunButton_Click" Style="{StaticResource FlatButtonStyle}" />
-            <Button x:Name="ClearButton" Content="Clear" Width="80" Margin="8,0,0,0" Click="ClearButton_Click" Style="{StaticResource FlatButtonStyle}" />
-            <TextBlock x:Name="ErrorText" Margin="12,6,0,0" VerticalAlignment="Center" Foreground="{StaticResource ErrorBrush}" />
-        </StackPanel>
-
-        <!-- TabControl spanning the content area -> Main tab retains existing Prompt/Response/LogText; Log tab implements new log viewer -->
-        <TabControl Grid.Row="3" Grid.RowSpan="3" SelectionChanged="MainTabControl_SelectionChanged" x:Name="MainTabControl">
-            <TabItem Header="Main">
-                <StackPanel>
-                    <GroupBox Header="Prompt" Margin="0,0,0,8" Style="{StaticResource DarkGroupBoxStyle}">
-                        <ScrollViewer Background="Transparent">
-                            <TextBox x:Name="PromptTextBox" AcceptsReturn="True" Height="140" TextWrapping="Wrap" Style="{StaticResource DarkTextBoxStyle}" />
-                        </ScrollViewer>
-                    </GroupBox>
-
-                    <GroupBox Header="Response" Margin="0,0,0,8" Style="{StaticResource DarkGroupBoxStyle}">
-                        <ScrollViewer Background="Transparent">
-                            <TextBox x:Name="ResponseTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource DarkTextBoxStyle}" />
-                        </ScrollViewer>
-                    </GroupBox>
-
-                    <TextBlock x:Name="LogText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" Margin="0,8,0,0" Foreground="{StaticResource SecondaryTextBrush}" />
-                </StackPanel>
-            </TabItem>
-
-            <TabItem Header="Log" x:Name="LogTab">
-                <Grid Margin="4">
+        <TabControl Grid.Row="1" x:Name="RootTabControl" SelectionChanged="RootTabControl_SelectionChanged">
+            <TabItem Header="Chat">
+                <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="2*" />
+                        <RowDefinition Height="2*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBox x:Name="LogViewerTextBox" Grid.Row="0" Style="{StaticResource DarkTextBoxStyle}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" IsReadOnly="True" />
-
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,8,0,0">
-                        <Button x:Name="CopyLogButton" Content="Copiar" Width="80" Click="CopyLogButton_Click" Style="{StaticResource FlatButtonStyle}" />
-                        <Button x:Name="DeleteLogButton" Content="Borrar" Width="80" Margin="8,0,0,0" Click="DeleteLogButton_Click" Style="{StaticResource FlatButtonStyle}" />
-
-                        <TextBlock Text="  " />
-                        <TextBlock Text="Ruta:" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
-                        <TextBlock x:Name="LogPathText" Text="(sin ruta)" Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center" />
-
-                        <TextBlock Width="12" />
-                        <TextBlock Text="Tamaño:" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
-                        <TextBlock x:Name="LogSizeText" Text="0 KB" Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center" />
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="Solution:" FontWeight="SemiBold" Width="80" Foreground="{StaticResource SecondaryTextBrush}" />
+                        <TextBlock x:Name="SolutionNameText" Text="(no solution)" Foreground="{StaticResource PrimaryTextBrush}" />
+                        <TextBlock Text="    " />
+                        <TextBlock Text="Projects:" FontWeight="SemiBold" Width="80" Foreground="{StaticResource SecondaryTextBrush}" />
+                        <TextBlock x:Name="ProjectCountText" Text="0" Foreground="{StaticResource PrimaryTextBrush}" />
                     </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button x:Name="RunButton" Content="Enviar" Width="80" Click="RunButton_Click" Style="{StaticResource FlatButtonStyle}" />
+                        <Button x:Name="ClearButton" Content="Clear" Width="80" Margin="8,0,0,0" Click="ClearButton_Click" Style="{StaticResource FlatButtonStyle}" />
+                        <TextBlock x:Name="ErrorText" Margin="12,6,0,0" VerticalAlignment="Center" Foreground="{StaticResource ErrorBrush}" />
+                    </StackPanel>
+
+                    <TabControl Grid.Row="3" Grid.RowSpan="3" SelectionChanged="MainTabControl_SelectionChanged" x:Name="MainTabControl">
+                        <TabItem Header="Main">
+                            <StackPanel>
+                                <GroupBox Header="Prompt" Margin="0,0,0,8" Style="{StaticResource DarkGroupBoxStyle}">
+                                    <ScrollViewer Background="Transparent">
+                                        <TextBox x:Name="PromptTextBox" AcceptsReturn="True" Height="140" TextWrapping="Wrap" Style="{StaticResource DarkTextBoxStyle}" />
+                                    </ScrollViewer>
+                                </GroupBox>
+
+                                <GroupBox Header="Response" Margin="0,0,0,8" Style="{StaticResource DarkGroupBoxStyle}">
+                                    <ScrollViewer Background="Transparent">
+                                        <TextBox x:Name="ResponseTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource DarkTextBoxStyle}" />
+                                    </ScrollViewer>
+                                </GroupBox>
+
+                                <TextBlock x:Name="LogText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" Margin="0,8,0,0" Foreground="{StaticResource SecondaryTextBrush}" />
+                            </StackPanel>
+                        </TabItem>
+
+                        <TabItem Header="Log" x:Name="LogTab">
+                            <Grid Margin="4">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBox x:Name="LogViewerTextBox" Grid.Row="0" Style="{StaticResource DarkTextBoxStyle}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" IsReadOnly="True" />
+
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,8,0,0">
+                                    <Button x:Name="CopyLogButton" Content="Copiar" Width="80" Click="CopyLogButton_Click" Style="{StaticResource FlatButtonStyle}" />
+                                    <Button x:Name="DeleteLogButton" Content="Borrar" Width="80" Margin="8,0,0,0" Click="DeleteLogButton_Click" Style="{StaticResource FlatButtonStyle}" />
+
+                                    <TextBlock Text="  " />
+                                    <TextBlock Text="Ruta:" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                    <TextBlock x:Name="LogPathText" Text="(sin ruta)" Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center" />
+
+                                    <TextBlock Width="12" />
+                                    <TextBlock Text="Tamaño:" FontWeight="SemiBold" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="12,0,4,0" />
+                                    <TextBlock x:Name="LogSizeText" Text="0 KB" Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
                 </Grid>
+            </TabItem>
+
+            <TabItem Header="Configuración" x:Name="ConfigTab">
+                <local:AgenteIALocalConfigControl x:Name="ConfigControl" />
             </TabItem>
         </TabControl>
     </Grid>

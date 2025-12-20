@@ -1,0 +1,113 @@
+<UserControl x:Class="AgenteIALocalVSIX.ToolWindows.AgenteIALocalConfigControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="8">
+
+            <GroupBox Header="LLM Studio Server" Margin="0,0,0,12">
+                <StackPanel>
+                    <CheckBox Content="Enabled" IsChecked="{Binding LmStudio.Enabled}" />
+
+                    <TextBlock Text="BaseUrl" Margin="0,8,0,2" />
+                    <TextBox Text="{Binding LmStudio.BaseUrl, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Text="ApiKey" Margin="0,8,0,2" />
+                    <TextBox Text="{Binding LmStudio.ApiKey, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <GroupBox Header="Endpoints" Margin="0,10,0,0">
+                        <StackPanel>
+                            <TextBlock Text="/v1/models" />
+                            <TextBox Text="{Binding LmStudio.ModelsPath, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Text="/v1/chat/completions" Margin="0,6,0,0" />
+                            <TextBox Text="{Binding LmStudio.ChatCompletionsPath, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Text="/v1/completions" Margin="0,6,0,0" />
+                            <TextBox Text="{Binding LmStudio.CompletionsPath, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Text="/v1/embeddings" Margin="0,6,0,0" />
+                            <TextBox Text="{Binding LmStudio.EmbeddingsPath, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </GroupBox>
+
+                    <GroupBox Header="Login" Margin="0,10,0,0">
+                        <StackPanel>
+                            <TextBlock Text="User" />
+                            <TextBox Text="{Binding LmStudio.User, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Text="Password" Margin="0,6,0,0" />
+                            <TextBox Text="{Binding LmStudio.Password, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </GroupBox>
+
+                    <TextBlock Text="Model" Margin="0,10,0,2" />
+                    <TextBox Text="{Binding LmStudio.Model, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Text="Model info" Margin="0,8,0,2" />
+                    <TextBox Text="{Binding LmStudio.ModelInfo}" IsReadOnly="True" />
+
+                    <Button Content="Guardar"
+                            Margin="0,10,0,0"
+                            HorizontalAlignment="Left"
+                            Width="90"
+                            Command="{Binding SaveCommand}" />
+                </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="Jan Server">
+                <StackPanel>
+                    <CheckBox Content="Enabled" IsChecked="{Binding JanServer.Enabled}" />
+
+                    <TextBlock Text="BaseUrl" Margin="0,8,0,2" />
+                    <TextBox Text="{Binding JanServer.BaseUrl, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Text="ApiKey" Margin="0,8,0,2" />
+                    <TextBox Text="{Binding JanServer.ApiKey, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <GroupBox Header="Endpoints" Margin="0,10,0,0">
+                        <StackPanel>
+                            <TextBlock Text="/v1/models" />
+                            <TextBox Text="{Binding JanServer.ModelsPath, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Text="/v1/chat/completions" Margin="0,6,0,0" />
+                            <TextBox Text="{Binding JanServer.ChatCompletionsPath, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Text="/v1/completions" Margin="0,6,0,0" />
+                            <TextBox Text="{Binding JanServer.CompletionsPath, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Text="/v1/embeddings" Margin="0,6,0,0" />
+                            <TextBox Text="{Binding JanServer.EmbeddingsPath, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </GroupBox>
+
+                    <GroupBox Header="Login" Margin="0,10,0,0">
+                        <StackPanel>
+                            <TextBlock Text="User" />
+                            <TextBox Text="{Binding JanServer.User, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Text="Password" Margin="0,6,0,0" />
+                            <TextBox Text="{Binding JanServer.Password, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </GroupBox>
+
+                    <TextBlock Text="Model" Margin="0,10,0,2" />
+                    <TextBox Text="{Binding JanServer.Model, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Text="Model info" Margin="0,8,0,2" />
+                    <TextBox Text="{Binding JanServer.ModelInfo}" IsReadOnly="True" />
+
+                    <Button Content="Guardar"
+                            Margin="0,10,0,0"
+                            HorizontalAlignment="Left"
+                            Width="90"
+                            Command="{Binding SaveCommand}" />
+                </StackPanel>
+            </GroupBox>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
