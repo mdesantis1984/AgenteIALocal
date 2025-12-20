@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using AgenteIALocal.Core.Agents;
 using AgenteIALocal.Application.Agents;
 using AgenteIALocal.Core.Settings;
+using Microsoft.VisualStudio.Shell;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -211,6 +212,19 @@ namespace AgenteIALocalVSIX.ToolWindows
             UpdateUiState(UiState.Idle);
 
             try { AgentComposition.Logger?.Info("ToolWindowControl: Clear click"); } catch { }
+        }
+
+        private void OptionsButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            try
+            {
+                var pkg = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(Microsoft.VisualStudio.Shell.Package)) as Package;
+                if (pkg != null)
+                {
+                    pkg.ShowOptionPage(typeof(AgenteIALocalVSIX.Options.AgenteIALocalOptionsPage));
+                }
+            }
+            catch { }
         }
 
         private void Log(string message)

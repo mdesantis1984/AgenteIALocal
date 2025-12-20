@@ -16,12 +16,31 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
-            <TextBlock Text="Agente IA Local" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
-            <TextBlock Width="12" />
-            <TextBlock Text="State:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,4,0" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
-            <TextBlock x:Name="StateText" Text="Idle" VerticalAlignment="Center" FontFamily="Consolas" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
-        </StackPanel>
+        <Grid Grid.Row="0" VerticalAlignment="Center" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="Agente IA Local" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+                <TextBlock Width="12" />
+                <TextBlock Text="State:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,4,0" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+                <TextBlock x:Name="StateText" Text="Idle" VerticalAlignment="Center" FontFamily="Consolas" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+            </StackPanel>
+
+            <Button Grid.Column="1"
+                    x:Name="OptionsButton"
+                    ToolTip="Opciones"
+                    FontFamily="Segoe MDL2 Assets"
+                    Content=""
+                    Width="32"
+                    Height="32"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Margin="8,0,0,0"
+                    Click="OptionsButton_Click" />
+        </Grid>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
             <TextBlock Text="Solution:" FontWeight="SemiBold" Width="80" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
