@@ -22,11 +22,15 @@ Estructura de la solución (proyectos)
 - `AgenteIALocal.Tests`
 - `AgenteIALocalVSIX`
 
-Documentación completa por idioma
+## Arquitectura
 
-- Español (canónica): `./README.es.md`
-- English (full translation): `./README.en.md`
-- Architecture / Arquitectura: `./README.architecture.md`
+- [Arquitectura (ES)](src/README.architecture.es.md)
+- [Architecture (EN)](src/README.architecture.en.md)
+
+## Documentación
+
+- [Documentación general (ES)](src/README.es.md)
+- [General documentation (EN)](src/README.en.md)
 
 Aviso importante
 
@@ -54,6 +58,7 @@ Cierre de Sprint 2: foco en experiencia de usuario, observabilidad y diagnóstic
 
 **Documentación relacionada:**
 
-- [README.es.md](src/README.es.md)
-- [README.en.md](src/README.en.md)
-- [README.architecture.md](src/README.architecture.md)
+- [Documentación general (ES)](src/README.es.md)
+- [General documentation (EN)](src/README.en.md)
+- [Arquitectura (ES)](src/README.architecture.es.md)
+- [Architecture (EN)](src/README.architecture.en.md)
