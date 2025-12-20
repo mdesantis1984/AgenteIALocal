@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -9,6 +11,8 @@ using AgenteIALocal.Core.Agents;
 using AgenteIALocal.Core.Settings;
 using Microsoft.VisualStudio.Shell;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using AgenteIALocalVSIX.Settings;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -19,46 +23,13 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         private IAgentService agentService;
         private readonly IAgentSettingsProvider settingsProvider;
-        private readonly AgenteIALocalConfigViewModel configViewModel;
 
         public AgenteIALocalControl(IAgentSettingsProvider settingsProvider)
         {
             this.settingsProvider = settingsProvider;
-            this.configViewModel = new AgenteIALocalConfigViewModel(settingsProvider);
 
             InitializeComponent();
             UpdateUiState(UiState.Idle);
-
-            try
-            {
-                // Bind config tab content
-                var configControl = this.FindName("ConfigControl") as FrameworkElement;
-                if (configControl != null) configControl.DataContext = configViewModel;
-            }
-            catch { }
-
-            try
-            {
-                AgentComposition.Logger?.Info("ToolWindowControl: ctor");
-            }
-            catch { }
-
-            try
-            {
-                this.Loaded += AgenteIALocalControl_Loaded;
-            }
-            catch { }
-
-            try
-            {
-                agentService = AgentComposition.AgentService;
-                AgentComposition.Logger?.Info("ToolWindowControl: AgentService=" + (agentService == null ? "null" : agentService.GetType().FullName));
-            }
-            catch (Exception ex)
-            {
-                agentService = null;
-                try { AgentComposition.Logger?.Error("ToolWindowControl: AgentService read failed", ex); } catch { }
-            }
 
             // Centralized decision: evaluate and display exactly one clear message for current configuration state
             EvaluateAndDisplayStatus();
@@ -77,7 +48,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                 if (rootTabControl != null && configTab != null && rootTabControl.SelectedItem == configTab)
                 {
-                    configViewModel?.Load();
+                    // no-op: config UI maneja el DataContext internamente
                 }
             }
             catch { }
@@ -386,62 +357,141 @@ namespace AgenteIALocalVSIX.ToolWindows
                     return;
                 }
 
-                if (agentService == null)
+                // 1) Obtener IAgentSettingsProvider (mismo usado por ToolWindow) y leer settings activos
+                var provider = settingsProvider;
+                if (provider == null)
                 {
-                    ErrorText.Text = "Agent no configurado. Revisá Tools → Options → Agente IA Local.";
-                    UpdateUiState(UiState.Error);
-
                     try
                     {
-                        AgentComposition.Logger?.Warn("ToolWindowControl: Run clicked but AgentService is NULL");
+                        var pkg = GetGlobalVsixPackage();
+                        if (pkg != null)
+                        {
+                            provider = new VsWritableSettingsStoreAgentSettingsProvider(pkg);
+                        }
                     }
-                    catch { }
-
-                    Log("Execution error: Agent service not available.");
-                    return;
+                    catch
+                    {
+                        provider = null;
+                    }
                 }
 
-                AgentComposition.Logger?.Info("ToolWindowControl: AgentService.RunAsync start");
-                var resp = await agentService.RunAsync(prompt, System.Threading.CancellationToken.None);
-                AgentComposition.Logger?.Info("ToolWindowControl: AgentService.RunAsync end");
-
-                if (resp == null)
+                var settings = provider?.Load();
+                if (settings == null)
                 {
                     UpdateUiState(UiState.Error);
-                    ErrorText.Text = "No response from agent.";
-                    AgentComposition.Logger?.Warn("ToolWindowControl: null response");
+                    ErrorText.Text = "No se pudieron leer las opciones (settings).";
+                    Log("Execution error: settingsProvider.Load() returned null.");
                     return;
                 }
 
+                // Validar Provider == LmStudio
+                if (settings.Provider != AgentProviderType.LmStudio)
+                {
+                    UpdateUiState(UiState.Error);
+                    ErrorText.Text = "El proveedor activo no es LM Studio. Revisá Tools → Options → Agente IA Local.";
+                    Log("Execution error: Active provider is not LmStudio.");
+                    return;
+                }
+
+                var lm = settings.LmStudio ?? new LmStudioSettings();
+                var baseUrl = (lm.BaseUrl ?? string.Empty).TrimEnd('/');
+                var chatPath = lm.ChatCompletionsPath ?? "/v1/chat/completions";
+                var model = lm.Model ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(chatPath) || string.IsNullOrWhiteSpace(model))
+                {
+                    UpdateUiState(UiState.Error);
+                    ErrorText.Text = "Configuración LM Studio incompleta (BaseUrl/ChatPath/Model).";
+                    Log("Execution error: incomplete LM Studio settings.");
+                    return;
+                }
+
+                var url = baseUrl + (chatPath.StartsWith("/") ? string.Empty : "/") + chatPath;
+
+                // 2) Construir payload
+                var payload = new JObject
+                {
+                    ["model"] = model,
+                    ["messages"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["role"] = "user",
+                            ["content"] = prompt
+                        }
+                    }
+                };
+
+                // Mostrar mensaje del usuario en el chat (UI existente: Prompt/Response)
+                // Mantener cambio local: reutilizamos ResponseTextBox como historial simple.
+                AppendChatLine("user", prompt);
+
+                // 3) POST a LM Studio (API OpenAI compatible)
+                string responseText;
+                using (var http = new HttpClient())
+                {
+                    http.Timeout = TimeSpan.FromSeconds(120);
+
+                    var apiKey = lm.ApiKey ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(apiKey))
+                    {
+                        // OpenAI-compatible header; LM Studio suele ignorarlo si no hace falta.
+                        http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                    }
+
+                    var content = new StringContent(payload.ToString(Formatting.None), Encoding.UTF8, "application/json");
+                    var resp = await http.PostAsync(url, content).ConfigureAwait(true);
+                    responseText = await resp.Content.ReadAsStringAsync().ConfigureAwait(true);
+
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        UpdateUiState(UiState.Error);
+                        ErrorText.Text = $"Error HTTP {(int)resp.StatusCode}: {resp.ReasonPhrase}";
+                        Log("Execution error: HTTP error " + (int)resp.StatusCode + " " + (resp.ReasonPhrase ?? string.Empty));
+                        try { AgentComposition.Logger?.Warn("ToolWindowControl: LM Studio HTTP error body=" + (responseText ?? string.Empty)); } catch { }
+                        return;
+                    }
+                }
+
+                // 4) Parsear respuesta JSON: choices[0].message.content
+                string assistantText = null;
                 try
                 {
-                    AgentComposition.Logger?.Info($"ToolWindowControl: Agent response success = {resp.IsSuccess}");
+                    var json = JObject.Parse(responseText ?? string.Empty);
+                    assistantText = json.SelectToken("choices[0].message.content")?.ToString();
                 }
-                catch { }
+                catch
+                {
+                    assistantText = null;
+                }
 
-                if (!resp.IsSuccess)
+                if (string.IsNullOrWhiteSpace(assistantText))
                 {
                     UpdateUiState(UiState.Error);
-                    ErrorText.Text = resp.Error ?? "Agent returned error";
-                    ResponseTextBox.Text = string.Empty;
-                    AgentComposition.Logger?.Warn("ToolWindowControl: agent error=" + (resp.Error ?? string.Empty));
+                    ErrorText.Text = "Respuesta inválida de LM Studio (no se encontró choices[0].message.content).";
+                    Log("Execution error: invalid JSON response.");
                     return;
                 }
 
-                ResponseTextBox.Text = resp.Content ?? string.Empty;
+                // 5) Agregar texto al chat UI
+                AppendChatLine("assistant", assistantText);
+
+                // Mantener compatibilidad con UI existente
+                ResponseTextBox.Text = assistantText;
+
                 UpdateUiState(UiState.Completed);
                 Log("Execution completed successfully.");
             }
             catch (Exception ex)
             {
+                // 6) Manejo de errores básicos
                 UpdateUiState(UiState.Error);
                 ErrorText.Text = ex.Message;
-                ResponseTextBox.Text = string.Empty;
                 Log("Execution error: " + ex.Message);
 
                 try
                 {
-                    AgentComposition.Logger?.Error("ToolWindowControl: Error during RunAsync", ex);
+                    AgentComposition.Logger?.Error("ToolWindowControl: Error during LM Studio request", ex);
                 }
                 catch { }
             }
@@ -449,6 +499,23 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 // Re-evaluate status to ensure UI stays consistent after an execution attempt
                 EvaluateAndDisplayStatus();
+            }
+        }
+
+        private void AppendChatLine(string role, string text)
+        {
+            try
+            {
+                var r = role ?? string.Empty;
+                var t = text ?? string.Empty;
+                var line = $"{r}: {t}";
+
+                // Simple historial en LogText (ya visible en la pestaña Main)
+                LogText.Text = (LogText.Text ?? string.Empty) + "\n" + line;
+            }
+            catch
+            {
+                // ignore
             }
         }
 
