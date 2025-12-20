@@ -43,78 +43,57 @@ namespace AgenteIALocalVSIX.ToolWindows
             base.OnToolWindowCreated();
             try { AgentComposition.Logger?.Info("AgenteIALocalToolWindow: OnToolWindowCreated"); } catch { }
 
-            try
+            ThreadHelper.JoinableTaskFactory.Run(async () =>
             {
-                if (this.Frame is IVsWindowFrame frame)
-                {
-                    frame.SetProperty((int)__VSFPROPID.VSFPROPID_ViewHelper, this);
-                }
-            }
-            catch { }
-        }
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-        private void RefreshStatusIfPossible()
-        {
-            var control = this.Content as AgenteIALocalControl;
-            if (control != null)
-            {
-                control.EvaluateAndDisplayStatus();
-            }
+                var frame = this.Frame as IVsWindowFrame;
+                if (frame == null)
+                {
+                    return;
+                }
+
+                // Register this instance as the frame's notify helper.
+                frame.SetProperty((int)__VSFPROPID.VSFPROPID_ViewHelper, this);
+            });
         }
 
         public int OnShow(int fShow)
         {
-            if (fShow == (int)__FRAMESHOW.FRAMESHOW_WinShown || fShow == (int)__FRAMESHOW.FRAMESHOW_TabActivated)
+            // fShow == 1: real show/activate
+            if (fShow == 1)
             {
-                RefreshStatusIfPossible();
+                ThreadHelper.JoinableTaskFactory.Run(async () =>
+                {
+                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+                    var control = this.Content as AgenteIALocalControl;
+                    if (control != null)
+                    {
+                        control.EvaluateAndDisplayStatus();
+                    }
+                });
             }
 
             return VSConstants.S_OK;
         }
 
-        public int OnMove(int x, int y, int w, int h)
-        {
-            return VSConstants.S_OK;
-        }
+        public int OnMove(int x, int y, int w, int h) => VSConstants.S_OK;
 
-        public int OnSize(int x, int y, int w, int h)
-        {
-            return VSConstants.S_OK;
-        }
+        public int OnSize(int x, int y, int w, int h) => VSConstants.S_OK;
 
-        public int OnDockableChange(int x, int y, int w, int h, int fDockable)
-        {
-            return VSConstants.S_OK;
-        }
+        public int OnDockableChange(int x, int y, int w, int h, int fDockable) => VSConstants.S_OK;
 
-        public int OnClose(ref uint pgrfSaveOptions)
-        {
-            return VSConstants.S_OK;
-        }
+        public int OnClose(ref uint pgrfSaveOptions) => VSConstants.S_OK;
 
-        public int OnDockableChangeEx(int x, int y, int w, int h, int fDockableAlways)
-        {
-            return VSConstants.S_OK;
-        }
+        public int OnDockableChangeEx(int x, int y, int w, int h, int fDockableAlways) => VSConstants.S_OK;
 
-        public int OnStatusChange(uint dwStatus)
-        {
-            return VSConstants.S_OK;
-        }
+        public int OnStatusChange(uint dwStatus) => VSConstants.S_OK;
 
-        public int OnPropertyChange(int propid, object var)
-        {
-            return VSConstants.S_OK;
-        }
+        public int OnPropertyChange(int propid, object var) => VSConstants.S_OK;
 
-        public int OnModalChange(int fModal)
-        {
-            return VSConstants.S_OK;
-        }
+        public int OnModalChange(int fModal) => VSConstants.S_OK;
 
-        public int OnFrameEnabled(int fEnabled)
-        {
-            return VSConstants.S_OK;
-        }
+        public int OnFrameEnabled(int fEnabled) => VSConstants.S_OK;
     }
 }
