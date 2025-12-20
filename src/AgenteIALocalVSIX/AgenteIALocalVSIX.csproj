@@ -102,6 +102,10 @@
       <Project>{49ac950d-4ca4-422e-f582-e05e9567561e}</Project>
       <Name>AgenteIALocal.Core</Name>
     </ProjectReference>
+    <ProjectReference Include="..\AgenteIALocal.Infrastructure\AgenteIALocal.Infrastructure.csproj">
+      <Project>{52b94b48-0ed4-c9b0-441a-bc825034b877}</Project>
+      <Name>AgenteIALocal.Infrastructure</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Page Include="Options\AgenteIALocalOptionsControl.xaml">
