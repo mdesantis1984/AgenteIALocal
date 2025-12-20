@@ -4,9 +4,86 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
-             Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"
-             Foreground="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}">
-    <Grid Margin="8">
+             Background="{DynamicResource BackgroundBrush}"
+             Foreground="{DynamicResource PrimaryTextBrush}">
+    <UserControl.Resources>
+        <!-- Palette (local to this control) -->
+        <SolidColorBrush x:Key="BackgroundBrush" Color="#FF1E1E1E" />
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#FF252526" />
+        <SolidColorBrush x:Key="PrimaryTextBrush" Color="#FFFFFFFF" />
+        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#FFC8C8C8" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#FF007ACC" />
+        <SolidColorBrush x:Key="SuccessBrush" Color="#FF4CAF50" />
+        <SolidColorBrush x:Key="WarningBrush" Color="#FFFFC107" />
+        <SolidColorBrush x:Key="ErrorBrush" Color="#FFF44336" />
+        <SolidColorBrush x:Key="ControlBorderBrush" Color="#FF3C3C3C" />
+        <SolidColorBrush x:Key="TextBoxBackgroundBrush" Color="#FF2A2A2A" />
+        <Thickness x:Key="ControlPadding">6</Thickness>
+
+        <!-- TextBlock default style: primary/secondary mapping by element's own properties -->
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+        </Style>
+
+        <!-- Flat button style suitable for dark theme -->
+        <Style TargetType="Button" x:Key="FlatButtonStyle">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#332A2A2A" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#55353535" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="#FF6A6A6A" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- TextBox style for prompts and responses -->
+        <Style TargetType="TextBox" x:Key="DarkTextBoxStyle">
+            <Setter Property="Background" Value="{StaticResource TextBoxBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="6" />
+            <Setter Property="FontFamily" Value="Consolas" />
+            <Setter Property="FontSize" Value="12" />
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+                </Trigger>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- GroupBox header appearance -->
+        <Style TargetType="GroupBox" x:Key="DarkGroupBoxStyle">
+            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="6" />
+        </Style>
+
+        <!-- Small helper: accent icon TextBlock -->
+        <Style x:Key="IconTextBlock" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="14" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="8" Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -23,16 +100,17 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="Agente IA Local" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+                <TextBlock Text="Agente IA Local" FontWeight="Bold" FontSize="16" Foreground="{StaticResource PrimaryTextBrush}" />
                 <TextBlock Width="12" />
-                <TextBlock Text="State:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,4,0" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
-                <TextBlock x:Name="StateText" Text="Idle" VerticalAlignment="Center" FontFamily="Consolas" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+                <TextBlock Text="State:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,4,0" Foreground="{StaticResource SecondaryTextBrush}" />
+                <TextBlock x:Name="StateText" Text="Idle" VerticalAlignment="Center" FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" />
             </StackPanel>
 
             <Button Grid.Column="1"
                     x:Name="OptionsButton"
                     ToolTip="Opciones"
                     FontFamily="Segoe MDL2 Assets"
+                    Style="{StaticResource FlatButtonStyle}"
                     Content=""
                     Width="32"
                     Height="32"
@@ -43,31 +121,31 @@
         </Grid>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="Solution:" FontWeight="SemiBold" Width="80" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
-            <TextBlock x:Name="SolutionNameText" Text="(no solution)" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+            <TextBlock Text="Solution:" FontWeight="SemiBold" Width="80" Foreground="{StaticResource SecondaryTextBrush}" />
+            <TextBlock x:Name="SolutionNameText" Text="(no solution)" Foreground="{StaticResource PrimaryTextBrush}" />
             <TextBlock Text="    " />
-            <TextBlock Text="Projects:" FontWeight="SemiBold" Width="80" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
-            <TextBlock x:Name="ProjectCountText" Text="0" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+            <TextBlock Text="Projects:" FontWeight="SemiBold" Width="80" Foreground="{StaticResource SecondaryTextBrush}" />
+            <TextBlock x:Name="ProjectCountText" Text="0" Foreground="{StaticResource PrimaryTextBrush}" />
         </StackPanel>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button x:Name="RunButton" Content="Enviar" Width="80" Click="RunButton_Click" />
-            <Button x:Name="ClearButton" Content="Clear" Width="80" Margin="8,0,0,0" Click="ClearButton_Click" />
-            <TextBlock x:Name="ErrorText" Foreground="Red" Margin="12,6,0,0" VerticalAlignment="Center" />
+            <Button x:Name="RunButton" Content="Enviar" Width="80" Click="RunButton_Click" Style="{StaticResource FlatButtonStyle}" />
+            <Button x:Name="ClearButton" Content="Clear" Width="80" Margin="8,0,0,0" Click="ClearButton_Click" Style="{StaticResource FlatButtonStyle}" />
+            <TextBlock x:Name="ErrorText" Margin="12,6,0,0" VerticalAlignment="Center" Foreground="{StaticResource ErrorBrush}" />
         </StackPanel>
 
-        <GroupBox Grid.Row="3" Header="Prompt" Margin="0,0,0,8">
-            <ScrollViewer>
-                <TextBox x:Name="PromptTextBox" AcceptsReturn="True" Height="140" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" />
+        <GroupBox Grid.Row="3" Header="Prompt" Margin="0,0,0,8" Style="{StaticResource DarkGroupBoxStyle}">
+            <ScrollViewer Background="Transparent">
+                <TextBox x:Name="PromptTextBox" AcceptsReturn="True" Height="140" TextWrapping="Wrap" Style="{StaticResource DarkTextBoxStyle}" />
             </ScrollViewer>
         </GroupBox>
 
-        <GroupBox Grid.Row="4" Header="Response">
-            <ScrollViewer>
-                <TextBox x:Name="ResponseTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" />
+        <GroupBox Grid.Row="4" Header="Response" Style="{StaticResource DarkGroupBoxStyle}">
+            <ScrollViewer Background="Transparent">
+                <TextBox x:Name="ResponseTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource DarkTextBoxStyle}" />
             </ScrollViewer>
         </GroupBox>
 
-        <TextBlock Grid.Row="5" x:Name="LogText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" Margin="0,8,0,0" Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+        <TextBlock Grid.Row="5" x:Name="LogText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" Margin="0,8,0,0" Foreground="{StaticResource SecondaryTextBrush}" />
     </Grid>
 </UserControl>
