@@ -1,152 +1,141 @@
-Agente IA Local para Visual Studio
+# Agente IA Local para Visual Studio
+
+Agente IA Local es una extensión clásica de Visual Studio (VSIX, formato clásico) que provee una ToolWindow y un conjunto de comandos para experimentar con flujos de agente de IA sobre el contexto del IDE (solución, proyectos, documentos). El objetivo del proyecto es validar una arquitectura desacoplada entre UI, orquestación y proveedores de IA, facilitando pruebas, trazabilidad y despliegue como extensión instalada en la Experimental Instance de Visual Studio.
 
 ---
 
-Descripción general del proyecto
+## 1. Introducción
 
-Qué es
+Esta extensión ofrece un punto de entrada dentro de Visual Studio (menú `Tools → Agente IA Local`) y una ToolWindow que permite generar prompts, ejecutar el agente (mock o real) y visualizar las respuestas. Está diseñada como un prototipo evolutivo (MVP → hardening) para facilitar la integración posterior con proveedores LLM.
 
-Agente IA Local es una extensión clásica de Visual Studio (VSIX, no SDK-style) que aloja capacidades de agente de IA sobre el contexto real del IDE (solución, proyectos y documentos). El objetivo es validar una arquitectura desacoplada entre UI, orquestación y proveedor de IA, con un MVP que demuestre empaquetado VSIX, registro de comandos y una ToolWindow base.
+El enfoque técnico es explícitamente del tipo "VSIX clásico" para mantener compatibilidad y control sobre el empaquetado, registro de comandos (VSCT) y ToolWindows.
 
-Por qué VSIX clásico
+---
 
-Se eligió VSIX clásico para mantener compatibilidad con APIs históricas del Visual Studio SDK y controlar explícitamente el empaquetado (csproj clásico, VSCT compilado a recurso) y el registro de menús/ToolWindows.
+## 2. Metodología de trabajo
 
-Estado actual del proyecto
+Trabajamos siguiendo prácticas ágiles (Scrum) con iteraciones cortas y entregables concretos. Algunas reglas de trabajo adoptadas:
 
-Qué funciona hoy
+- Scrum por iteración: sprints cortos con objetivos claros por rama.
+- Commits atómicos: cada cambio funcional o de corrección debe mapearse a un commit pequeño y con mensaje significativo.
+- Definition of Done incluye: código compilable, tests mínimos (cuando aplican), documentación asociada y prompts/artifacts actualizados.
+- Documentación como parte del DoD: los prompts en formato `.md` (ver sección "Uso de prompts") son artefactos formales y deben quedar versionados en la rama de la tarea.
+- Ramas por iteración y por task: p. ej. `iter-002/task-01-options-access`.
 
-- Build: OK con MSBuild.
-- VSIX: generado en `src/AgenteIALocalVSIX/bin/Debug/AgenteIALocalVSIX.vsix` e instalable en la Experimental Instance.
-- Menú: el comando aparece en `Tools` cuando la extensión está instalada.
+---
 
-Qué no funciona hoy / incompleto
+## 3. Roles
 
-- ToolWindow: el click en el menú no abre la ToolWindow en el entorno actual (limitación observada). Debe verificarse el registro de ToolWindow en el Package.
+Se definen roles claros en el flujo de trabajo:
 
-Lo que se ve en Visual Studio
+- Humano (desarrollador/maintainer): toma decisiones finales, revisa y aprueba cambios, ejecuta pruebas en Experimental Instance y realiza merges a ramas principales.
+- IA (ChatGPT): rol de arquitecto y planificador. Se usa para analizar problemas, generar prompts técnicos y proponer correcciones y planes de trabajo. No edita directamente el código en el repositorio; su output se valida por un humano.
+- Copilot (VS/editor assistant): único agente automatizado autorizado a aplicar cambios en el workspace (ediciones puntuales solicitadas). Se usa para ejecutar los cambios mínimos aprobados por el humano y seguir instrucciones de implementación exactas.
 
-- Menú `Tools` con la entrada "Agente IA Local".
-- No se visualiza la ToolWindow al ejecutar el comando (estado actual).
+Esta separación asegura responsabilidad y trazabilidad entre propuesta (IA), ejecución (Copilot) y verificación/aprobación (humano).
 
-Estructura de la solución
+---
 
-- `AgenteIALocal.Core` — Contratos y modelos neutrales (DTOs y interfaces).
-- `AgenteIALocal.Application` — Orquestación de pipeline y lógica de alto nivel (mock en MVP).
-- `AgenteIALocal.Infrastructure` — Adaptadores concretos para IDE/Filesystem y utilidades.
-- `AgenteIALocal.UI` — Controles WPF y helpers compartidos.
-- `AgenteIALocal.Tests` — Pruebas unitarias e integración ligera.
-- `AgenteIALocalVSIX` — Host VSIX clásico: Package, comandos, ToolWindow y empaquetado.
+## 4. Iteraciones (cronológico)
 
-Dependencias entre capas
+A continuación se resumen las iteraciones principales y los hitos logrados hasta la fecha.
 
-- VSIX (host) compone UI e integra adaptadores de `Infrastructure` que consumen contratos de `Core`.
-- `Application` coordina flujos sobre `Core`; en MVP puede llamar a mocks.
-- `UI` y `VSIX` no deben acoplarse a proveedores de IA concretos.
+### Iteración: post-mvp-readme-and-hardening
 
-Arquitectura de la extensión VSIX
+- Problemas iniciales reales:
+  - Mismatch entre GUIDs en el VSCT y el `Package` que impedía el cableado correcto de menús/commands.
+  - Logging inicial insuficiente para diagnóstico en runtime.
+  - Comportamiento frágil en la ToolWindow cuando el backend (AgentService) no estaba compuesto.
 
-Rol del Package
+- Fixes aplicados:
+  - Corrección del wiring VSCT ↔ Package: se alinearon GUIDs y CommandId en VSCT y código.
+  - Hardened `InitializeAsync` del `AsyncPackage` con logging explícito y manejo de errores sin relanzar (fail-safe).
+  - Registro consistente del comando mediante `OleMenuCommandService` siguiendo el patrón funcional de ejemplo (patrón MenuCommand/Instance/InitializeAsync).
+  - Mejoras en la ToolWindow: controles WPF ajustados para legibilidad (uso de SystemColors) y manejo seguro de flujo UX cuando `AgentService` es null.
+  - Logging a archivo habilitado y ampliado (trazas de inicialización, registro de comandos y ejecución de botones).
 
-- El `AsyncPackage` registra menús, comandos y ToolWindows, y expone recursos provenientes del VSCT.
+- Resultado:
+  - ToolWindow operativa desde el menú `Tools` (apertura verificada en Experimental Instance).
+  - Menú y comando correctamente registrados y ejecutables.
+  - Logs verificables en `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log`.
 
-Inicialización y autoload
+- Commits y orden aplicado:
+  - Cambios minimos, agrupados por objetivo: (1) logging/package init, (2) comando registro, (3) VSCT fix, (4) ToolWindow UX hardening.
 
-- El package puede autoloadearse en contextos como `SolutionExists` (según atributos). La inicialización llama a `OpenAgenteIALocalCommand.InitializeAsync(this)` para registrar el comando.
+### Iteración: iter-002 (inicio)
 
-Registro de comandos
+- Rama creada: `iter-002/task-01-options-access`.
+- Objetivo del sprint:
+  - Exponer y persistir opciones desde `Tools → Options` (Options Page) y permitir que `AgentService` lea configuración al inicializar.
+  - Mejorar documentación y añadir prompts como artefactos.
+- Estado actual:
+  - Options Page funcional y persistente (configuración guardada/reutilizable).
+  - Trabajo de documentación y prompts en curso (README y prompts `.md` actualizados como parte del DoD).
 
-- El comando se crea con `CommandID(CommandSet, CommandId)` y se registra vía `OleMenuCommandService`.
+---
 
-Relación VSCT / Package / CommandSet
+## 5. Arquitectura (alto nivel)
 
-- El VSCT define `GuidSymbol` para el package y el `CommandSet`.
-- El GUID del package debe coincidir exactamente con el `[Guid(...)]`/`PackageGuidString` del `AsyncPackage` y con el Id del `.vsixmanifest`.
-- El `CommandSet` del VSCT debe coincidir con el GUID usado en el código.
+Referencia: ver `README.architecture` (archivo dedicado en el repositorio) para diagrama y detalles.
 
-`Menus.ctmenu` no es archivo físico
+Resumen mínimo:
 
-- Es el nombre de recurso generado al compilar el `.vsct`, y se registra con `[ProvideMenuResource("Menus.ctmenu", 1)]`. No existe en el repositorio como archivo.
+- `AgenteIALocal.Core` — contratos, DTOs e interfaces (neutralidad entre capas).
+- `AgenteIALocal.Application` — orquestación de flujos y lógica de negocio (implementaciones sin dependencia directa de UI).
+- `AgenteIALocal.Infrastructure` — adaptadores concretos (clientes HTTP, resolvers, integraciones específicas).
+- `AgenteIALocal.UI` — controles WPF reutilizables.
+- `AgenteIALocalVSIX` — host VSIX clásico: `AsyncPackage`, comandos, ToolWindow, VSCT y empaquetado.
 
-Errores VSCT comunes y causa real
+La arquitectura promueve la inyección/composición del `AgentService` por el Package, de modo que la UI sólo consuma la interfaz y no dependa de implementaciones concretas.
 
-- VSCT1102: símbolo GUID referenciado no definido (falta `GuidSymbol` o mismatch nombre/valor).
-- VSCT1103: definición inválida o IDs duplicados (IDs no coinciden con el código o están repetidos).
+---
 
-Comandos, menús y UI
+## 6. Uso de prompts
 
-Qué comandos existen
+Los prompts `.md` se usan como artefactos formales en el proceso de desarrollo. Motivos y prácticas:
 
-- `OpenAgenteIALocalCommand` (id `0x0100`) bajo el `CommandSet` definido en VSCT.
+- Por qué: permiten definir de forma reproducible las instrucciones que se le dan a la IA (ChatGPT) para diseño, diagnóstico y generación de cambios.
+- Qué contienen: descripción de la tarea, contexto de workspace, pasos a ejecutar, restricciones y criterios de aceptación.
+- Cómo se integran al flujo: cada task/issue relevante incluye uno o más prompts versionados en la rama de trabajo; los prompts son parte del DoD y se adjuntan al PR como evidencia de decisión y ejecución.
 
-Dónde deberían aparecer
+Ejemplos de uso:
+- Diagnóstico de wiring VSCT ↔ Package.
+- Plan de hardening para `InitializeAsync` del Package.
+- Guía de UX para manejo de errores en la ToolWindow.
 
-- En el menú `Tools` (placement actual del VSCT para pruebas de visibilidad).
+---
 
-Qué código los registra
+## 7. Estado actual del proyecto
 
-- `OpenAgenteIALocalCommand.InitializeAsync(this)` desde `Package.InitializeAsync` agrega el `OleMenuCommand`.
+Resumen honesto y verificable al momento de este documento:
 
-Por qué el menú aparece pero la ToolWindow no
+Qué funciona
+- Compilación: `msbuild` del solution y del proyecto VSIX compila correctamente (target .NET Framework 4.7.2 para el VSIX).
+- VSIX: paquete generable e instalable en Experimental Instance.
+- Menú y comando: `Tools → Agente IA Local` aparece y el comando está registrado correctamente (corriente de ejecución del comando verificada).
+- ToolWindow: abre y muestra controles; UX mejorada para legibilidad y manejo de errores.
+- Options Page: configuraciones persistentes disponibles y accesibles desde `Tools → Options`.
+- Logging: trazas escritas a archivo en `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log` con entradas de inicialización, registro de comandos y ejecución de acciones.
+- Backend en código: proyectos `Core`, `Application` e `Infrastructure` presentes (estructura y mocks para validación de flujo).
 
-- Falta o error en el registro de la ToolWindow en el Package: sin `[ProvideToolWindow(typeof(AgenteIALocalToolWindow))]`, `ShowToolWindowAsync` puede no crear la ventana y fallar de forma silenciosa.
+Qué está en curso
+- Integración final de proveedores LLM (composición real del `AgentService` con LM Studio o JanServer según configuración).
+- Endurecimiento adicional sobre threading y patterns VSTHRD para eliminar warnings residuales.
+- Tests de integración sobre el flujo VSIX en Experimental Instance (automatización parcial en roadmap).
 
-Qué falta implementar
+Qué NO está hecho todavía
+- Soporte final y validado para un proveedor LLM en producción (aun hay implementaciones/adapteres pero falta validación end-to-end con proveedor real y seguridad de credenciales).
+- Release packaging formal (firma, versionado para marketplace) — pendiente del proceso de Release y QA.
 
-- Confirmar y aplicar el registro de la ToolWindow y validar su creación al invocar el comando.
+---
 
-Diseño del Agente IA
+## Documentación y trazabilidad
 
-Qué es el Agente aquí
+- Cada tarea relevante incluye prompts `.md` y cambios minimos aplicados vía Copilot; los commits referencian la rama y task.
+- Este README es el documento base en `src/README.es.md` y debe actualizarse por cada iteración significativa.
 
-- Conjunto de contratos y flujos que operan sobre el contexto de la solución, con ejecución mock en el MVP.
+---
 
-Contratos existentes
+Si falta detalle operativo (por ejemplo, scripts de build, instrucciones de instalación por versión de Visual Studio o diagramas de arquitectura adicionales), esos artefactos se deben añadir como PRs específicos y quedar referenciados desde `README.architecture` o desde la carpeta `docs/`.
 
-- `CopilotRequest`, `CopilotResponse` (DTOs) y contratos en `Core`.
-
-Rol de `MockCopilotExecutor`
-
-- Emula respuestas JSON deterministas para validar la UI y el pipeline sin proveedor de IA real.
-
-Qué partes son mock
-
-- Orquestación y proveedor de IA: sin integración real, solo simulación.
-
-Compilación y depuración
-
-Requisitos de entorno
-
-- Visual Studio 2022 + workload de extensiones.
-- .NET Framework Developer Pack 4.7.2.
-- MSBuild disponible.
-
-Comando MSBuild real
-
-msbuild src/AgenteIALocalVSIX/AgenteIALocalVSIX.csproj /t:Build /p:Configuration=Debug
-
-Instancia experimental
-
-- F5 lanza Visual Studio con `/rootsuffix Exp`.
-
-Diagnóstico de VSIX
-
-- Verificar instalación en `Extensions -> Manage Extensions`.
-- Si el menú no aparece o no abre la ToolWindow, revisar `ActivityLog.xml` en:
-  `%LOCALAPPDATA%\\Microsoft\\VisualStudio\\<version>_Exp\\ActivityLog.xml` o `%APPDATA%\\Microsoft\\VisualStudio\\<version>_Exp\\ActivityLog.xml`.
-
-Lecciones aprendidas y errores comunes
-
-- Autoload insuficiente del Package: comandos no visibles.
-- No inicializar comandos desde el Package: el menú no se registra.
-- GUIDs desalineados: menús invisibles sin errores.
-- Asumir archivos físicos inexistentes (`Menus.ctmenu`).
-- Mezclar patrones SDK-style con clásico sin ajustar el build/registro.
-
-Roadmap técnico
-
-- Habilitar ToolWindow correctamente y validar apertura.
-- Resolver warnings VSTHRD (uso consistente de `JoinableTaskFactory`).
-- Integrar proveedor LLM real con configuración segura.
-- Endurecer threading y ciclo de vida en el VSIX.
-- Preparar release (firma, versionado, notas y pruebas multi-VS).
+Gracias: este README refleja el estado actual y las decisiones recientes (hardening, wiring y logging) al momento de su última actualización.
