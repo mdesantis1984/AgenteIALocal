@@ -129,6 +129,42 @@ What is NOT done yet
 
 ---
 
+### Sprint 2 — UI / UX, Observability and Diagnostics
+
+Scope of the sprint
+
+- ToolWindow UX and navigation improvements.
+- Direct access to Options from the UI (existing Options Page reachable from the ToolWindow).
+- Clear status messaging for the user: "configured", "incomplete", and "backend not available".
+
+Observability
+
+- Implementation of a "Log" tab with the following capabilities:
+  - Full log view in a read-only TextBox.
+  - "Copy" button to copy the full log content to clipboard.
+  - "Delete" button to remove the log file from disk and clear the view.
+  - Visible file path and size (KB/MB).
+
+Backend status (diagnosis)
+
+- Confirmed diagnosis during Experimental Instance testing:
+  - The `AgenteIALocal.Infrastructure` assembly was not loaded at VSIX runtime.
+  - As a consequence, backend composition failed and `AgentService` remained `null`.
+
+Decisions and outstanding scope
+
+- Backend composition and VSIX packaging adjustments are moved to Sprint 3 as technical debt.
+- The new "Config" tab remains experimental / partially implemented and will be validated in Sprint 3.
+
+Outcome
+
+- Sprint 2 closed with UI/UX improvements and an actionable diagnostics outcome. Backend stabilization is planned for Sprint 3.
+
+Related documentation
+
+- `src/README.es.md`
+- `src/README.architecture.md`
+
 ## Documentation and traceability
 
 - Each relevant task includes `.md` prompts and minimal changes applied via Copilot; commits reference the branch and task.
