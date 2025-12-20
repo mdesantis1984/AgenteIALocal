@@ -38,6 +38,10 @@ Regla: **este baseline no debe romperse**. Cualquier feature se desarrolla desde
 
 1. Modelo de proyecto: **VSIX clásico** (NO SDK-style moderno).
 2. Target framework: **.NET Framework 4.8**.
+
+[OBSOLETO]
+- Nota: El valor "Target framework: .NET Framework 4.8" se dejó como decisión histórica. En la práctica algunos proyectos del workspace (especialmente el proyecto VSIX de esta iteración) apuntan a **.NET Framework 4.7.2** para mantener compatibilidad con el entorno de build actual. Mantener esta entrada para trazabilidad histórica; cuando se decida un único objetivo estable, se actualizará el baseline.
+
 3. Build/Debug: **Visual Studio Stable** (VS 2022 o VS 2026 Stable).
 4. Visual Studio Insiders: solo para instalar/probar `.vsix` ya generado, no para build/debug.
 5. El Package debe autoload: uso obligatorio de `ProvideAutoLoad`.
@@ -103,6 +107,9 @@ Regla:
 - Infrastructure implementa interfaces definidas por Core/Application.
 - UI **no** accede directamente a Infrastructure.
 
+[Nota de arquitectura]
+- En la práctica reciente se reforzó la separación: `Core` define `IAgentService` y DTOs (`CopilotRequest/Response`), `Application` orquesta llamadas y `Infrastructure` contiene `HttpAgentClient`, `LmStudioClient` y `JanServerClient` como adaptadores. Esta separación facilita probar la UI con mocks y permite composición manual por el `AsyncPackage`.
+
 ---
 
 ### 7. Componentes VSIX (clásicos)
@@ -119,6 +126,9 @@ Regla:
   - Ejecuta `ShowToolWindowAsync`.
 - ToolWindowPane:
   - Host de control WPF (XAML).
+
+[Nota práctica]
+- El patrón comprobado para registro de comandos fue replicar un ejemplo funcional: `Instance` property, `InitializeAsync` que ejecuta `ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync`, obtención de `OleMenuCommandService` y `new MenuCommand(...)/AddCommand`. Seguir estricto este patrón asegura que el click en el menú invoque `Execute` del handler.
 
 ---
 
@@ -154,6 +164,9 @@ Base URL:
 Headers:
 - `Content-Type: application/json`
 - `Authorization: Bearer <ApiKey>` (aunque local lo ignore, debe existir para remoto futuro)
+
+[Multiples proveedores]
+- El diseño actual contempla **múltiples proveedores**. Además de LM Studio, existe soporte por configuración para `JanServer` (alternativa remota) y la selección se realiza en tiempo de inicialización usando los `AgentSettings` (Provider type). El `AsyncPackage` realiza composición manual: lee `AgentSettings`, resuelve tipos por reflexión cuando aplica y asigna la implementación concreta a `AgentComposition.AgentService`.
 
 ---
 
@@ -212,6 +225,16 @@ Reglas:
 - Mostrar error corto en la ToolWindow.
 - Log interno en ActivityLog.
 - No dejar MessageBox de diagnóstico permanente.
+
+[Logging y abstracciones]
+- Se introdujo una abstracción de logging utilizada por la extensión (`IAgentLogger` / `AgentComposition.Logger`) y una implementación concreta de archivo (`FileAgentLogger`) que escribe trazas a:
+  `%LOCALAPPDATA%\\AgenteIALocal\\logs\\AgenteIALocal.log`.
+- La práctica de logging actual incluye trazas en:
+  - `AsyncPackage.InitializeAsync` (inicio, cambio a UI thread, inicialización de comandos)
+  - Registro de comandos en `OpenAgenteIALocalCommand.InitializeAsync` (inicio y registro)
+  - Ejecución del handler `Execute` (primer log obligatorio)
+  - ToolWindow eventos (ctor, Loaded, Run click, errores controlados)
+- Reglas operativas: no silenciar errores sin log; cualquier excepción capturada debe registrar `Logger.Error` y, cuando aplique, `ActivityLogHelper.TryLogError`.
 
 ---
 
@@ -288,6 +311,10 @@ Rule: **do not break this baseline**. All features must be developed on branches
 
 1. Project model: **classic VSIX** (NO modern SDK-style VSIX).
 2. Target framework: **.NET Framework 4.8**.
+
+[OBSOLETE]
+- Note: The item "Target framework: .NET Framework 4.8" remains documented as a historical decision. In practice, some projects in the workspace (notably the VSIX project in the current iteration) target **.NET Framework 4.7.2** to maintain compatibility with the current build environment. Keep this entry for historical traceability; update the baseline when a single stable target is selected.
+
 3. Build/Debug: **Visual Studio Stable** only (VS 2022 or VS 2026 Stable).
 4. Visual Studio Insiders: only for installing/testing a built `.vsix`, not for build/debug.
 5. Package autoload is mandatory: `ProvideAutoLoad` must be present.
@@ -369,6 +396,9 @@ Rule:
   - Executes `ShowToolWindowAsync`.
 - ToolWindowPane:
   - Hosts a WPF control (XAML).
+
+[Practical note]
+- The proven registration pattern for commands mirrors a functional example: `Instance` property, `InitializeAsync` that runs `ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync`, obtain `OleMenuCommandService` and create `new MenuCommand(...)/AddCommand`. Strictly following this pattern ensures that clicking the menu invokes the handler's `Execute`.
 
 ---
 
@@ -458,6 +488,12 @@ Rules:
 - Log internally via ActivityLog.
 - Do not keep permanent diagnostic MessageBoxes.
 
+[Logging and abstractions]
+- An `IAgentLogger` abstraction (`AgentComposition.Logger`) and a concrete file logger implementation (`FileAgentLogger`) were introduced. The file logger writes to:
+  `%LOCALAPPDATA%\\AgenteIALocal\\logs\\AgenteIALocal.log`.
+- Logging is used extensively across package initialization, command registration, and ToolWindow operations to provide traceability and to simplify debugging in Experimental Instance.
+- Operational rule: capture exceptions, log error details, and avoid rethrowing from Package initialization to keep VS stable.
+
 ---
 
 ### 13. Phase 1 task plan (order)
@@ -496,3 +532,23 @@ Before each relevant commit:
 - Package autoload active.
 - Build passes (VS Stable).
 - No temporary MessageBoxes.
+
+---
+
+
+---
+
+### Decisiones recientes y notas de arquitectura (adiciones incrementales)
+
+- Cableado VSCT ↔ Package: se corrigieron discrepancias de GUID que impedían que `Execute` de los handlers se invocara. Se agregó validación de consistencia y logging durante `Package.InitializeAsync`.
+- Composición manual del `AgentService`: debido a las restricciones del VSIX clásico no se utiliza un contenedor DI. El `AsyncPackage` lee `AgentSettings` en tiempo de inicialización y compone `AgentClient`/`AgentService` de forma manual (reflexión condicionada por Provider) y asigna la instancia a `AgentComposition.AgentService`.
+- Soporte multi-proveedor: actualmente soportados conceptualmente `LmStudio` y `JanServer`. La selección se basa en `AgentSettings.Provider` y en la resolución de tipos durante la inicialización del Package.
+- Logging persistente: se añadió `FileAgentLogger` para trazas locales y se integró con `ActivityLogHelper` cuando es necesario.
+- Fail-safe en inicialización: `Package.InitializeAsync` evita relanzar excepciones fatales, registra errores y continúa en estado seguro.
+
+[Nota operacional]
+- No usar contenedores DI dentro del VSIX clásico: la práctica aceptada en este proyecto es composición manual en el Package y exposición a través de `AgentComposition` para minimizar el footprint y evitar problemas de ciclo de vida del host.
+
+---
+
+If there are additional architecture items that need clarifying (diagrams, sequence flows or decision records), add them as incremental PRs referencing this document and linking to the `vsix-stable-baseline` tag.
