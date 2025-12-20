@@ -199,42 +199,25 @@ namespace AgenteIALocalVSIX.ToolWindows
                 return;
             }
 
-            // Try to read settings via reflection on AgentComposition if available
-            object settingsObj = null;
-
-            var acType = typeof(AgentComposition);
-            var settingsProp = acType.GetProperty("Settings", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-            if (settingsProp != null)
+            AgentSettings settings = null;
+            try
             {
-                settingsObj = settingsProp.GetValue(null);
-            }
-            else
-            {
-                // fallback: try common alternatives
-                var optProp = acType.GetProperty("Options", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-                if (optProp != null)
+                var pkg = GetGlobalVsixPackage();
+                if (pkg != null)
                 {
-                    settingsObj = optProp.GetValue(null);
+                    var provider = new AgenteIALocalVSIX.Settings.VsWritableSettingsStoreAgentSettingsProvider(pkg);
+                    settings = provider.Load();
                 }
             }
-
-            // If settings object not found, treat as incomplete configuration
-            if (settingsObj == null)
+            catch
             {
-                StateText.Text = "Configuración: incompleta";
-                ErrorText.Text = "Configuración incompleta. Revisá las Opciones.";
-                RunButton.IsEnabled = false;
-                return;
+                settings = null;
             }
 
-            // Inspect required fields (BaseUrl and Model) via reflection against common property names
-            string baseUrl = GetStringProperty(settingsObj, "BaseUrl") ?? GetStringProperty(settingsObj, "ApiUrl") ?? GetStringProperty(settingsObj, "Endpoint");
-            string model = GetStringProperty(settingsObj, "Model") ?? GetStringProperty(settingsObj, "SelectedModel") ?? GetStringProperty(settingsObj, "ModelId");
-            string provider = GetStringProperty(settingsObj, "Provider") ?? GetStringProperty(settingsObj, "ProviderName");
-
-            bool hasBaseUrl = !string.IsNullOrWhiteSpace(baseUrl);
-            bool hasModel = !string.IsNullOrWhiteSpace(model);
-            bool hasProvider = !string.IsNullOrWhiteSpace(provider);
+            bool hasProvider;
+            bool hasBaseUrl;
+            bool hasModel;
+            ValidateSettings(settings, out hasProvider, out hasBaseUrl, out hasModel);
 
             if (hasProvider && hasBaseUrl && hasModel)
             {
@@ -245,14 +228,58 @@ namespace AgenteIALocalVSIX.ToolWindows
                 RunButton.IsEnabled = true;
                 return;
             }
-            else
+
+            // Estado 2 — Configuración incompleta
+            StateText.Text = "Configuración: incompleta";
+            ErrorText.Foreground = Brushes.Orange;
+            ErrorText.Text = "Configuración incompleta. Revisá las Opciones.";
+            RunButton.IsEnabled = false;
+        }
+
+        private static void ValidateSettings(AgentSettings settings, out bool hasProvider, out bool hasBaseUrl, out bool hasModel)
+        {
+            hasProvider = false;
+            hasBaseUrl = false;
+            hasModel = false;
+
+            if (settings == null)
             {
-                // Estado 2 — Configuración incompleta
-                StateText.Text = "Configuración: incompleta";
-                ErrorText.Foreground = Brushes.Orange;
-                ErrorText.Text = "Configuración incompleta. Revisá las Opciones.";
-                RunButton.IsEnabled = false;
                 return;
+            }
+
+            hasProvider = true;
+
+            try
+            {
+                if (settings.Provider == AgentProviderType.JanServer)
+                {
+                    hasBaseUrl = !string.IsNullOrWhiteSpace(settings.JanServer?.BaseUrl);
+                    hasModel = true;
+                }
+                else
+                {
+                    hasBaseUrl = !string.IsNullOrWhiteSpace(settings.LmStudio?.BaseUrl);
+                    hasModel = !string.IsNullOrWhiteSpace(settings.LmStudio?.Model);
+                }
+            }
+            catch
+            {
+                hasBaseUrl = false;
+                hasModel = false;
+            }
+        }
+
+        private static Package GetGlobalVsixPackage()
+        {
+            try
+            {
+                // Save/Load uses the same VS settings store, which requires a sited package.
+                // We get our AsyncPackage instance from the global service provider.
+                return Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(AgenteIALocalVSIXPackage)) as Package;
+            }
+            catch
+            {
+                return null;
             }
         }
 
