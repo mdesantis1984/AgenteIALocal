@@ -5,7 +5,8 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Task = System.Threading.Tasks.Task;
 using AgenteIALocalVSIX.Commands;
-
+using System.IO;
+using System.Text;
 
 
 namespace AgenteIALocalVSIX
@@ -54,6 +55,52 @@ namespace AgenteIALocalVSIX
             // When initialized asynchronously, the current thread may be a background thread at this point.
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+            // Register a file-based logger early so AgentComposition and other components use it.
+            try
+            {
+                // local file logger to avoid direct dependency on LogFile symbol (files may not be included in csproj)
+                Action<string> fileLogger = (msg) =>
+                {
+                    try
+                    {
+                        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                        var logDir = Path.Combine(local ?? string.Empty, "AgenteIALocal", "logs");
+                        Directory.CreateDirectory(logDir);
+                        var logPath = Path.Combine(logDir, "AgenteIALocal.log");
+                        var line = DateTime.UtcNow.ToString("o") + " - " + (msg ?? string.Empty) + Environment.NewLine;
+                        File.AppendAllText(logPath, line, Encoding.UTF8);
+                    }
+                    catch
+                    {
+                        // never throw from logger
+                    }
+                };
+
+                AgentComposition.Logger = fileLogger;
+                AgentComposition.EnsureComposition();
+                if (AgentComposition.AgentService != null)
+                {
+                    AgentComposition.Logger?.Invoke("[AgenteIALocalVSIXPackage] Agent composition available.");
+                }
+                else
+                {
+                    AgentComposition.Logger?.Invoke("[AgenteIALocalVSIXPackage] Agent composition returned null AgentService.");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Ensure logging never throws; swallow exceptions if logger fails
+                try
+                {
+                    var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                    var logDir = Path.Combine(local ?? string.Empty, "AgenteIALocal", "logs");
+                    Directory.CreateDirectory(logDir);
+                    var logPath = Path.Combine(logDir, "AgenteIALocal.log");
+                    File.AppendAllText(logPath, DateTime.UtcNow.ToString("o") + " - " + "[AgenteIALocalVSIXPackage] Agent composition threw: " + ex + Environment.NewLine, Encoding.UTF8);
+                }
+                catch { }
+            }
 
             // Initialize commands (register menu commands). OpenAgenteIALocalCommand.InitializeAsync will add commands to the OleMenuCommandService.
             await OpenAgenteIALocalCommand.InitializeAsync(this);
