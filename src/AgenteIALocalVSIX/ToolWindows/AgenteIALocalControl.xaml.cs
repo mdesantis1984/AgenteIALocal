@@ -19,6 +19,15 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         private IAgentService agentService;
 
+        private IAgentSettingsProvider settingsProvider;
+
+        public AgenteIALocalControl(IAgentSettingsProvider settingsProvider)
+    : this()
+        {
+            // Constructor requerido por ToolWindow lifecycle
+        }
+
+
         public AgenteIALocalControl()
         {
             InitializeComponent();
@@ -49,6 +58,19 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             // Centralized decision: evaluate and display exactly one clear message for current configuration state
             EvaluateAndDisplayStatus();
+        }
+
+        public void AttachSettingsProvider(IAgentSettingsProvider provider)
+        {
+            settingsProvider = provider;
+
+            try
+            {
+                AgentComposition.Logger?.Info(
+                    "ToolWindowControl: SettingsProvider attached (" +
+                    (provider == null ? "null" : provider.GetType().Name) + ")");
+            }
+            catch { }
         }
 
         private void AgenteIALocalControl_Loaded(object sender, System.Windows.RoutedEventArgs e)
@@ -201,11 +223,17 @@ namespace AgenteIALocalVSIX.ToolWindows
             AgentSettings settings = null;
             try
             {
-                var pkg = GetGlobalVsixPackage();
-                if (pkg != null)
+                if (settingsProvider != null)
                 {
-                    var provider = new AgenteIALocalVSIX.Settings.VsWritableSettingsStoreAgentSettingsProvider(pkg);
-                    settings = provider.Load();
+                    settings = settingsProvider.Load();
+                }
+                else
+                {
+                    var pkg = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(AgenteIALocalVSIXPackage)) as AgenteIALocalVSIXPackage;
+                    if (pkg?.AgentSettingsProvider != null)
+                    {
+                        settings = pkg.AgentSettingsProvider.Load();
+                    }
                 }
             }
             catch
