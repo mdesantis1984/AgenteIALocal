@@ -8,12 +8,12 @@
 
 ### 1. Purpose of the document
 
-This document defines in a **exhaustive and binding** way the architecture, scope, phases and technical decisions of the **Agente IA Local (VSIX)** project.
+This document defines, in a **exhaustive and binding** way, the architecture, scope, phases, and technical decisions of the **Agente IA Local (VSIX)** project.
 
 Objectives:
 - Resume the project at any time without loss of context.
 - Avoid reopening decisions that have already been validated.
-- Serve as an architectural reference for development, maintenance and coordination with tools (Copilot).
+- Serve as an architectural reference for development, maintenance, and coordination with tools (Copilot).
 
 ---
 
@@ -39,7 +39,7 @@ Rule: **this baseline must not be broken**. Any feature is developed from a bran
 1. Project model: **classic VSIX** (NO modern SDK-style).
 2. Target framework: **.NET Framework 4.8**.
 
-[OBSOLETO]
+[DEPRECATED]
 - Note: The value "Target framework: .NET Framework 4.8" was left as a historical decision. In practice some projects in the workspace (especially the VSIX project of this iteration) target **.NET Framework 4.7.2** to keep compatibility with the current build environment. Keep this entry for historical traceability; when a single stable target is decided, the baseline will be updated.
 
 3. Build/Debug: **Visual Studio Stable** (VS 2022 or VS 2026 Stable).
@@ -49,7 +49,7 @@ Rule: **this baseline must not be broken**. Any feature is developed from a bran
 7. AI integration: **HTTP** using an **OpenAI-compatible** API.
 8. Primary provider in Phase 1: **LM Studio (local)**.
 9. Future remote endpoint planned: `https://ia.thiscloud.com.ar` (not implemented in Phase 1).
-10. Configuration in **Tools → Options**, not inside the ToolWindow.
+10. Configuration in **Tools → Options**, not inside the ToolWindow (except for an inline edit panel introduced in Sprint 3.3).
 
 ---
 
@@ -76,8 +76,8 @@ Includes:
 
 Excludes (Phase 1):
 - Configurable timeout (origin handles it).
-- Configuration inside the ToolWindow.
-- Advanced history.
+- Configuration inside of ToolWindow (except inline editing panel in Sprint 3.3).
+- Advanced conversation history.
 - Advanced tools/function calling and structured outputs (only planned).
 
 #### Phase 2 — UX
@@ -146,7 +146,7 @@ This point is part of the stable baseline.
 
 ---
 
-### 9. AI integration (LM Studio first)
+### 9. IA integration (LM Studio first)
 
 Decision:
 - Protocol: **HTTP REST**.
@@ -163,10 +163,10 @@ Base URL:
 
 Headers:
 - `Content-Type: application/json`
-- `Authorization: Bearer <ApiKey>` (although local may ignore it, it must exist for future remote)
+- `Authorization: Bearer <ApiKey>` (even if local ignores it, required for future remote)
 
 [Multiple providers]
-- The current design contemplates **multiple providers**. Besides LM Studio, there is support by configuration for `JanServer` (remote alternative) and selection is made at initialization time using `AgentSettings` (Provider type). The `AsyncPackage` performs manual composition: reads `AgentSettings`, resolves types by reflection when applicable and assigns the concrete implementation to `AgentComposition.AgentService`.
+- The current design contemplates **multiple providers**. Besides LM Studio, there is support by configuration for `JanServer` (remote alternative) and selection is made at initialization time using the `AgentSettings` (Provider type). The `AsyncPackage` performs manual composition: reads `AgentSettings`, resolves types by reflection when applicable and assigns the concrete implementation to `AgentComposition.AgentService`.
 
 ---
 
@@ -179,11 +179,11 @@ Confirmed scope:
 4. Timeout configurable: **No** (handled by the origin)
 5. Persistence: **Yes** (WritableSettingsStore)
 6. UI in Tools → Options: **Yes**
-7. Config UI in ToolWindow: **No**
+7. Config UI in ToolWindow: **No (except inline editing panel in Sprint 3.3)**
 
 Persistence:
 - `WritableSettingsStore` (UserSettings)
-- Stable section/key (for example: `AgenteIALocal`)
+- Stable section/key (e.g., `AgenteIALocal`)
 
 ---
 
@@ -202,11 +202,6 @@ Minimum structure:
 
 Rules:
 - If Base URL or Model is missing → disable Send and show instruction: “Configure in Tools → Options”.
-
-#### Options
-
-Objective:
-- Persistently configure the endpoint and credentials.
 
 ---
 
@@ -238,37 +233,26 @@ Rules:
 
 ---
 
-### 13. Phase 1 task plan (order)
+### Sprint 3.3 — Settings persistence and inline UI
 
-**Phase 1.1 — Infrastructure settings/persistence**
-- `AgentSettings` (BaseUrl, Model, ApiKey)
-- Provider with `WritableSettingsStore`
+In Sprint 3.3 we implemented a versioned `settings.json` (schema `v1`) stored at `%LOCALAPPDATA%\\AgenteIALocal\\settings.json`. The file contains an array of `servers`, optional `globalSettings`, optional `taskProfiles`, and a top-level `activeServerId` field. A default server entry targeting LM Studio (`lmstudio-local`) is created when the file is missing. The defaults aim for LM Studio local usage with `baseUrl: http://127.0.0.1:8080` and empty `apiKey`.
 
-**Phase 1.2 — Options Page**
-- Tools → Options
-- Simple bindings
+A resilient `AgentSettingsStore` was added to the VSIX to load and save the JSON file. Key properties:
+- Preserves unknown fields by keeping a raw `JObject` and writing back unchanged fields when saving.
+- Never throws to the UI; errors result in safe defaults being returned and attempted persistence.
+- Allows reading and updating `activeServerId` and per-server `baseUrl`, `model`, and `apiKey`.
 
-**Phase 1.3 — OpenAI-compatible HTTP client**
-- Implementation `HttpAgentClient`
-- Request to `chat/completions`
+An inline settings panel was added to the ToolWindow to allow limited editing of the active server configuration (activeServerId, baseUrl, model, apiKey) and explicitly save them back to `settings.json`. The full Options page (`Tools → Options → Agente IA Local`) remains available for simpler per-user settings persisted via `WritableSettingsStore`.
 
-**Phase 1.4 — Minimal integration in ToolWindow**
-- Test connection button
-- Send prompt and show response
+Architectural rationale:
+- Keep the baseline stable: composition remains manual and backend changes are out of scope for Sprint 3.3.
+- Provide a simple UI path to edit critical connection properties without exposing the entire configuration model in the ToolWindow.
 
 ---
 
-### 14. Versioning, Git and releases
+### 13. Non-regression checklist (updated)
 
-- Do not work on tags.
-- Create branches from `vsix-stable-baseline`.
-- Increment version in `source.extension.vsixmanifest` per milestone.
-
----
-
-### 15. Non-regression checklist
-
-Before each relevant commit:
+Before merging changes from Sprint 3.3:
 - ToolWindow opens.
 - Command executes.
 - Package autoload active.
@@ -277,307 +261,4 @@ Before each relevant commit:
 
 ---
 
-## 🇺🇸 English
-
-### 1. Document purpose
-
-This document defines, in a **binding and exhaustive** way, the architecture, scope, phases, and technical decisions of the **Agente IA Local (VSIX)** project.
-
-Goals:
-- Resume the project at any time without losing context.
-- Prevent reopening validated decisions.
-- Provide an architectural reference for development, maintenance, and tooling coordination (Copilot).
-
----
-
-### 2. Current status and stable baseline
-
-There is a stable baseline, tagged and published as:
-- Tag: **`vsix-stable-baseline`**
-
-This milestone guarantees:
-- A working classic VSIX.
-- `AsyncPackage` loads properly via `ProvideAutoLoad`.
-- Commands are registered and executed.
-- The ToolWindow opens correctly.
-- No temporary diagnostic hacks remain.
-- A clean repository state.
-
-Rule: **do not break this baseline**. All features must be developed on branches created from this point.
-
----
-
-### 3. Closed technical decisions (DO NOT reopen)
-
-1. Project model: **classic VSIX** (NO modern SDK-style VSIX).
-2. Target framework: **.NET Framework 4.8**.
-
-[OBSOLETO]
-- Note: The item "Target framework: .NET Framework 4.8" remains documented as a historical decision. In practice, some projects in the workspace (notably the VSIX project in the current iteration) target **.NET Framework 4.7.2** to maintain compatibility with the current build environment. Keep this entry for historical traceability; update the baseline when a single stable target is selected.
-
-3. Build/Debug: **Visual Studio Stable** only (VS 2022 or VS 2026 Stable).
-4. Visual Studio Insiders: only for installing/testing a built `.vsix`, not for build/debug.
-5. Package autoload is mandatory: `ProvideAutoLoad` must be present.
-6. Architecture: **Clean Architecture** layering.
-7. IA integration: **HTTP** using an **OpenAI-compatible** API.
-8. Phase 1 primary provider: **LM Studio (local)**.
-9. Future remote endpoint planned: `https://ia.thiscloud.com.ar` (not implemented in Phase 1).
-10. Configuration lives in **Tools → Options**, not inside the ToolWindow.
-
----
-
-### 4. Product scope
-
-The product follows a combined scope:
-- **C (first):** a controlled technical prototype to validate architecture, IA integration, and flow.
-- **B (later):** evolve into a publishable Marketplace-ready extension with hardening and standards.
-
----
-
-### 5. Phase plan
-
-#### Phase 1 — Functional IA prototype (primary goal: local IA)
-
-Goal:
-- Robust IA integration over HTTP, with LM Studio as the primary provider.
-
-Includes:
-- OpenAI-compatible HTTP client (chat completions as the base).
-- Persistent configuration (Base URL, Model, API Key).
-- Options Page (Tools → Options → Agente IA Local).
-- Minimal functional ToolWindow (prompt → visible response).
-
-Excludes (Phase 1):
-- Configurable timeouts (handled by the origin).
-- Configuration UI inside the ToolWindow.
-- Advanced conversation history.
-- Advanced tools/function calling and structured outputs (planned only).
-
-#### Phase 2 — UX
-
-Goal:
-- Improve user experience: states, UI streaming, clearer errors, layout.
-
-#### Phase 3 — Publishable
-
-Goal:
-- Hardening, versioning, compatibility, final docs, release criteria.
-
----
-
-### 6. Layered architecture (Clean Architecture)
-
-Expected layers:
-- **AgenteIALocalVSIX**: VSIX Package, Commands, ToolWindow, Options.
-- **Core**: contracts, entities, value objects.
-- **Application**: use cases, orchestration.
-- **Infrastructure**: HTTP clients, adapters, concrete persistence.
-- **UI**: XAML/WPF for the ToolWindow.
-
-Rule:
-- UI depends on Application.
-- Application depends on Core.
-- Infrastructure implements interfaces defined by Core/Application.
-- UI must not access Infrastructure directly.
-
----
-
-### 7. Classic VSIX components
-
-- `AsyncPackage`:
-  - Initializes and registers commands.
-  - Registers the ToolWindow.
-  - Must autoload in common contexts.
-- VSCT:
-  - Defines groups, commands, and placements.
-  - Can show menu entries even when the Package is not loaded.
-- Command handler:
-  - Registered via `OleMenuCommandService`.
-  - Executes `ShowToolWindowAsync`.
-- ToolWindowPane:
-  - Hosts a WPF control (XAML).
-
-[Practical note]
-- The proven registration pattern for commands mirrors a functional example: `Instance` property, `InitializeAsync` that runs `ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync`, obtain `OleMenuCommandService` and create `new MenuCommand(...)/AddCommand`. Strictly following this pattern ensures that clicking the menu invokes the handler's `Execute`.
-
----
-
-### 8. Package autoload (critical)
-
-Validated operational fact:
-- VSCT can show a menu entry.
-- But if the Package does not load, the command is not registered and **will not execute**.
-
-Therefore, the Package must autoload in typical contexts:
-- `UIContextGuids80.NoSolution`
-- `UIContextGuids80.SolutionExists`
-
-This requirement is part of the stable baseline.
-
----
-
-### 9. IA integration (LM Studio first)
-
-Decision:
-- Protocol: **HTTP REST**.
-- API: **OpenAI-compatible**.
-
-Planned endpoints (LM Studio):
-- `chat/completions` (Phase 1 primary)
-- Streaming `chat/completions` (incremental enablement)
-- `responses`, `tools`, `structured output`, `embeddings` (future)
-
-Base URL:
-- Local: `http://localhost:<port>` (LM Studio)
-- Future remote: `https://ia.thiscloud.com.ar`
-
-Headers:
-- `Content-Type: application/json`
-- `Authorization: Bearer <ApiKey>` (even if local ignores it, required for future remote)
-
----
-
-### 10. Configuration (Tools → Options)
-
-Confirmed scope:
-1. Configurable base URL: **Yes**
-2. Configurable model (free string): **Yes**
-3. API Key / token: **Yes**
-4. Configurable timeout: **No** (origin-managed)
-5. Persistence: **Yes** (`WritableSettingsStore`)
-6. UI in Tools → Options: **Yes**
-7. Config UI in ToolWindow: **No**
-
-Persistence:
-- `WritableSettingsStore` (UserSettings)
-- Stable section/key (e.g., `AgenteIALocal`)
-
----
-
-### 11. UI/UX — Phase 1
-
-#### ToolWindow (Agente IA Local)
-
-Goal:
-- Send requests to the LLM and display results.
-
-Minimal structure:
-- Header status: `Not configured / Ready / Error`
-- Multiline prompt TextBox
-- Buttons: `Send`, `Test connection`, `Clear`
-- Response area (scrollable text)
-
-Rules:
-- If Base URL or Model is missing, disable Send and show: “Configure in Tools → Options”.
-
----
-
-### 12. Error handling and logging
-
-Errors to cover (Phase 1):
-- Empty/invalid URL
-- Empty model
-- 401/403 (invalid API key)
-- 404 (incompatible endpoint)
-- 5xx
-- Non-compatible JSON
-- No connection
-
-Rules:
-- Show a short actionable error in the ToolWindow.
-- Log internally via ActivityLog.
-- Do not keep permanent diagnostic MessageBoxes.
-
-[Logging and abstractions]
-- An `IAgentLogger` abstraction (`AgentComposition.Logger`) and a concrete file logger implementation (`FileAgentLogger`) were introduced. The file logger writes to:
-  `%LOCALAPPDATA%\\AgenteIALocal\\logs\\AgenteIALocal.log`.
-- Logging is used extensively across package initialization, command registration, and ToolWindow operations to provide traceability and to simplify debugging in Experimental Instance.
-- Operational rule: capture exceptions, log error details, and avoid rethrowing from Package initialization to keep VS stable.
-
----
-
-### 13. Phase 1 task plan (order)
-
-**Phase 1.1 — Settings & persistence**
-- `AgentSettings` (BaseUrl, Model, ApiKey)
-- Provider using `WritableSettingsStore`
-
-**Phase 1.2 — Options Page**
-- Tools → Options
-- Simple bindings
-
-**Phase 1.3 — OpenAI-compatible HTTP client**
-- `HttpAgentClient`
-- `chat/completions` request
-
-**Phase 1.4 — Minimal ToolWindow end-to-end**
-- Test connection button
-- Send prompt and show response
-
----
-
-### 14. Versioning, Git and releases
-
-- Do not work on tags.
-- Create branches from `vsix-stable-baseline`.
-- Bump version in `source.extension.vsixmanifest` per milestone.
-
----
-
-### 15. Non-regression checklist
-
-Before each relevant commit:
-- ToolWindow opens.
-- Command executes.
-- Package autoload active.
-- Build passes (VS Stable).
-- No temporary MessageBoxes.
-
----
-
-
----
-
-### Recent decisions and architectural notes (incremental additions)
-
-- VSCT ↔ Package wiring: GUID mismatches that prevented handlers' `Execute` from being invoked were corrected. Consistency validation and logging were added during `Package.InitializeAsync`.
-- Manual composition of `AgentService`: due to classic VSIX constraints a DI container is not used. The `AsyncPackage` reads `AgentSettings` at initialization time and composes `AgentClient`/`AgentService` manually (reflection conditioned by Provider) and assigns the instance to `AgentComposition.AgentService`.
-- Multi-provider support: `LmStudio` and `JanServer` are conceptually supported. Selection is based on `AgentSettings.Provider` and type resolution during Package initialization.
-- Persistent logging: `FileAgentLogger` was added for local traces and integrated with `ActivityLogHelper` when necessary.
-- Fail-safe in initialization: `Package.InitializeAsync` avoids rethrowing fatal exceptions, logs errors and continues in a safe state.
-
-[Operational note]
-- Do not use DI containers inside the classic VSIX: the accepted practice in this project is manual composition in the Package and exposure through `AgentComposition` to minimize footprint and avoid host lifecycle issues.
-
----
-
 If there are additional architecture items that need clarifying (diagrams, sequence flows or decision records), add them as incremental PRs referencing this document and linking to the `vsix-stable-baseline` tag.
-
----
-
-## Sprint 2 — Architectural Status and Decisions
-
-Confirmed runtime diagnosis
-
-- `AgenteIALocal.Infrastructure.dll` was observed to be not loaded/packaged at VSIX runtime during Experimental Instance testing.
-- Reflection-based resolution of infrastructure types failed (Type.GetType(...) returned null for infrastructure types expected to be present).
-- As a consequence, the `AgentService` composition did not complete and remained `null` at runtime.
-
-Impact
-
-- The backend cannot be composed, preventing end-to-end agent execution.
-- The UI correctly reports the backend as unavailable (ToolWindow displays the appropriate status messages and disables actions that require the service).
-
-Non-goals for Sprint 2
-
-- Packaging the backend or changing VSIX packaging rules was intentionally out of scope for Sprint 2. The sprint focused on UI/UX and observability.
-
-Decision
-
-- Create a focused Sprint 3 to address VSIX packaging and Infrastructure loading issues.
-- Treat the packaging and infrastructure loading task as technical debt to be resolved at the packaging/composition level (not via UI workarounds).
-
-Architectural note
-
-- Avoid applying UI-side workarounds to mask missing infrastructure assemblies; the correct fix must be applied at the VSIX packaging and composition level so that `AgenteIALocal.Infrastructure` is present and loadable at runtime.
-- The fix will likely involve ensuring the assembly is included in the VSIX container, verifying project references and MSBuild packaging properties, and validating runtime probing paths or assembly resolution strategies if necessary.

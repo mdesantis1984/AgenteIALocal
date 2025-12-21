@@ -49,7 +49,7 @@ Regla: **este baseline no debe romperse**. Cualquier feature se desarrolla desde
 7. Integración IA: **HTTP** usando API **OpenAI-compatible**.
 8. Proveedor principal en Fase 1: **LM Studio (local)**.
 9. Endpoint remoto futuro previsto: `https://ia.thiscloud.com.ar` (sin implementarlo en Fase 1).
-10. Configuración en **Tools → Options**, no dentro de la ToolWindow.
+10. Configuración en **Tools → Options**, no dentro de la ToolWindow (salvo panel inline de edición controlada en Sprint 3.3).
 
 ---
 
@@ -76,7 +76,7 @@ Incluye:
 
 Excluye (Fase 1):
 - Timeout configurable (lo maneja el origen).
-- Configuración dentro de ToolWindow.
+- Configuración dentro de ToolWindow (salvo panel inline controlado en Sprint 3.3).
 - Historial avanzado.
 - Tools/function calling avanzado y structured outputs (solo previstos).
 
