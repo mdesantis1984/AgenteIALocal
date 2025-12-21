@@ -1,14 +1,13 @@
 using System.Windows.Controls;
+using AgenteIALocalVSIX.Contracts;
+using AgenteIALocalVSIX.Execution;
 using System.Threading.Tasks;
 using System;
 using Newtonsoft.Json;
-using AgenteIALocal.Core.Agents;
-using AgenteIALocal.Application.Agents;
-using AgenteIALocal.Core.Settings;
-using Microsoft.VisualStudio.Shell;
-using System.Windows.Media;
+using System.Diagnostics;
 using System.IO;
-using System.Windows;
+using System.Text;
+using System.Threading;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -17,330 +16,162 @@ namespace AgenteIALocalVSIX.ToolWindows
         private enum UiState { Idle, Running, Completed, Error }
         private UiState state = UiState.Idle;
 
-        private IAgentService agentService;
-
-        private IAgentSettingsProvider settingsProvider;
-
-        public AgenteIALocalControl(IAgentSettingsProvider settingsProvider)
-    : this()
-        {
-            // Constructor requerido por ToolWindow lifecycle
-        }
-
+        private CancellationTokenSource logRefreshCts;
 
         public AgenteIALocalControl()
         {
             InitializeComponent();
             UpdateUiState(UiState.Idle);
 
+            // Do not override AgentComposition.Logger here; package provides a file-based logger.
+
+            // Attempt to set initial solution info using composition if available
             try
             {
-                AgentComposition.Logger?.Info("ToolWindowControl: ctor");
-            }
-            catch { }
-
-            try
-            {
-                this.Loaded += AgenteIALocalControl_Loaded;
-            }
-            catch { }
-
-            try
-            {
-                agentService = AgentComposition.AgentService;
-                AgentComposition.Logger?.Info("ToolWindowControl: AgentService=" + (agentService == null ? "null" : agentService.GetType().FullName));
-            }
-            catch (Exception ex)
-            {
-                agentService = null;
-                try { AgentComposition.Logger?.Error("ToolWindowControl: AgentService read failed", ex); } catch { }
-            }
-
-            // Centralized decision: evaluate and display exactly one clear message for current configuration state
-            EvaluateAndDisplayStatus();
-        }
-
-        public void AttachSettingsProvider(IAgentSettingsProvider provider)
-        {
-            settingsProvider = provider;
-
-            try
-            {
-                AgentComposition.Logger?.Info(
-                    "ToolWindowControl: SettingsProvider attached (" +
-                    (provider == null ? "null" : provider.GetType().Name) + ")");
-            }
-            catch { }
-        }
-
-        private void AgenteIALocalControl_Loaded(object sender, System.Windows.RoutedEventArgs e)
-        {
-            try
-            {
-                AgentComposition.Logger?.Info("ToolWindowControl: Loaded");
-            }
-            catch { }
-
-            // Re-evaluate status when control is loaded in case options changed
-            EvaluateAndDisplayStatus();
-
-            // Refresh log view on load
-            RefreshLogView();
-        }
-
-        // Tab selection changed - when Log tab is selected, load the log file content
-        private void MainTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            try
-            {
-                if (MainTabControl.SelectedItem is TabItem ti && ti.Header != null && ti.Header.ToString() == "Log")
+                AgentComposition.EnsureComposition();
+                if (AgentComposition.AgentService != null)
                 {
-                    LoadLogFile();
-                }
-            }
-            catch { }
-        }
-
-        private void LoadLogFile()
-        {
-            var path = GetLogFilePath();
-            LogPathText.Text = path ?? "(sin ruta)";
-
-            if (string.IsNullOrEmpty(path) || !File.Exists(path))
-            {
-                LogViewerTextBox.Text = "Log vacío / no encontrado";
-                LogSizeText.Text = "0 KB";
-                CopyLogButton.IsEnabled = false;
-                DeleteLogButton.IsEnabled = false;
-                return;
-            }
-
-            try
-            {
-                var text = File.ReadAllText(path);
-                LogViewerTextBox.Text = string.IsNullOrEmpty(text) ? "Log vacío / no encontrado" : text;
-
-                var fi = new FileInfo(path);
-                LogSizeText.Text = FormatSize(fi.Length);
-
-                CopyLogButton.IsEnabled = true;
-                DeleteLogButton.IsEnabled = true;
-            }
-            catch
-            {
-                LogViewerTextBox.Text = "No se pudo leer el archivo de log.";
-                LogSizeText.Text = "0 KB";
-                CopyLogButton.IsEnabled = false;
-                DeleteLogButton.IsEnabled = false;
-            }
-        }
-
-        private string GetLogFilePath()
-        {
-            try
-            {
-                // Replicate the same path logic used by FileAgentLogger to avoid hardcoding a different path
-                var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) ?? string.Empty;
-                var dir = Path.Combine(baseDir, "AgenteIALocal", "logs");
-                var logFilePath = Path.Combine(dir, "AgenteIALocal.log");
-                return logFilePath;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static string FormatSize(long bytes)
-        {
-            try
-            {
-                if (bytes < 1024) return bytes + " B";
-                double kb = bytes / 1024.0;
-                if (kb < 1024) return Math.Round(kb, 1) + " KB";
-                double mb = kb / 1024.0;
-                return Math.Round(mb, 2) + " MB";
-            }
-            catch
-            {
-                return "0 KB";
-            }
-        }
-
-        private void CopyLogButton_Click(object sender, System.Windows.RoutedEventArgs e)
-        {
-            try
-            {
-                var text = LogViewerTextBox.Text ?? string.Empty;
-                if (string.IsNullOrEmpty(text)) return;
-                Clipboard.SetText(text);
-                try { AgentComposition.Logger?.Info("ToolWindowControl: Log copied to clipboard"); } catch { }
-            }
-            catch
-            {
-                // fail-safe: do not show raw exceptions
-            }
-        }
-
-        private void DeleteLogButton_Click(object sender, System.Windows.RoutedEventArgs e)
-        {
-            var path = GetLogFilePath();
-            if (string.IsNullOrEmpty(path)) return;
-
-            try
-            {
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                    try { AgentComposition.Logger?.Info("ToolWindowControl: Log file deleted: " + path); } catch { }
-                }
-
-                // Update UI
-                LogViewerTextBox.Text = string.Empty;
-                LogSizeText.Text = "0 KB";
-                CopyLogButton.IsEnabled = false;
-                DeleteLogButton.IsEnabled = false;
-            }
-            catch
-            {
-                // If deletion failed, keep UI consistent but do not show exception details
-                LogViewerTextBox.Text = "No se pudo borrar el archivo de log.";
-            }
-        }
-
-        internal void RefreshLogView()
-        {
-            try
-            {
-                LogViewer?.Reload();
-                AgentComposition.Logger?.Info(
-                    "ToolWindowControl: Log view refreshed");
-            }
-            catch (Exception ex)
-            {
-                try
-                {
-                    AgentComposition.Logger?.Error(
-                        "ToolWindowControl: Log refresh failed", ex);
-                }
-                catch { }
-            }
-        }
-
-        // Adapter exposing a Reload method that triggers existing LoadLogFile
-        private class LogViewerAdapter
-        {
-            private readonly AgenteIALocalControl parent;
-            public LogViewerAdapter(AgenteIALocalControl parent) { this.parent = parent; }
-            public void Reload() { parent.LoadLogFile(); }
-        }
-
-        private LogViewerAdapter LogViewer => new LogViewerAdapter(this);
-
-        public void EvaluateAndDisplayStatus()
-        {
-            // Default reset
-            ErrorText.Text = string.Empty;
-            ErrorText.Foreground = Brushes.Red;
-
-            // State 3 — Backend no disponible
-            if (agentService == null)
-            {
-                StateText.Text = "Backend: n/a";
-                ErrorText.Text = "Backend no disponible. Verificá la configuración o el proveedor.";
-                RunButton.IsEnabled = false;
-                return;
-            }
-
-            AgentSettings settings = null;
-            try
-            {
-                if (settingsProvider != null)
-                {
-                    settings = settingsProvider.Load();
+                    Log("AgentService available at control construction.");
                 }
                 else
                 {
-                    var pkg = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(AgenteIALocalVSIXPackage)) as AgenteIALocalVSIXPackage;
-                    if (pkg?.AgentSettingsProvider != null)
-                    {
-                        settings = pkg.AgentSettingsProvider.Load();
-                    }
+                    Log("AgentService is null at control construction.");
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                settings = null;
+                Trace.TraceError($"[AgenteIALocalControl] Error ensuring composition: {ex}");
             }
 
-            bool hasProvider;
-            bool hasBaseUrl;
-            bool hasModel;
-            ValidateSettings(settings, out hasProvider, out hasBaseUrl, out hasModel);
+            // Load current log file content into the Log tab asynchronously
+            StartLogRefreshLoop();
 
-            if (hasProvider && hasBaseUrl && hasModel)
-            {
-                // Estado 1 — Configurado
-                StateText.Text = "Configuración: OK";
-                ErrorText.Foreground = Brushes.Green;
-                ErrorText.Text = "Configuración OK. Listo para enviar mensajes.";
-                RunButton.IsEnabled = true;
-                return;
-            }
-
-            // Estado 2 — Configuración incompleta
-            StateText.Text = "Configuración: incompleta";
-            ErrorText.Foreground = Brushes.Orange;
-            ErrorText.Text = "Configuración incompleta. Revisá las Opciones.";
-            RunButton.IsEnabled = false;
-        }
-
-        private static void ValidateSettings(AgentSettings settings, out bool hasProvider, out bool hasBaseUrl, out bool hasModel)
-        {
-            hasProvider = false;
-            hasBaseUrl = false;
-            hasModel = false;
-
-            if (settings == null)
-            {
-                return;
-            }
-
-            hasProvider = true;
-
+            // Load current settings into settings panel (but keep panel hidden)
             try
             {
-                if (settings.Provider == AgentProviderType.JanServer)
+                var settings = AgentSettingsStore.Load();
+                PopulateSettingsPanel(settings);
+            }
+            catch { }
+        }
+
+        private void PopulateSettingsPanel(AgentSettings settings)
+        {
+            if (settings == null) return;
+
+            ActiveServerIdTextBox.Text = settings.ActiveServerId ?? string.Empty;
+
+            // find active server details
+            if (!string.IsNullOrEmpty(settings.ActiveServerId) && settings.Servers != null)
+            {
+                var srv = settings.Servers.Find(s => s.Id == settings.ActiveServerId);
+                if (srv != null)
                 {
-                    // JanServer: validate ONLY JanServer.BaseUrl; do NOT require model
-                    hasBaseUrl = !string.IsNullOrWhiteSpace(settings.JanServer?.BaseUrl);
-                    hasModel = true;
-                    return;
+                    ServerBaseUrlTextBox.Text = srv.BaseUrl ?? string.Empty;
+                    ServerModelTextBox.Text = srv.Model ?? string.Empty;
+                    ServerApiKeyTextBox.Text = srv.ApiKey ?? string.Empty;
                 }
-
-                // LmStudio: validate ONLY LM Studio settings; completely ignore JanServer
-                hasBaseUrl = !string.IsNullOrWhiteSpace(settings.LmStudio?.BaseUrl);
-                hasModel = !string.IsNullOrWhiteSpace(settings.LmStudio?.Model);
             }
-            catch
+            else if (settings.Servers != null && settings.Servers.Count > 0)
             {
-                hasBaseUrl = false;
-                hasModel = false;
+                var srv = settings.Servers[0];
+                ServerBaseUrlTextBox.Text = srv.BaseUrl ?? string.Empty;
+                ServerModelTextBox.Text = srv.Model ?? string.Empty;
+                ServerApiKeyTextBox.Text = srv.ApiKey ?? string.Empty;
+                ActiveServerIdTextBox.Text = srv.Id ?? string.Empty;
             }
         }
 
-        private static Package GetGlobalVsixPackage()
+        private void SettingsButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            SettingsPanel.Visibility = SettingsPanel.Visibility == System.Windows.Visibility.Visible ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+        }
+
+        private void CloseSettingsButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            SettingsPanel.Visibility = System.Windows.Visibility.Collapsed;
+        }
+
+        private void SaveSettingsButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
             try
             {
-                // Save/Load uses the same VS settings store, which requires a sited package.
-                // We get our AsyncPackage instance from the global service provider.
-                return Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(AgenteIALocalVSIXPackage)) as Package;
+                var settings = AgentSettingsStore.Load();
+                if (settings == null) settings = new AgentSettings();
+
+                // update active server id
+                settings.ActiveServerId = ActiveServerIdTextBox.Text ?? string.Empty;
+
+                // ensure server exists or update existing
+                if (settings.Servers == null) settings.Servers = new System.Collections.Generic.List<ServerConfig>();
+
+                var srv = settings.Servers.Find(s => s.Id == settings.ActiveServerId);
+                if (srv == null)
+                {
+                    srv = new ServerConfig { Id = settings.ActiveServerId, CreatedAt = DateTime.UtcNow };
+                    settings.Servers.Add(srv);
+                }
+
+                srv.BaseUrl = ServerBaseUrlTextBox.Text ?? string.Empty;
+                srv.Model = ServerModelTextBox.Text ?? string.Empty;
+                srv.ApiKey = ServerApiKeyTextBox.Text ?? string.Empty;
+
+                AgentSettingsStore.Save(settings);
+
+                // feedback
+                Log("Settings saved.");
             }
             catch
             {
-                return null;
+                // never throw from UI
             }
+        }
+
+        private void StartLogRefreshLoop()
+        {
+            // Cancel any previous
+            logRefreshCts?.Cancel();
+            logRefreshCts = new CancellationTokenSource();
+            var ct = logRefreshCts.Token;
+
+            // Start a background task that refreshes the log every 2 seconds without blocking the UI
+            Task.Run(async () =>
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    try
+                    {
+                        var content = await Task.Run(() => ReadLogFile());
+                        this.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            if (string.IsNullOrEmpty(content))
+                            {
+                                LogText.Text = "(no logs)";
+                            }
+                            else
+                            {
+                                LogText.Text = content;
+                            }
+                        }));
+                    }
+                    catch
+                    {
+                        this.Dispatcher.BeginInvoke(new Action(() => { LogText.Text = "(unable to read logs)"; }));
+                    }
+
+                    try { await Task.Delay(2000, ct); } catch { }
+                }
+            }, ct);
+        }
+
+        private void StopLogRefreshLoop()
+        {
+            try
+            {
+                logRefreshCts?.Cancel();
+                logRefreshCts = null;
+            }
+            catch { }
         }
 
         public void SetSolutionInfo(string solutionName, int projectCount)
@@ -348,22 +179,16 @@ namespace AgenteIALocalVSIX.ToolWindows
             SolutionNameText.Text = solutionName;
             ProjectCountText.Text = projectCount.ToString();
 
-            // Keep existing request generation (not modifying contracts)
+            // Prepare initial request but do not execute
             var req = BuildRequest(solutionName, projectCount);
-            PromptTextBox.Text = req.Action + " - " + req.SolutionName;
-            ResponseTextBox.Text = string.Empty;
-            LogText.Text = "";
-
-            try
-            {
-                AgentComposition.Logger?.Info("ToolWindowControl: SetSolutionInfo solution='" + (solutionName ?? string.Empty) + "' projects=" + projectCount);
-            }
-            catch { }
+            RequestJsonText.Text = SerializeToJson(req);
+            ResponseJsonText.Text = string.Empty;
+            // Do not clear LogText here; keep file-backed content
         }
 
-        private Contracts.CopilotRequest BuildRequest(string solutionName, int projectCount)
+        private CopilotRequest BuildRequest(string solutionName, int projectCount)
         {
-            return new Contracts.CopilotRequest
+            return new CopilotRequest
             {
                 RequestId = System.Guid.NewGuid().ToString(),
                 Action = "mock-execute",
@@ -388,127 +213,224 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         private async void RunButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            try { AgentComposition.Logger?.Info("ToolWindowControl: RunButton clicked"); } catch { }
-
             if (state == UiState.Running) return;
 
+            Log("Run clicked.");
             UpdateUiState(UiState.Running);
-            ErrorText.Text = string.Empty;
             Log("Execution started.");
 
             try
             {
-                var prompt = PromptTextBox.Text ?? string.Empty;
+                // Ensure composition is available before attempting execution
+                AgentComposition.EnsureComposition();
 
-                try
+                var req = JsonConvert.DeserializeObject<CopilotRequest>(RequestJsonText.Text);
+                if (req == null)
                 {
-                    AgentComposition.Logger?.Info($"ToolWindowControl: Prompt length = {prompt.Length}");
-                }
-                catch { }
-
-                if (string.IsNullOrWhiteSpace(prompt))
-                {
-                    UpdateUiState(UiState.Error);
-                    ErrorText.Text = "Prompt vacío.";
-                    Log("Execution error: Prompt is empty.");
-                    return;
+                    // Build minimal request if parsing failed
+                    req = BuildRequest(SolutionNameText.Text ?? string.Empty, int.TryParse(ProjectCountText.Text, out var pc) ? pc : 0);
                 }
 
-                if (agentService == null)
+                // Execute using composed AgentService if available; otherwise fall back to direct MockCopilotExecutor
+                var response = await Task.Run(() =>
                 {
-                    ErrorText.Text = "Agent no configurado. Revisá Tools → Options → Agente IA Local.";
-                    UpdateUiState(UiState.Error);
-
                     try
                     {
-                        AgentComposition.Logger?.Warn("ToolWindowControl: Run clicked but AgentService is NULL");
+                        if (AgentComposition.AgentService != null)
+                        {
+                            return AgentComposition.AgentService.Execute(req);
+                        }
+                        else
+                        {
+                            Log("AgentService not composed; using MockCopilotExecutor fallback.");
+                            return MockCopilotExecutor.Execute(req);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log("Execution exception in background task: " + ex.Message);
+                        throw;
+                    }
+                });
+
+                var respJson = SerializeToJson(response);
+
+                // Update UI on UI thread
+                this.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    ResponseJsonText.Text = respJson;
+                    UpdateUiState(UiState.Completed);
+                    Log("Execution completed successfully.");
+
+                    // Refresh log tab to show newly appended entries (immediately)
+                    try
+                    {
+                        var content = ReadLogFile();
+                        if (string.IsNullOrEmpty(content))
+                        {
+                            LogText.Text = "(no logs)";
+                        }
+                        else
+                        {
+                            LogText.Text = content;
+                        }
                     }
                     catch { }
-
-                    Log("Execution error: Agent service not available.");
-                    return;
-                }
-
-                AgentComposition.Logger?.Info("ToolWindowControl: AgentService.RunAsync start");
-                var resp = await agentService.RunAsync(prompt, System.Threading.CancellationToken.None);
-                AgentComposition.Logger?.Info("ToolWindowControl: AgentService.RunAsync end");
-
-                if (resp == null)
-                {
-                    UpdateUiState(UiState.Error);
-                    ErrorText.Text = "No response from agent.";
-                    AgentComposition.Logger?.Warn("ToolWindowControl: null response");
-                    return;
-                }
-
-                try
-                {
-                    AgentComposition.Logger?.Info($"ToolWindowControl: Agent response success = {resp.IsSuccess}");
-                }
-                catch { }
-
-                if (!resp.IsSuccess)
-                {
-                    UpdateUiState(UiState.Error);
-                    ErrorText.Text = resp.Error ?? "Agent returned error";
-                    ResponseTextBox.Text = string.Empty;
-                    AgentComposition.Logger?.Warn("ToolWindowControl: agent error=" + (resp.Error ?? string.Empty));
-                    return;
-                }
-
-                ResponseTextBox.Text = resp.Content ?? string.Empty;
-                UpdateUiState(UiState.Completed);
-                Log("Execution completed successfully.");
+                }));
             }
             catch (Exception ex)
             {
                 UpdateUiState(UiState.Error);
-                ErrorText.Text = ex.Message;
-                ResponseTextBox.Text = string.Empty;
-                Log("Execution error: " + ex.Message);
+                Log("Execution failed: " + ex.Message);
+                Trace.TraceError("[AgenteIALocalControl] Execution failed: " + ex);
+                ResponseJsonText.Text = "{ \"error\": \"Execution failed\" }";
 
-                try
-                {
-                    AgentComposition.Logger?.Error("ToolWindowControl: Error during RunAsync", ex);
-                }
-                catch { }
-            }
-            finally
-            {
-                // Re-evaluate status to ensure UI stays consistent after an execution attempt
-                EvaluateAndDisplayStatus();
+                // Attempt to refresh log view even on error
+                try { RefreshLogFromFile(); } catch { }
             }
         }
 
         private void ClearButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            PromptTextBox.Text = string.Empty;
-            ResponseTextBox.Text = string.Empty;
-            LogText.Text = string.Empty;
+            RequestJsonText.Text = string.Empty;
+            ResponseJsonText.Text = string.Empty;
+
+            // Clear the persistent log file and refresh view
+            try
+            {
+                ClearLogFile();
+            }
+            catch
+            {
+                // ensure UI does not throw
+            }
+
+            RefreshLogFromFile();
+
             UpdateUiState(UiState.Idle);
-
-            try { AgentComposition.Logger?.Info("ToolWindowControl: Clear click"); } catch { }
-
-            EvaluateAndDisplayStatus();
         }
 
-        private void OptionsButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        private void RefreshLogFromFile()
         {
             try
             {
-                var pkg = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(Microsoft.VisualStudio.Shell.Package)) as Package;
-                if (pkg != null)
+                var content = ReadLogFile();
+                // If file is empty, show placeholder
+                if (string.IsNullOrEmpty(content))
                 {
-                    pkg.ShowOptionPage(typeof(AgenteIALocalVSIX.Options.AgenteIALocalOptionsPage));
+                    LogText.Text = "(no logs)";
+                }
+                else
+                {
+                    LogText.Text = content;
                 }
             }
-            catch { }
+            catch
+            {
+                // never throw from UI refresh; show minimal info
+                LogText.Text = "(unable to read logs)";
+            }
         }
 
         private void Log(string message)
         {
             var ts = DateTime.UtcNow.ToString("o");
+            // Prepend to UI log view for immediate feedback
             LogText.Text = ts + " - " + message + "\n" + LogText.Text;
+
+            // Write to persistent log via composition logger or direct file writer
+            try
+            {
+                if (AgentComposition.Logger != null)
+                {
+                    try { AgentComposition.Logger.Invoke("[AgenteIALocalControl] " + message); } catch { }
+                }
+                else
+                {
+                    // fallback
+                    AppendLogFileLine("[AgenteIALocalControl] " + message);
+                }
+            }
+            catch
+            {
+                // never throw from logger
+            }
         }
+
+        // Helper methods to access the persistent log file without depending on LogFile.cs being in project
+        private static string GetLogFilePath()
+        {
+            try
+            {
+                var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var logDir = Path.Combine(local ?? string.Empty, "AgenteIALocal", "logs");
+                var logPath = Path.Combine(logDir, "AgenteIALocal.log");
+                return logPath;
+            }
+            catch
+            {
+                return Path.Combine(".", "logs", "AgenteIALocal.log");
+            }
+        }
+
+        private static string ReadLogFile()
+        {
+            try
+            {
+                var path = GetLogFilePath();
+                var dir = Path.GetDirectoryName(path);
+                if (!Directory.Exists(dir)) return string.Empty;
+                if (!File.Exists(path)) return string.Empty;
+                return File.ReadAllText(path, Encoding.UTF8);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static void AppendLogFileLine(string message)
+        {
+            try
+            {
+                var path = GetLogFilePath();
+                var dir = Path.GetDirectoryName(path);
+                Directory.CreateDirectory(dir);
+                var line = DateTime.UtcNow.ToString("o") + " - " + (message ?? string.Empty) + Environment.NewLine;
+                File.AppendAllText(path, line, Encoding.UTF8);
+            }
+            catch
+            {
+                // never throw
+            }
+        }
+
+        private static void ClearLogFile()
+        {
+            try
+            {
+                var path = GetLogFilePath();
+                var dir = Path.GetDirectoryName(path);
+                if (!Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+
+                if (File.Exists(path))
+                {
+                    using (var fs = new FileStream(path, FileMode.Truncate, FileAccess.Write)) { }
+                }
+                else
+                {
+                    using (var fs = new FileStream(path, FileMode.CreateNew)) { }
+                }
+            }
+            catch
+            {
+                // never throw
+            }
+        }
+
+
     }
 }

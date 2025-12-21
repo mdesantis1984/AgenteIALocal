@@ -10,6 +10,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{ED9CAEBE-2C7
 		src\README.en.md = src\README.en.md
 		src\README.es.md = src\README.es.md
 		src\README.md = src\README.md
+		src\Reglas.md = src\Reglas.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgenteIALocal.Application", "src\AgenteIALocal.Application\AgenteIALocal.Application.csproj", "{665CAEDD-900F-1F40-2E92-C4A28BEAC487}"

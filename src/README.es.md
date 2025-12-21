@@ -179,3 +179,25 @@ Documentación relacionada
 - `src/README.es.md` (este documento)
 - `src/README.en.md`
 - `src/README.architecture.md`
+
+---
+
+### Sprint 2.5 — UX Foundations (Closed)
+
+Objetivo
+
+- Principal: Consolidar los fundamentos UX orientados a Visual Studio para la ToolWindow y la experiencia del agente, asegurando estados claros y componentes de navegación y observabilidad listos para la siguiente iteración.
+
+Checklist (estado)
+
+- [DONE] Definición de principios UX para VSIX (no bloqueante, integrado al IDE)
+- [DONE] Diseño del layout base de la ToolWindow (zonas: input, contexto, acciones, salida)
+- [DONE] Estados de experiencia definidos (Idle, Running, Success, Error)
+- [DONE] Convenciones visuales de Visual Studio aplicadas (iconografía, espaciado, foco)
+- [DONE] Validación de flujos reales (lectura de archivo, ejecución de agente en modo mock)
+
+Notas
+
+- Esta sección se añade como cierre formal de Sprint 2.5 — UX Foundations. No se han eliminado ni reescrito contenidos previos; se documenta el estado cerrado y los entregables mínimos verificados. Las tareas de integración backend y pruebas finales de empaquetado quedan planificadas en Sprint 3 como deuda técnica.
+
+---
