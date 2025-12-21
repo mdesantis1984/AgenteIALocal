@@ -62,3 +62,19 @@ Cierre de Sprint 2: foco en experiencia de usuario, observabilidad y diagnóstic
 - [General documentation (EN)](src/README.en.md)
 - [Arquitectura (ES)](src/README.architecture.es.md)
 - [Architecture (EN)](src/README.architecture.en.md)
+
+## Sprint 2.5 — UX Foundations (Closed)
+
+### Objective
+- **Primary:** Consolidate Visual Studio–oriented UX foundations for the ToolWindow and the agent experience, ensuring clear states and navigation/observability components ready for the next iteration.
+
+### Checklist (status)
+- [x] Definition of UX principles for VSIX (non-blocking, IDE-integrated)
+- [x] Base layout design for the ToolWindow (zones: input, context, actions, output)
+- [x] Experience states defined (Idle, Running, Success, Error)
+- [x] Visual conventions of Visual Studio applied (iconography, spacing, focus)
+- [x] Validation of real flows (file reading, agent execution in mock mode)
+
+### Notes
+- This section mirrors the Sprint 2.5 closure documented in localized READMEs.
+- It is added to the index to reflect the latest completed sprint without changing the overall structure of this file.
