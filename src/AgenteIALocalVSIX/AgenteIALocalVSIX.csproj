@@ -49,6 +49,7 @@
   <!-- Compile -->
   <ItemGroup>
     <Compile Include="AgentComposition.cs" />
+    <Compile Include="AgentSettingsStore.cs" />
     <Compile Include="Application\ApplicationContextAdapter.cs" />
     <Compile Include="Application\VisualStudioWorkspaceProvider.cs" />
     <Compile Include="Commands\OpenAgenteIALocalCommand.cs" />
