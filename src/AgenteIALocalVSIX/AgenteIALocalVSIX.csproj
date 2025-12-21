@@ -53,6 +53,7 @@
     <Compile Include="Application\ApplicationContextAdapter.cs" />
     <Compile Include="Application\VisualStudioWorkspaceProvider.cs" />
     <Compile Include="Commands\OpenAgenteIALocalCommand.cs" />
+    <Compile Include="Commands\VsctConsistencyValidator.cs" />
     <Compile Include="Contracts\CopilotRequest.cs" />
     <Compile Include="Contracts\CopilotResponse.cs" />
     <Compile Include="Execution\MockCopilotExecutor.cs" />
