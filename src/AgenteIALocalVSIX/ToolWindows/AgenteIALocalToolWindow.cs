@@ -14,47 +14,8 @@ namespace AgenteIALocalVSIX.ToolWindows
     {
         public AgenteIALocalToolWindow() : base(null)
         {
-            try { AgentComposition.Logger?.Info("AgenteIALocalToolWindow: ctor"); } catch { }
-
             this.Caption = "Agente IA Local";
-
-            try
-            {
-                IAgentSettingsProvider settingsProvider = null;
-                try
-                {
-                    var pkg = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(AgenteIALocalVSIXPackage)) as AgenteIALocalVSIXPackage;
-                    settingsProvider = pkg?.AgentSettingsProvider;
-                }
-                catch
-                {
-                    settingsProvider = null;
-                }
-
-                if (settingsProvider == null)
-                {
-                    var pkgObj = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(Microsoft.VisualStudio.Shell.Package)) as Package;
-                    settingsProvider = new VsWritableSettingsStoreAgentSettingsProvider(pkgObj);
-                }
-
-                this.Content = new AgenteIALocalControl(settingsProvider);
-                try { AgentComposition.Logger?.Info("AgenteIALocalToolWindow: Content assigned"); } catch { }
-            }
-            catch (Exception ex)
-            {
-                try { AgentComposition.Logger?.Error("AgenteIALocalToolWindow: failed to assign Content", ex); } catch { }
-
-                try
-                {
-                    this.Content = new TextBlock
-                    {
-                        Text = "Agente IA Local: failed to create UI. See log file.",
-                        TextWrapping = System.Windows.TextWrapping.Wrap,
-                        Margin = new System.Windows.Thickness(12)
-                    };
-                }
-                catch { }
-            }
+            this.Content = new AgenteIALocalControl();
         }
 
         public override void OnToolWindowCreated()
@@ -75,6 +36,22 @@ namespace AgenteIALocalVSIX.ToolWindows
                 // Register this instance as the frame's notify helper.
                 frame.SetProperty((int)__VSFPROPID.VSFPROPID_ViewHelper, this);
             });
+
+            var pkg = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(AgenteIALocalVSIXPackage)) 
+                as AgenteIALocalVSIXPackage;
+
+            if (pkg?.AgentSettingsProvider != null)
+            {
+                var control = this.Content as AgenteIALocalControl;
+                control?.AttachSettingsProvider(pkg.AgentSettingsProvider);
+
+                try
+                {
+                    AgentComposition.Logger?.Info(
+                        "ToolWindow: SettingsProvider injected from Package");
+                }
+                catch { }
+            }
         }
 
         public int OnShow(int fShow)
