@@ -34,22 +34,22 @@
 
         <TabControl Grid.Row="3">
             <TabItem Header="Request">
-                <ScrollViewer>
-                    <GroupBox Header="Request JSON" Margin="0" Padding="0">
-                        <ScrollViewer Height="140">
-                            <TextBlock x:Name="RequestJsonText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" />
-                        </ScrollViewer>
-                    </GroupBox>
-                </ScrollViewer>
+                <GroupBox Header="Request" Margin="0" Padding="6">
+                    <TextBox x:Name="RequestJsonText"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             FontFamily="Consolas"
+                             FontSize="12"
+                             Height="140" />
+                </GroupBox>
             </TabItem>
             <TabItem Header="Response">
-                <ScrollViewer>
-                    <GroupBox Header="Response JSON" Margin="0" Padding="0">
-                        <ScrollViewer>
-                            <TextBlock x:Name="ResponseJsonText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" />
-                        </ScrollViewer>
-                    </GroupBox>
-                </ScrollViewer>
+                <GroupBox Header="Response JSON" Margin="0" Padding="6">
+                    <ScrollViewer>
+                        <TextBlock x:Name="ResponseJsonText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" />
+                    </ScrollViewer>
+                </GroupBox>
             </TabItem>
             <TabItem Header="Log">
                 <ScrollViewer>
