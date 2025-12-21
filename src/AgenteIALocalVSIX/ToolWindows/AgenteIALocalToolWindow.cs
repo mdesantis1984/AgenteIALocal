@@ -4,6 +4,8 @@ using Microsoft.VisualStudio.Shell;
 using System.Windows.Controls;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell.Interop;
+using AgenteIALocal.Core.Settings;
+using AgenteIALocalVSIX.Settings;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -18,7 +20,24 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             try
             {
-                this.Content = new AgenteIALocalControl();
+                IAgentSettingsProvider settingsProvider = null;
+                try
+                {
+                    var pkg = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(AgenteIALocalVSIXPackage)) as AgenteIALocalVSIXPackage;
+                    settingsProvider = pkg?.AgentSettingsProvider;
+                }
+                catch
+                {
+                    settingsProvider = null;
+                }
+
+                if (settingsProvider == null)
+                {
+                    var pkgObj = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(Microsoft.VisualStudio.Shell.Package)) as Package;
+                    settingsProvider = new VsWritableSettingsStoreAgentSettingsProvider(pkgObj);
+                }
+
+                this.Content = new AgenteIALocalControl(settingsProvider);
                 try { AgentComposition.Logger?.Info("AgenteIALocalToolWindow: Content assigned"); } catch { }
             }
             catch (Exception ex)
