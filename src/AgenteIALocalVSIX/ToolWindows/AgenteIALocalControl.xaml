@@ -10,8 +10,6 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
@@ -34,18 +32,30 @@
             <Button x:Name="ClearButton" Content="Clear" Width="80" Margin="8,0,0,0" Click="ClearButton_Click" />
         </StackPanel>
 
-        <GroupBox Grid.Row="3" Header="Request JSON" Margin="0,0,0,8">
-            <ScrollViewer Height="140">
-                <TextBlock x:Name="RequestJsonText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" />
-            </ScrollViewer>
-        </GroupBox>
-
-        <GroupBox Grid.Row="4" Header="Response JSON">
-            <ScrollViewer>
-                <TextBlock x:Name="ResponseJsonText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" />
-            </ScrollViewer>
-        </GroupBox>
-
-        <TextBlock Grid.Row="5" x:Name="LogText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" Margin="0,8,0,0" />
+        <TabControl Grid.Row="3">
+            <TabItem Header="Request">
+                <ScrollViewer>
+                    <GroupBox Header="Request JSON" Margin="0" Padding="0">
+                        <ScrollViewer Height="140">
+                            <TextBlock x:Name="RequestJsonText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" />
+                        </ScrollViewer>
+                    </GroupBox>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Response">
+                <ScrollViewer>
+                    <GroupBox Header="Response JSON" Margin="0" Padding="0">
+                        <ScrollViewer>
+                            <TextBlock x:Name="ResponseJsonText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" />
+                        </ScrollViewer>
+                    </GroupBox>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Log">
+                <ScrollViewer>
+                    <TextBlock x:Name="LogText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" Margin="0,8,0,0" />
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
     </Grid>
 </UserControl>

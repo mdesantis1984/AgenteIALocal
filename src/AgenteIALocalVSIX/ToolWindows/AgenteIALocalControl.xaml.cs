@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Threading;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -14,6 +15,8 @@ namespace AgenteIALocalVSIX.ToolWindows
     {
         private enum UiState { Idle, Running, Completed, Error }
         private UiState state = UiState.Idle;
+
+        private CancellationTokenSource logRefreshCts;
 
         public AgenteIALocalControl()
         {
@@ -40,8 +43,55 @@ namespace AgenteIALocalVSIX.ToolWindows
                 Trace.TraceError($"[AgenteIALocalControl] Error ensuring composition: {ex}");
             }
 
-            // Load current log file content into the Log tab
-            RefreshLogFromFile();
+            // Load current log file content into the Log tab asynchronously
+            StartLogRefreshLoop();
+        }
+
+        private void StartLogRefreshLoop()
+        {
+            // Cancel any previous
+            logRefreshCts?.Cancel();
+            logRefreshCts = new CancellationTokenSource();
+            var ct = logRefreshCts.Token;
+
+            // Start a background task that refreshes the log every 2 seconds without blocking the UI
+            Task.Run(async () =>
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    try
+                    {
+                        var content = await Task.Run(() => ReadLogFile());
+                        this.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            if (string.IsNullOrEmpty(content))
+                            {
+                                LogText.Text = "(no logs)";
+                            }
+                            else
+                            {
+                                LogText.Text = content;
+                            }
+                        }));
+                    }
+                    catch
+                    {
+                        this.Dispatcher.BeginInvoke(new Action(() => { LogText.Text = "(unable to read logs)"; }));
+                    }
+
+                    try { await Task.Delay(2000, ct); } catch { }
+                }
+            }, ct);
+        }
+
+        private void StopLogRefreshLoop()
+        {
+            try
+            {
+                logRefreshCts?.Cancel();
+                logRefreshCts = null;
+            }
+            catch { }
         }
 
         public void SetSolutionInfo(string solutionName, int projectCount)
@@ -132,8 +182,20 @@ namespace AgenteIALocalVSIX.ToolWindows
                     UpdateUiState(UiState.Completed);
                     Log("Execution completed successfully.");
 
-                    // Refresh log tab to show newly appended entries
-                    RefreshLogFromFile();
+                    // Refresh log tab to show newly appended entries (immediately)
+                    try
+                    {
+                        var content = ReadLogFile();
+                        if (string.IsNullOrEmpty(content))
+                        {
+                            LogText.Text = "(no logs)";
+                        }
+                        else
+                        {
+                            LogText.Text = content;
+                        }
+                    }
+                    catch { }
                 }));
             }
             catch (Exception ex)
