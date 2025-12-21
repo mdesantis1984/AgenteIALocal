@@ -52,6 +52,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 catch { }
             }
+
+            if (Content is AgenteIALocalControl control2)
+            {
+                try { control2.RefreshLogView(); } catch { }
+            }
         }
 
         public int OnShow(int fShow)

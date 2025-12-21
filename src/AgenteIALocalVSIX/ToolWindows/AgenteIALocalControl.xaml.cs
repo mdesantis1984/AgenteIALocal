@@ -83,6 +83,9 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             // Re-evaluate status when control is loaded in case options changed
             EvaluateAndDisplayStatus();
+
+            // Refresh log view on load
+            RefreshLogView();
         }
 
         // Tab selection changed - when Log tab is selected, load the log file content
@@ -204,6 +207,35 @@ namespace AgenteIALocalVSIX.ToolWindows
                 LogViewerTextBox.Text = "No se pudo borrar el archivo de log.";
             }
         }
+
+        internal void RefreshLogView()
+        {
+            try
+            {
+                LogViewer?.Reload();
+                AgentComposition.Logger?.Info(
+                    "ToolWindowControl: Log view refreshed");
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    AgentComposition.Logger?.Error(
+                        "ToolWindowControl: Log refresh failed", ex);
+                }
+                catch { }
+            }
+        }
+
+        // Adapter exposing a Reload method that triggers existing LoadLogFile
+        private class LogViewerAdapter
+        {
+            private readonly AgenteIALocalControl parent;
+            public LogViewerAdapter(AgenteIALocalControl parent) { this.parent = parent; }
+            public void Reload() { parent.LoadLogFile(); }
+        }
+
+        private LogViewerAdapter LogViewer => new LogViewerAdapter(this);
 
         public void EvaluateAndDisplayStatus()
         {
