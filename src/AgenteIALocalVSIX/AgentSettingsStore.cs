@@ -95,6 +95,9 @@ namespace AgenteIALocalVSIX
                 // taskProfiles
                 settings.TaskProfiles = root["taskProfiles"] as JArray ?? new JArray();
 
+                // activeServerId
+                settings.ActiveServerId = root.Value<string>("activeServerId");
+
                 // preserve raw root
                 settings._raw = root;
 
@@ -167,6 +170,9 @@ namespace AgenteIALocalVSIX
                 // taskProfiles
                 root["taskProfiles"] = settings.TaskProfiles ?? new JArray();
 
+                // activeServerId
+                if (!string.IsNullOrEmpty(settings.ActiveServerId)) root["activeServerId"] = settings.ActiveServerId;
+
                 File.WriteAllText(path, root.ToString(Formatting.Indented));
             }
             catch
@@ -188,6 +194,7 @@ namespace AgenteIALocalVSIX
                     Provider = "lmstudio",
                     BaseUrl = "http://127.0.0.1:8080",
                     ApiKey = string.Empty,
+                    Model = string.Empty,
                     IsDefault = true,
                     CreatedAt = DateTime.UtcNow
                 }
@@ -201,13 +208,17 @@ namespace AgenteIALocalVSIX
 
             s.TaskProfiles = new JArray();
 
+            // default active server
+            s.ActiveServerId = s.Servers[0].Id;
+
             // prepare raw representation for future preservation
             var root = JObject.FromObject(new
             {
                 version = s.Version,
                 servers = s.Servers,
                 globalSettings = s.GlobalSettings,
-                taskProfiles = s.TaskProfiles
+                taskProfiles = s.TaskProfiles,
+                activeServerId = s.ActiveServerId
             });
 
             s._raw = root;
@@ -236,6 +247,9 @@ namespace AgenteIALocalVSIX
         public JObject GlobalSettings { get; set; }
         public JArray TaskProfiles { get; set; }
 
+        // active server id
+        public string ActiveServerId { get; set; }
+
         // internal raw JSON to preserve unknown fields
         internal JObject _raw;
     }
@@ -247,6 +261,8 @@ namespace AgenteIALocalVSIX
         public string Provider { get; set; }
         public string BaseUrl { get; set; }
         public string ApiKey { get; set; }
+        // optional model identifier per-server
+        public string Model { get; set; }
         public bool IsDefault { get; set; }
         public DateTime CreatedAt { get; set; }
     }

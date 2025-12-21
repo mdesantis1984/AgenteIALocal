@@ -45,6 +45,86 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             // Load current log file content into the Log tab asynchronously
             StartLogRefreshLoop();
+
+            // Load current settings into settings panel (but keep panel hidden)
+            try
+            {
+                var settings = AgentSettingsStore.Load();
+                PopulateSettingsPanel(settings);
+            }
+            catch { }
+        }
+
+        private void PopulateSettingsPanel(AgentSettings settings)
+        {
+            if (settings == null) return;
+
+            ActiveServerIdTextBox.Text = settings.ActiveServerId ?? string.Empty;
+
+            // find active server details
+            if (!string.IsNullOrEmpty(settings.ActiveServerId) && settings.Servers != null)
+            {
+                var srv = settings.Servers.Find(s => s.Id == settings.ActiveServerId);
+                if (srv != null)
+                {
+                    ServerBaseUrlTextBox.Text = srv.BaseUrl ?? string.Empty;
+                    ServerModelTextBox.Text = srv.Model ?? string.Empty;
+                    ServerApiKeyTextBox.Text = srv.ApiKey ?? string.Empty;
+                }
+            }
+            else if (settings.Servers != null && settings.Servers.Count > 0)
+            {
+                var srv = settings.Servers[0];
+                ServerBaseUrlTextBox.Text = srv.BaseUrl ?? string.Empty;
+                ServerModelTextBox.Text = srv.Model ?? string.Empty;
+                ServerApiKeyTextBox.Text = srv.ApiKey ?? string.Empty;
+                ActiveServerIdTextBox.Text = srv.Id ?? string.Empty;
+            }
+        }
+
+        private void SettingsButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            SettingsPanel.Visibility = SettingsPanel.Visibility == System.Windows.Visibility.Visible ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+        }
+
+        private void CloseSettingsButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            SettingsPanel.Visibility = System.Windows.Visibility.Collapsed;
+        }
+
+        private void SaveSettingsButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            try
+            {
+                var settings = AgentSettingsStore.Load();
+                if (settings == null) settings = new AgentSettings();
+
+                // update active server id
+                settings.ActiveServerId = ActiveServerIdTextBox.Text ?? string.Empty;
+
+                // ensure server exists or update existing
+                if (settings.Servers == null) settings.Servers = new System.Collections.Generic.List<ServerConfig>();
+
+                var srv = settings.Servers.Find(s => s.Id == settings.ActiveServerId);
+                if (srv == null)
+                {
+                    srv = new ServerConfig { Id = settings.ActiveServerId, CreatedAt = DateTime.UtcNow };
+                    settings.Servers.Add(srv);
+                }
+
+                srv.BaseUrl = ServerBaseUrlTextBox.Text ?? string.Empty;
+                srv.Model = ServerModelTextBox.Text ?? string.Empty;
+                srv.ApiKey = ServerApiKeyTextBox.Text ?? string.Empty;
+
+                AgentSettingsStore.Save(settings);
+
+                // feedback
+                Log("Settings saved.");
+            }
+            catch
+            {
+                // never throw from UI
+            }
         }
 
         private void StartLogRefreshLoop()
