@@ -55,6 +55,9 @@
     <Compile Include="Contracts\CopilotRequest.cs" />
     <Compile Include="Contracts\CopilotResponse.cs" />
     <Compile Include="Execution\MockCopilotExecutor.cs" />
+    <Compile Include="Options\AgenteOptionsPage.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AgenteIALocalVSIXPackage.cs" />
     <Compile Include="ToolWindows\AgenteIALocalControl.xaml.cs">
@@ -64,6 +67,9 @@
   </ItemGroup>
   <!-- XAML -->
   <ItemGroup>
+    <Page Include="Options\AgenteOptionsControl.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="ToolWindows\AgenteIALocalControl.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
