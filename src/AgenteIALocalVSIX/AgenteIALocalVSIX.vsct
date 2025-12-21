@@ -29,7 +29,7 @@
 
 		<!-- Package GUID -->
 		<GuidSymbol name="guidAgenteIALocalPackage"
-					value="{F992748B-DA75-48E4-9041-E95F8C2CED83}" />
+					value="{12E93CCA-8723-4160-AC43-96FE08854111}" />
 
 		<!-- Command set -->
 		<GuidSymbol name="guidAgenteIALocalCmdSet"
