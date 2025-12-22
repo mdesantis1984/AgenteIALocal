@@ -1,0 +1,22 @@
+### LM Studio – Chat Completions (OpenAI-compatible)
+POST http://127.0.0.1:1234/v1/chat/completions
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer lm-studio
+
+{
+  "model": "qwen3-4b-dotnet-specialist",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant specialized in .NET and Visual Studio."
+    },
+    {
+      "role": "user",
+      "content": "Dame un ejemplo simple de código C#."
+    }
+  ],
+  "temperature": 0.2,
+  "max_tokens": 512,
+  "stream": false
+}

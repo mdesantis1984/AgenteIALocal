@@ -17,35 +17,35 @@ namespace AgenteIALocalVSIX.Commands
                 var codePackageGuid = new Guid(AgenteIALocalVSIX.AgenteIALocalVSIXPackage.PackageGuidString);
                 if (VsctPackageGuid != codePackageGuid)
                 {
-                    AgentComposition.Logger?.Warn(
+                    AgentComposition.Logger?.Invoke(
                         "VSCT mismatch: Package GUID VSCT=" + VsctPackageGuid.ToString("B") +
                         " Code=" + codePackageGuid.ToString("B"));
                 }
                 else
                 {
-                    AgentComposition.Logger?.Info("VSCT match: Package GUID=" + codePackageGuid.ToString("B"));
+                    AgentComposition.Logger?.Invoke("VSCT match: Package GUID=" + codePackageGuid.ToString("B"));
                 }
 
                 if (VsctCommandSetGuid != OpenAgenteIALocalCommand.CommandSet)
                 {
-                    AgentComposition.Logger?.Warn(
+                    AgentComposition.Logger?.Invoke(
                         "VSCT mismatch: CommandSet GUID VSCT=" + VsctCommandSetGuid.ToString("B") +
                         " Code=" + OpenAgenteIALocalCommand.CommandSet.ToString("B"));
                 }
                 else
                 {
-                    AgentComposition.Logger?.Info("VSCT match: CommandSet GUID=" + OpenAgenteIALocalCommand.CommandSet.ToString("B"));
+                    AgentComposition.Logger?.Invoke("VSCT match: CommandSet GUID=" + OpenAgenteIALocalCommand.CommandSet.ToString("B"));
                 }
 
                 if (VsctCommandId != OpenAgenteIALocalCommand.CommandId)
                 {
-                    AgentComposition.Logger?.Warn(
+                    AgentComposition.Logger?.Invoke(
                         "VSCT mismatch: CommandId VSCT=0x" + VsctCommandId.ToString("X") +
                         " Code=0x" + OpenAgenteIALocalCommand.CommandId.ToString("X"));
                 }
                 else
                 {
-                    AgentComposition.Logger?.Info("VSCT match: CommandId=0x" + OpenAgenteIALocalCommand.CommandId.ToString("X"));
+                    AgentComposition.Logger?.Invoke("VSCT match: CommandId=0x" + OpenAgenteIALocalCommand.CommandId.ToString("X"));
                 }
             }
             catch { }

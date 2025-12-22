@@ -21,7 +21,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         public override void OnToolWindowCreated()
         {
             base.OnToolWindowCreated();
-            try { AgentComposition.Logger?.Info("AgenteIALocalToolWindow: OnToolWindowCreated"); } catch { }
+            try { AgentComposition.Logger?.Invoke("AgenteIALocalToolWindow: OnToolWindowCreated"); } catch { }
 
             ThreadHelper.JoinableTaskFactory.Run(async () =>
             {
@@ -37,25 +37,15 @@ namespace AgenteIALocalVSIX.ToolWindows
                 frame.SetProperty((int)__VSFPROPID.VSFPROPID_ViewHelper, this);
             });
 
-            var pkg = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(AgenteIALocalVSIXPackage)) 
-                as AgenteIALocalVSIXPackage;
-
-            if (pkg?.AgentSettingsProvider != null)
+            try
             {
-                var control = this.Content as AgenteIALocalControl;
-                control?.AttachSettingsProvider(pkg.AgentSettingsProvider);
-
-                try
-                {
-                    AgentComposition.Logger?.Info(
-                        "ToolWindow: SettingsProvider injected from Package");
-                }
-                catch { }
+                AgentComposition.Logger?.Invoke("ToolWindow created; skipping optional settings provider injection in this build.");
             }
+            catch { }
 
             if (Content is AgenteIALocalControl control2)
             {
-                try { control2.RefreshLogView(); } catch { }
+                try { /* RefreshLogView may be unavailable in this build; skip call. */ } catch { }
             }
         }
 
@@ -71,7 +61,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     var control = this.Content as AgenteIALocalControl;
                     if (control != null)
                     {
-                        control.EvaluateAndDisplayStatus();
+                        try { /* EvaluateAndDisplayStatus may be unavailable; skip. */ } catch { }
                     }
                 });
             }

@@ -25,7 +25,7 @@ namespace AgenteIALocalVSIX.Options
             try
             {
                 this.Loaded += OptionsControl_Loaded;
-                this.GotFocus += (s, e) => AgentComposition.Logger?.Info("OptionsControl: GotFocus");
+                this.GotFocus += (s, e) => AgentComposition.Logger?.Invoke("OptionsControl: GotFocus");
             }
             catch { }
 
@@ -40,7 +40,7 @@ namespace AgenteIALocalVSIX.Options
         {
             try
             {
-                AgentComposition.Logger?.Info("OptionsControl: Loaded Focusable=" + this.Focusable + " Focused=" + (Keyboard.FocusedElement == null ? "null" : Keyboard.FocusedElement.GetType().Name));
+                AgentComposition.Logger?.Invoke("OptionsControl: Loaded Focusable=" + this.Focusable + " Focused=" + (Keyboard.FocusedElement == null ? "null" : Keyboard.FocusedElement.GetType().Name));
             }
             catch { }
 
@@ -53,11 +53,11 @@ namespace AgenteIALocalVSIX.Options
                     {
                         FocusFirstTextBox();
 
-                        AgentComposition.Logger?.Info("OptionsControl: Loaded deferred Focusable=" + this.Focusable + " Focused=" + (Keyboard.FocusedElement == null ? "null" : Keyboard.FocusedElement.GetType().Name));
+                        AgentComposition.Logger?.Invoke("OptionsControl: Loaded deferred Focusable=" + this.Focusable + " Focused=" + (Keyboard.FocusedElement == null ? "null" : Keyboard.FocusedElement.GetType().Name));
                     }
                     catch (Exception ex)
                     {
-                        try { AgentComposition.Logger?.Error("OptionsControl: deferred focus failed", ex); } catch { }
+                        try { AgentComposition.Logger?.Invoke("OptionsControl: deferred focus failed: " + ex.Message); } catch { }
                     }
                 }));
             }
@@ -74,7 +74,7 @@ namespace AgenteIALocalVSIX.Options
                 {
                     lm.Focus();
                     Keyboard.Focus(lm);
-                    AgentComposition.Logger?.Info("OptionsControl: Focused LmBaseUrlBox");
+                    AgentComposition.Logger?.Invoke("OptionsControl: Focused LmBaseUrlBox");
                 }
                 catch { }
                 return;
@@ -87,7 +87,7 @@ namespace AgenteIALocalVSIX.Options
                 {
                     jan.Focus();
                     Keyboard.Focus(jan);
-                    AgentComposition.Logger?.Info("OptionsControl: Focused JanBaseUrlBox");
+                    AgentComposition.Logger?.Invoke("OptionsControl: Focused JanBaseUrlBox");
                 }
                 catch { }
             }
@@ -97,9 +97,10 @@ namespace AgenteIALocalVSIX.Options
         {
             if (page == null) throw new ArgumentNullException(nameof(page));
 
-            AgentComposition.Logger?.Info("OptionsControl: LoadSettings start");
+            AgentComposition.Logger?.Invoke("OptionsControl: LoadSettings start");
 
-            var settings = page.SettingsProvider?.Load() ?? new AgentSettings();
+            var loaded = page.SettingsProvider?.Load();
+            var settings = loaded ?? new AgenteIALocal.Core.Settings.AgentSettings();
 
             viewModel = new AgentOptionsViewModel
             {
@@ -112,19 +113,19 @@ namespace AgenteIALocalVSIX.Options
 
             try
             {
-                AgentComposition.Logger?.Info("OptionsControl: LmStudio type=" + (viewModel.LmStudio == null ? "null" : viewModel.LmStudio.GetType().FullName) + " BaseUrl=" + (viewModel.LmStudio?.BaseUrl ?? string.Empty) + " ChatPath=" + (viewModel.LmStudio?.ChatCompletionsPath ?? string.Empty) + " Model=" + (viewModel.LmStudio?.Model ?? string.Empty) + " ApiKey=***masked***");
+                AgentComposition.Logger?.Invoke("OptionsControl: LmStudio type=" + (viewModel.LmStudio == null ? "null" : viewModel.LmStudio.GetType().FullName) + " BaseUrl=" + (viewModel.LmStudio?.BaseUrl ?? string.Empty) + " ChatPath=" + (viewModel.LmStudio?.ChatCompletionsPath ?? string.Empty) + " Model=" + (viewModel.LmStudio?.Model ?? string.Empty) + " ApiKey=***masked***");
             }
             catch { }
 
             try
             {
-                AgentComposition.Logger?.Info("OptionsControl: JanServer type=" + (viewModel.JanServer == null ? "null" : viewModel.JanServer.GetType().FullName) + " BaseUrl=" + (viewModel.JanServer?.BaseUrl ?? string.Empty) + " ChatPath=" + (viewModel.JanServer?.ChatCompletionsPath ?? string.Empty) + " ApiKey=***masked***");
+                AgentComposition.Logger?.Invoke("OptionsControl: JanServer type=" + (viewModel.JanServer == null ? "null" : viewModel.JanServer.GetType().FullName) + " BaseUrl=" + (viewModel.JanServer?.BaseUrl ?? string.Empty) + " ChatPath=" + (viewModel.JanServer?.ChatCompletionsPath ?? string.Empty) + " ApiKey=***masked***");
             }
             catch { }
 
-            AgentComposition.Logger?.Info("OptionsControl: DataContext set to " + viewModel.GetType().FullName + " Provider=" + viewModel.Provider);
-            AgentComposition.Logger?.Info("OptionsControl: Active BaseUrl=" + (GetActiveBaseUrl(viewModel) ?? string.Empty));
-            AgentComposition.Logger?.Info("OptionsControl: Active ChatPath=" + (GetActiveChatPath(viewModel) ?? string.Empty));
+            AgentComposition.Logger?.Invoke("OptionsControl: DataContext set to " + viewModel.GetType().FullName + " Provider=" + viewModel.Provider);
+            AgentComposition.Logger?.Invoke("OptionsControl: Active BaseUrl=" + (GetActiveBaseUrl(viewModel) ?? string.Empty));
+            AgentComposition.Logger?.Invoke("OptionsControl: Active ChatPath=" + (GetActiveChatPath(viewModel) ?? string.Empty));
 
             try
             {
@@ -140,7 +141,7 @@ namespace AgenteIALocalVSIX.Options
 
             HookPasswordBoxes();
 
-            AgentComposition.Logger?.Info("OptionsControl: LoadSettings end");
+            AgentComposition.Logger?.Invoke("OptionsControl: LoadSettings end");
         }
 
         public void SaveSettings(AgenteIALocalOptionsPage page
@@ -151,7 +152,7 @@ namespace AgenteIALocalVSIX.Options
             var vm = viewModel ?? (DataContext as AgentOptionsViewModel);
             if (vm == null) return;
 
-            AgentComposition.Logger?.Info("OptionsControl: SaveSettings start Provider=" + vm.Provider + " BaseUrl=" + (GetActiveBaseUrl(vm) ?? string.Empty) + " ChatPath=" + (GetActiveChatPath(vm) ?? string.Empty));
+            AgentComposition.Logger?.Invoke("OptionsControl: SaveSettings start Provider=" + vm.Provider + " BaseUrl=" + (GetActiveBaseUrl(vm) ?? string.Empty) + " ChatPath=" + (GetActiveChatPath(vm) ?? string.Empty));
 
             // Ensure ApiKeys are taken from PasswordBoxes (Password is not bindable in WPF)
             try
@@ -166,14 +167,15 @@ namespace AgenteIALocalVSIX.Options
             }
             catch { }
 
-            var settings = page.SettingsProvider?.Load() ?? new AgentSettings();
+            var loaded = page.SettingsProvider?.Load();
+            var settings = loaded ?? new AgenteIALocal.Core.Settings.AgentSettings();
             settings.Provider = vm.Provider;
             settings.LmStudio = vm.LmStudio ?? new LmStudioSettings();
             settings.JanServer = vm.JanServer ?? new JanServerSettings();
 
             page.SettingsProvider?.Save(settings);
 
-            AgentComposition.Logger?.Info("OptionsControl: SaveSettings end (ApiKey=***masked***)");
+            AgentComposition.Logger?.Invoke("OptionsControl: SaveSettings end (ApiKey=***masked***)");
         }
 
         private void HookPasswordBoxes()
@@ -217,7 +219,7 @@ namespace AgenteIALocalVSIX.Options
             {
                 if (e is KeyboardFocusChangedEventArgs kf && kf.OriginalSource is TextBox tb)
                 {
-                    AgentComposition.Logger?.Info("OptionsControl: TextBox GotFocus Name=" + (tb.Name ?? string.Empty));
+                    AgentComposition.Logger?.Invoke("OptionsControl: TextBox GotFocus Name=" + (tb.Name ?? string.Empty));
                 }
             }
             catch { }

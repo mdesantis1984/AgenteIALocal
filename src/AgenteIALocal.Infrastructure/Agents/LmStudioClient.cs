@@ -6,8 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using AgenteIALocal.Core.Agents;
 using AgenteIALocal.Core.Settings;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace AgenteIALocal.Infrastructure.Agents
 {
@@ -39,13 +37,16 @@ namespace AgenteIALocal.Infrastructure.Agents
 
                 try
                 {
-                    var payload = new
-                    {
-                        model = model,
-                        messages = new[] { new { role = "user", content = request.Prompt ?? string.Empty } }
-                    };
+                    // Build minimal JSON payload without external JSON libs
+                    var sb = new StringBuilder();
+                    sb.Append('{');
+                    if (!string.IsNullOrEmpty(model)) sb.AppendFormat("\"model\":\"{0}\",", EscapeJson(model));
+                    sb.Append("\"messages\":[{\"role\":\"user\",\"content\":\"");
+                    sb.Append(EscapeJson(request.Prompt ?? string.Empty));
+                    sb.Append("\"}]");
+                    sb.Append('}');
 
-                    var payloadJson = JsonConvert.SerializeObject(payload);
+                    var payloadJson = sb.ToString();
                     var bytes = Encoding.UTF8.GetBytes(payloadJson);
 
                     var req = (HttpWebRequest)WebRequest.Create(uri);
@@ -68,12 +69,10 @@ namespace AgenteIALocal.Infrastructure.Agents
                             return new AgentResponse { IsSuccess = false, Error = $"HTTP {resp.StatusCode}: {text}" };
                         }
 
-                        // Parse OpenAI-compatible response: choices[0].message.content or choices[0].text
                         try
                         {
-                            var j = JObject.Parse(text);
-                            var content = (string)j.SelectToken("$.choices[0].message.content") ?? (string)j.SelectToken("$.choices[0].text");
-                            return new AgentResponse { IsSuccess = true, Content = content };
+                            var extracted = ExtractFirstChoiceContent(text);
+                            return new AgentResponse { IsSuccess = true, Content = extracted };
                         }
                         catch (Exception ex)
                         {
@@ -101,6 +100,40 @@ namespace AgenteIALocal.Infrastructure.Agents
                     return new AgentResponse { IsSuccess = false, Error = ex.Message };
                 }
             }, cancellationToken);
+        }
+
+        private static string EscapeJson(string s)
+        {
+            if (s == null) return string.Empty;
+            return s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");
+        }
+
+        private static string ExtractFirstChoiceContent(string responseText)
+        {
+            if (string.IsNullOrEmpty(responseText)) return null;
+
+            // Best-effort extraction of choices[0].message.content or choices[0].text
+            var choicesIdx = responseText.IndexOf("\"choices\"", StringComparison.OrdinalIgnoreCase);
+            if (choicesIdx < 0) return null;
+
+            var contentIdx = responseText.IndexOf("\"content\"", choicesIdx, StringComparison.OrdinalIgnoreCase);
+            if (contentIdx < 0)
+            {
+                contentIdx = responseText.IndexOf("\"text\"", choicesIdx, StringComparison.OrdinalIgnoreCase);
+                if (contentIdx < 0) return null;
+            }
+
+            var colon = responseText.IndexOf(':', contentIdx);
+            if (colon < 0) return null;
+            var start = responseText.IndexOf('"', colon);
+            if (start < 0) return null;
+            var end = responseText.IndexOf('"', start + 1);
+            if (end < 0) return null;
+
+            var content = responseText.Substring(start + 1, end - start - 1);
+            // unescape basic sequences
+            content = content.Replace("\\\"", "\"").Replace("\\n", "\n").Replace("\\r", "\r").Replace("\\\\", "\\");
+            return content;
         }
     }
 }

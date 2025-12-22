@@ -24,14 +24,14 @@ namespace AgenteIALocalVSIX.Commands
             var menuItem = new MenuCommand(this.Execute, menuCommandID);
             commandService.AddCommand(menuItem);
 
-            try { AgentComposition.Logger?.Info("Command: OleMenuCommand registered"); } catch { }
+            try { AgentComposition.Logger?.Invoke("Command: OleMenuCommand registered"); } catch { }
         }
 
         public static OpenAgenteIALocalCommand Instance { get; private set; }
 
         public static async Task InitializeAsync(AsyncPackage package)
         {
-            try { AgentComposition.Logger?.Info("Command: InitializeAsync start"); } catch { }
+            try { AgentComposition.Logger?.Invoke("Command: InitializeAsync start"); } catch { }
 
             if (package == null) throw new ArgumentNullException(nameof(package));
 
@@ -42,7 +42,7 @@ namespace AgenteIALocalVSIX.Commands
 
             if (commandService == null)
             {
-                try { AgentComposition.Logger?.Error("Command: OleMenuCommandService is null"); } catch { }
+                try { AgentComposition.Logger?.Invoke("Command: OleMenuCommandService is null"); } catch { }
                 return;
             }
 
@@ -51,13 +51,13 @@ namespace AgenteIALocalVSIX.Commands
 
         private void Execute(object sender, EventArgs e)
         {
-            AgentComposition.Logger?.Info("Command: OpenAgenteIALocal Execute invoked");
+            AgentComposition.Logger?.Invoke("Command: OpenAgenteIALocal Execute invoked");
 
             try
             {
                 try
                 {
-                    AgentComposition.Logger?.Info("Command: OpenAgenteIALocal invoked");
+                    AgentComposition.Logger?.Invoke("Command: OpenAgenteIALocal invoked");
                     ActivityLogHelper.TryLog(package, "AgenteIALocal: Command invoked");
                 }
                 catch { }
@@ -70,7 +70,7 @@ namespace AgenteIALocalVSIX.Commands
                 {
                     try
                     {
-                        AgentComposition.Logger?.Error("Command: IVsUIShell service not available");
+                        AgentComposition.Logger?.Invoke("Command: IVsUIShell service not available");
                         ActivityLogHelper.TryLogError(package, "AgenteIALocal: IVsUIShell service not available");
                     }
                     catch { }
@@ -85,7 +85,7 @@ namespace AgenteIALocalVSIX.Commands
 
                 try
                 {
-                    AgentComposition.Logger?.Info("FindToolWindow HR=0x" + hrFind.ToString("X"));
+                    AgentComposition.Logger?.Invoke("FindToolWindow HR=0x" + hrFind.ToString("X"));
                     ActivityLogHelper.TryLog(package, "AgenteIALocal: FindToolWindow HR=0x" + hrFind.ToString("X"));
                 }
                 catch { }
@@ -94,7 +94,7 @@ namespace AgenteIALocalVSIX.Commands
                 {
                     try
                     {
-                        AgentComposition.Logger?.Error("Command: ToolWindow frame is null after FindToolWindow");
+                        AgentComposition.Logger?.Invoke("Command: ToolWindow frame is null after FindToolWindow");
                         ActivityLogHelper.TryLogError(package, "AgenteIALocal: ToolWindow frame is null after FindToolWindow");
                     }
                     catch { }
@@ -106,14 +106,14 @@ namespace AgenteIALocalVSIX.Commands
 
                 try
                 {
-                    AgentComposition.Logger?.Info("Show HR=0x" + hrShow.ToString("X"));
+                    AgentComposition.Logger?.Invoke("Show HR=0x" + hrShow.ToString("X"));
                     ActivityLogHelper.TryLog(package, "AgenteIALocal: Show HR=0x" + hrShow.ToString("X"));
                 }
                 catch { }
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Logger?.Error("Command: exception opening ToolWindow", ex); } catch { }
+                try { AgentComposition.Logger?.Invoke("Command: exception opening ToolWindow: " + ex.Message); } catch { }
                 try { ActivityLogHelper.TryLogError(package, "AgenteIALocal: command failed", ex); } catch { }
             }
         }

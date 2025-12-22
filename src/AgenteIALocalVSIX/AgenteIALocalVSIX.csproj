@@ -57,16 +57,21 @@
     <Compile Include="Contracts\CopilotRequest.cs" />
     <Compile Include="Contracts\CopilotResponse.cs" />
     <Compile Include="Execution\MockCopilotExecutor.cs" />
+    <Compile Include="Logging\ActivityLogHelper.cs" />
+    <Compile Include="Logging\FileAgentLogger.cs" />
     <Compile Include="Options\AgenteIALocalOptionsControl.xaml.cs">
       <DependentUpon>AgenteIALocalOptionsControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Options\AgenteIALocalOptionsPage.cs" />
+    <Compile Include="Options\AgenteIALocalOptionsPage.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Options\AgenteOptionsPage.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Options\AgentOptionsViewModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AgenteIALocalVSIXPackage.cs" />
+    <Compile Include="Settings\VsWritableSettingsStoreAgentSettingsProvider.cs" />
     <Compile Include="ToolWindows\AgenteIALocalConfigControl.xaml.cs">
       <DependentUpon>AgenteIALocalConfigControl.xaml</DependentUpon>
     </Compile>
@@ -116,9 +121,18 @@
     <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.14.2120" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AgenteIALocal.Application\AgenteIALocal.Application.csproj" />
-    <ProjectReference Include="..\AgenteIALocal.Core\AgenteIALocal.Core.csproj" />
-    <ProjectReference Include="..\AgenteIALocal.Infrastructure\AgenteIALocal.Infrastructure.csproj" />
+    <ProjectReference Include="..\AgenteIALocal.Application\AgenteIALocal.Application.csproj">
+      <Project>{665CAEDD-900F-1F40-2E92-C4A28BEAC487}</Project>
+      <Name>AgenteIALocal.Application</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\AgenteIALocal.Core\AgenteIALocal.Core.csproj">
+      <Project>{49AC950D-4CA4-422E-F582-E05E9567561E}</Project>
+      <Name>AgenteIALocal.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\AgenteIALocal.Infrastructure\AgenteIALocal.Infrastructure.csproj">
+      <Project>{52B94B48-0ED4-C9B0-441A-BC825034B877}</Project>
+      <Name>AgenteIALocal.Infrastructure</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Content Include="AgenteIALocalVSIX.vsct" />
