@@ -2,5 +2,8 @@
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <UseWPF>true</UseWPF>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\AgenteIALocal.Core\AgenteIALocal.snk</AssemblyOriginatorKeyFile>
+    <PublicSign>false</PublicSign>
   </PropertyGroup>
 </Project>

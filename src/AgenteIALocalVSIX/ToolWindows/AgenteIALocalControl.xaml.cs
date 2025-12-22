@@ -224,12 +224,17 @@ namespace AgenteIALocalVSIX.ToolWindows
                 // Ensure composition is available before attempting execution
                 AgentComposition.EnsureComposition();
 
-                var req = JsonConvert.DeserializeObject<CopilotRequest>(RequestJsonText.Text);
-                if (req == null)
+                // NEW: treat user input as plain text prompt; build CopilotRequest internally
+                var userInput = RequestJsonText.Text ?? string.Empty;
+
+                var req = new CopilotRequest
                 {
-                    // Build minimal request if parsing failed
-                    req = BuildRequest(SolutionNameText.Text ?? string.Empty, int.TryParse(ProjectCountText.Text, out var pc) ? pc : 0);
-                }
+                    RequestId = System.Guid.NewGuid().ToString(),
+                    Action = userInput, // use user text as main prompt fragment
+                    Timestamp = System.DateTime.UtcNow.ToString("o"),
+                    SolutionName = SolutionNameText.Text ?? string.Empty,
+                    ProjectCount = int.TryParse(ProjectCountText.Text, out var pc) ? pc : 0
+                };
 
                 // Execute using composed AgentService if available; otherwise fall back to direct MockCopilotExecutor
                 var response = await Task.Run(() =>
@@ -253,12 +258,36 @@ namespace AgenteIALocalVSIX.ToolWindows
                     }
                 });
 
-                var respJson = SerializeToJson(response);
+                // Display plain text output (or error) instead of serializing full DTO
+                var display = string.Empty;
+                try
+                {
+                    if (response == null)
+                    {
+                        display = "(no response)";
+                    }
+                    else if (!string.IsNullOrEmpty(response.Output))
+                    {
+                        display = response.Output;
+                    }
+                    else if (!string.IsNullOrEmpty(response.Error))
+                    {
+                        display = "Error: " + response.Error;
+                    }
+                    else
+                    {
+                        display = "(empty response)";
+                    }
+                }
+                catch
+                {
+                    display = "(unable to render response)";
+                }
 
                 // Update UI on UI thread
                 this.Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    ResponseJsonText.Text = respJson;
+                    ResponseJsonText.Text = display;
                     UpdateUiState(UiState.Completed);
                     Log("Execution completed successfully.");
 

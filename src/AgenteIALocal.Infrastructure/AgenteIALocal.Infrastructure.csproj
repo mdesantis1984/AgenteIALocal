@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\AgenteIALocal.Core\AgenteIALocal.snk</AssemblyOriginatorKeyFile>
+    <PublicSign>false</PublicSign>
   </PropertyGroup>
 
   <ItemGroup>
