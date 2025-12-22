@@ -1,6 +1,6 @@
 # Agente IA Local para Visual Studio
 
-Agente IA Local es una extensión clásica de Visual Studio (VSIX, formato clásico) que provee una ToolWindow y un conjunto de comandos para experimentar con flujos de agente de IA sobre el contexto del IDE (solución, proyectos, documentos). El objetivo del proyecto es validar una arquitectura desacoplada entre UI, orquestación y proveedores de IA, facilitando pruebas, trazabilidad y despliegue como extensión instalada en la Experimental Instance de Visual Studio.
+Agente IA Local es una extensión clásica de Visual Studio (VSIX, formato clásico) que provee una ToolWindow y un conjunto de comandos para experimentar con flujos de agente de IA sobre el contexto del IDE (solución, proyectos, documentos). El objetivo del proyecto es validar una arquitectura desacoplada entre UI, orquestación y proveedores de IA, facilitando pruebas, trazabilidad y despliegue como una extensión instalada en la Experimental Instance de Visual Studio.
 
 ---
 
@@ -28,7 +28,7 @@ Trabajamos siguiendo prácticas ágiles (Scrum) con iteraciones cortas y entrega
 
 Se definen roles claros en el flujo de trabajo:
 
-- Humano (desarrollador/maintainer): toma decisiones finales, revisa y aprueba cambios, ejecuta pruebas en Experimental Instance y realiza merges a ramas principales.
+- Humano (desarrollador/maintainer): toma decisiones finales, revisa y aprueba cambios, ejecuta pruebas en la Experimental Instance y realiza merges a ramas principales.
 - IA (ChatGPT): rol de arquitecto y planificador. Se usa para analizar problemas, generar prompts técnicos y proponer correcciones y planes de trabajo. No edita directamente el código en el repositorio; su output se valida por un humano.
 - Copilot (VS/editor assistant): único agente automatizado autorizado a aplicar cambios en el workspace (ediciones puntuales solicitadas). Se usa para ejecutar los cambios mínimos aprobados por el humano y seguir instrucciones de implementación exactas.
 
@@ -57,7 +57,7 @@ A continuación se resumen las iteraciones principales y los hitos logrados hast
 - Resultado:
   - ToolWindow operativa desde el menú `Tools` (apertura verificada en Experimental Instance).
   - Menú y comando correctamente registrados y ejecutables.
-  - Logs verificables en `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log`.
+  - Logs verificables en `%LOCALAPPDATA%\\AgenteIALocal\\logs\\AgenteIALocal.log`.
 
 - Commits y orden aplicado:
   - Cambios minimos, agrupados por objetivo: (1) logging/package init, (2) comando registro, (3) VSCT fix, (4) ToolWindow UX hardening.
@@ -115,7 +115,7 @@ Qué funciona
 - Menú y comando: `Tools → Agente IA Local` aparece y el comando está registrado correctamente (corriente de ejecución del comando verificada).
 - ToolWindow: abre y muestra controles; UX mejorada para legibilidad y manejo de errores.
 - Options Page: configuraciones persistentes disponibles y accesibles desde `Tools → Options`.
-- Logging: trazas escritas a archivo en `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log` con entradas de inicialización, registro de comandos y ejecución de acciones.
+- Logging: trazas escritas a archivo en `%LOCALAPPDATA%\\AgenteIALocal\\logs\\AgenteIALocal.log` con entradas de inicialización, registro de comandos y ejecución de acciones.
 - Backend en código: proyectos `Core`, `Application` e `Infrastructure` presentes (estructura y mocks para validación de flujo).
 
 Qué está en curso
@@ -201,3 +201,38 @@ Notas
 - Esta sección se añade como cierre formal de Sprint 2.5 — UX Foundations. No se han eliminado ni reescrito contenidos previos; se documenta el estado cerrado y los entregables mínimos verificados. Las tareas de integración backend y pruebas finales de empaquetado quedan planificadas en Sprint 3 como deuda técnica.
 
 ---
+
+### Sprint 4 — Cerrado (tag: sprint-004-closed)
+
+- Status: CLOSED
+- Tag: `sprint-004-closed`
+- Branch reference: `sprint-004-backend-lmstudio`
+
+Checklist:
+- [DONE] Mock executor validated and expanded for backend integration tests
+- [DONE] Basic LM Studio adapter prototypes merged into feature branch
+- [DONE] Package-level logging and diagnostics improved for backend flows
+- [Deprecated/Outdated (kept for history)] Note: Some implementation details remain experimental and will be revisited in Sprint 5 if necessary.
+
+---
+
+### Sprint 5 — En curso (UX) — rama: sprint-005-ux
+
+- Status: IN PROGRESS
+- Branch: `sprint-005-ux`
+- Focus areas:
+  - ToolWindow UX polish and layout adjustments
+  - Clear runtime states: Idle / Running / Success / Error
+  - Scrollable output area for long responses
+  - Copy response capability in the UI
+  - Visible errors (no silent failures) and explicit logging
+
+Immediate checklist:
+- [ ] Implement scrollable response area in ToolWindow output
+- [ ] Add "Copy response" button and clipboard behavior
+- [ ] Ensure state labels update correctly for all flows
+- [ ] Surface errors visibly and log them (no silent catches)
+- [ ] Update UI styles to match Visual Studio theme conventions
+
+Notes:
+- Do not remove or alter prior sprint entries. If parts become outdated they are marked as Deprecated/Outdated and kept for history.

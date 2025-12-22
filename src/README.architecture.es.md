@@ -296,3 +296,23 @@ Antes de cada commit relevante:
 If there are additional architecture items that need clarifying (diagrams, sequence flows or decision records), add them as incremental PRs referencing this document and linking to the `vsix-stable-baseline` tag.
 
 ---
+
+### Sprint 4 — Cerrado (tag: sprint-004-closed)
+
+- Status: CLOSED
+- Tag: `sprint-004-closed`
+- Branch reference: `sprint-004-backend-lmstudio`
+
+Short status note:
+- Sprint 4 is closed (tag: `sprint-004-closed`). Work completed focused on backend mock executor validation and LM Studio adapter prototypes. Some experimental details were kept for further revision.
+
+---
+
+### Sprint 5 — En curso (UX)
+
+- Status: IN PROGRESS
+- Branch: `sprint-005-ux`
+- Focus: ToolWindow UX improvements, visible runtime states, scrollable output, copy response, and explicit error visibility.
+
+Short status note:
+- Sprint 5 is currently in progress with focus on UX polish and ensuring no silent failures in the ToolWindow. No architecture decisions changed in this update.

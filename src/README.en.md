@@ -196,4 +196,41 @@ Notes
 
 - This section is added as the formal closure of Sprint 2.5 — UX Foundations. Previous content has not been removed or rewritten; this documents the closed state and the minimal deliverables verified. Backend integration and final packaging tests remain planned for Sprint 3 as technical debt.
 
+---
+
+### Sprint 4 — Closed (tag: sprint-004-closed)
+
+- Status: CLOSED
+- Tag: `sprint-004-closed`
+- Branch reference: `sprint-004-backend-lmstudio`
+
+Checklist:
+- [DONE] Mock executor validated and expanded for backend integration tests
+- [DONE] Basic LM Studio adapter prototypes merged into feature branch
+- [DONE] Package-level logging and diagnostics improved for backend flows
+- [Deprecated/Outdated (kept for history)] Note: Some implementation details remain experimental and will be revisited in Sprint 5 if necessary.
+
+---
+
+### Sprint 5 — In progress (UX) — branch: sprint-005-ux
+
+- Status: IN PROGRESS
+- Branch: `sprint-005-ux`
+- Focus areas:
+  - ToolWindow UX polish and layout adjustments
+  - Clear runtime states: Idle / Running / Success / Error
+  - Scrollable output area for long responses
+  - Copy response capability in the UI
+  - Visible errors (no silent failures) and explicit logging
+
+Immediate checklist:
+- [ ] Implement scrollable response area in ToolWindow output
+- [ ] Add "Copy response" button and clipboard behavior
+- [ ] Ensure state labels update correctly for all flows
+- [ ] Surface errors visibly and log them (no silent catches)
+- [ ] Update UI styles to match Visual Studio theme conventions
+
+Notes:
+- Do not remove or alter prior sprint entries. If parts become outdated they are marked as Deprecated/Outdated and kept for history.
+
 

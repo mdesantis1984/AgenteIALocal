@@ -22,15 +22,18 @@ Estructura de la solución (proyectos)
 - `AgenteIALocal.Tests`
 - `AgenteIALocalVSIX`
 
-## Arquitectura
+Documentación completa por idioma
 
-- [Arquitectura (ES)](src/README.architecture.es.md)
-- [Architecture (EN)](src/README.architecture.en.md)
+- Español (canónica): `./README.es.md`
+- English (full translation): `./README.en.md`
 
-## Documentación
+Indice de sprint y roadmap
 
-- [Documentación general (ES)](src/README.es.md)
-- [General documentation (EN)](src/README.en.md)
+- Sprint 1: MVP inicial (ToolWindow básico, mock executor)
+- Sprint 2: UX y observabilidad (ToolWindow improvements, logging)
+- Sprint 3.3: Settings persistence, Options page, settings.json v1 and inline settings UI (ver detalle abajo)
+- Sprint 4: Closed (tag: sprint-004-closed)
+- Sprint 5: In progress (UX) — branch: sprint-005-ux
 
 Aviso importante
 
@@ -78,3 +81,38 @@ Cierre de Sprint 2: foco en experiencia de usuario, observabilidad y diagnóstic
 ### Notes
 - This section mirrors the Sprint 2.5 closure documented in localized READMEs.
 - It is added to the index to reflect the latest completed sprint without changing the overall structure of this file.
+
+## Sprint 3.3 — Settings persistence y UI inline
+
+En este sprint se completaron las siguientes tareas orientadas a persistencia y configuración:
+
+- Se introdujo `settings.json` (esquema `v1`) en `%LOCALAPPDATA%\\AgenteIALocal\\settings.json` con una estructura versionada y soporte para múltiples servidores. El archivo se crea automáticamente con valores por defecto si no existe.
+- Se implementó `AgentSettingsStore` (cargado/guardado seguro) que preserva campos desconocidos al reescribir el fichero y nunca lanza excepciones hacia la UI.
+- Se añadieron valores por defecto centrados en LM Studio (servidor local `lmstudio-local`, `BaseUrl` por defecto `http://127.0.0.1:8080`).
+- Se reintrodujo una página de Options en `Tools → Options → Agente IA Local` para configuración básica (BaseUrl, Model, ApiKey) usando `WritableSettingsStore`.
+- Se incorporó un panel de configuración inline en la ToolWindow que permite editar campos seleccionados del `settings.json` (activeServerId, baseUrl, model, apiKey) y guardarlos explícitamente sin afectar otros campos.
+
+Notas importantes
+
+- No se modificó la lógica de ejecución o composición del backend en este sprint: la composición sigue siendo manual y orientada a mantener el baseline estable.
+- Para más detalles arquitectónicos consultar `README.architecture.es.md` y `README.architecture.en.md`.
+
+---
+
+### Sprint 4 — Cerrado
+
+(Notas y enlaces de interés pueden añadirse aquí si es necesario)
+
+---
+
+### Sprint 5 — En progreso
+
+Objetivo principal: 
+
+- Avanzar en las mejoras de UX relacionadas con la ToolWindow y la experiencia general del agente, basadas en los aprendizajes y feedback recibido hasta la fecha.
+
+Branch actual:
+
+- `sprint-005-ux`
+
+---
