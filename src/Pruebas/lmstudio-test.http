@@ -1,8 +1,8 @@
 ### LM Studio – Chat Completions (OpenAI-compatible)
 POST http://127.0.0.1:1234/v1/chat/completions
 Content-Type: application/json
-Accept: application/json
-Authorization: Bearer lm-studio
+api_key: lm-studio
+Content-Length: 227
 
 {
   "model": "qwen3-4b-dotnet-specialist",
@@ -18,5 +18,6 @@ Authorization: Bearer lm-studio
   ],
   "temperature": 0.2,
   "max_tokens": 512,
-  "stream": false
+  "stream": false,
+  "api_key": "lm-studio"
 }

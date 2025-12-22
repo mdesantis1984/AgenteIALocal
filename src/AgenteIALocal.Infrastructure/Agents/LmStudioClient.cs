@@ -29,6 +29,9 @@ namespace AgenteIALocal.Infrastructure.Agents
                 var model = settings.Model ?? string.Empty;
                 var apiKey = settings.ApiKey ?? string.Empty;
 
+                // H1: ensure authorization header present; default to 'lm-studio' if empty
+                if (string.IsNullOrEmpty(apiKey)) apiKey = "lm-studio";
+
                 var uri = endpointResolver.GetChatCompletionsEndpoint();
                 if (uri == null)
                 {
@@ -37,13 +40,27 @@ namespace AgenteIALocal.Infrastructure.Agents
 
                 try
                 {
-                    // Build minimal JSON payload without external JSON libs
+                    // Build stable JSON payload using StringBuilder to avoid external deps
                     var sb = new StringBuilder();
                     sb.Append('{');
-                    if (!string.IsNullOrEmpty(model)) sb.AppendFormat("\"model\":\"{0}\",", EscapeJson(model));
-                    sb.Append("\"messages\":[{\"role\":\"user\",\"content\":\"");
+                    var wroteField = false;
+
+                    if (!string.IsNullOrEmpty(model))
+                    {
+                        sb.AppendFormat("\"model\":\"{0}\"", EscapeJson(model));
+                        wroteField = true;
+                    }
+
+                    // H3: stable payload additions
+                    if (wroteField) sb.Append(',');
+                    sb.Append("\"stream\":false,");
+                    sb.Append("\"max_tokens\":512,");
+
+                    sb.Append("\"messages\":[{");
+                    sb.Append("\"role\":\"user\",\"content\":\"");
                     sb.Append(EscapeJson(request.Prompt ?? string.Empty));
                     sb.Append("\"}]");
+
                     sb.Append('}');
 
                     var payloadJson = sb.ToString();
@@ -51,8 +68,11 @@ namespace AgenteIALocal.Infrastructure.Agents
 
                     var req = (HttpWebRequest)WebRequest.Create(uri);
                     req.Method = "POST";
-                    req.ContentType = "application/json";
-                    if (!string.IsNullOrEmpty(apiKey)) req.Headers[HttpRequestHeader.Authorization] = "Bearer " + apiKey;
+                    req.ContentType = "application/json"; // Content-Type header
+                    // H2: Accept header
+                    req.Accept = "application/json";
+                    // H1: Authorization: Bearer <apiKey>
+                    req.Headers[HttpRequestHeader.Authorization] = "Bearer " + apiKey;
                     req.ContentLength = bytes.Length;
 
                     using (var s = req.GetRequestStream())
@@ -64,9 +84,19 @@ namespace AgenteIALocal.Infrastructure.Agents
                     using (var sr = new StreamReader(resp.GetResponseStream()))
                     {
                         var text = sr.ReadToEnd();
+
                         if (resp.StatusCode != HttpStatusCode.OK)
                         {
                             return new AgentResponse { IsSuccess = false, Error = $"HTTP {resp.StatusCode}: {text}" };
+                        }
+
+                        // H4: defensive parsing - ensure JSON object
+                        var trimmed = (text ?? string.Empty).TrimStart();
+                        if (string.IsNullOrEmpty(trimmed) || !trimmed.StartsWith("{"))
+                        {
+                            // return clear error without throwing
+                            var sample = trimmed.Length > 300 ? trimmed.Substring(0, 300) + "..." : trimmed;
+                            return new AgentResponse { IsSuccess = false, Error = "Non-JSON response from LM Studio: " + sample };
                         }
 
                         try
@@ -127,10 +157,35 @@ namespace AgenteIALocal.Infrastructure.Agents
             if (colon < 0) return null;
             var start = responseText.IndexOf('"', colon);
             if (start < 0) return null;
-            var end = responseText.IndexOf('"', start + 1);
-            if (end < 0) return null;
 
-            var content = responseText.Substring(start + 1, end - start - 1);
+            // find the closing quote, but handle escaped quotes
+            var i = start + 1;
+            var sb = new StringBuilder();
+            bool escaped = false;
+            for (; i < responseText.Length; i++)
+            {
+                var ch = responseText[i];
+                if (escaped)
+                {
+                    sb.Append(ch);
+                    escaped = false;
+                    continue;
+                }
+
+                if (ch == '\\')
+                {
+                    escaped = true;
+                    continue;
+                }
+
+                if (ch == '"') break;
+
+                sb.Append(ch);
+            }
+
+            if (i >= responseText.Length) return null;
+
+            var content = sb.ToString();
             // unescape basic sequences
             content = content.Replace("\\\"", "\"").Replace("\\n", "\n").Replace("\\r", "\r").Replace("\\\\", "\\");
             return content;
