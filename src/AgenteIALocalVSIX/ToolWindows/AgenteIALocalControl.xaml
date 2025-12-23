@@ -63,32 +63,53 @@
                 <ColumnDefinition Width="300" />
             </Grid.ColumnDefinitions>
 
-            <TabControl Grid.Column="0">
-                <TabItem Header="Request">
-                    <GroupBox Header="Request" Margin="0" Padding="6">
-                        <TextBox x:Name="RequestJsonText"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Auto"
-                                 FontFamily="Consolas"
-                                 FontSize="12"
-                                 Height="140"
-                                 IsReadOnly="{Binding IsPromptReadOnly}" />
-                    </GroupBox>
-                </TabItem>
-                <TabItem Header="Response">
-                    <GroupBox Header="Response JSON" Margin="0" Padding="6">
+            <StackPanel Grid.Column="0">
+                <!-- Mock Changes accordion -->
+                <Expander Header="{Binding ModifiedFiles.Count, StringFormat=Changes ({0})}" IsExpanded="{Binding IsChangesExpanded}" Margin="0,0,0,8">
+                    <StackPanel>
+                        <ItemsControl ItemsSource="{Binding ModifiedFiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="12" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                            <Button Content="Mantener" Width="80" Margin="0,0,8,0" Click="ApplyChanges_Click" />
+                            <Button Content="Descartar" Width="80" Margin="0,0,8,0" Click="RevertChanges_Click" />
+                            <Button Content="..." Width="40" Click="ClearChanges_Click" />
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>
+
+                <TabControl>
+                    <TabItem Header="Request">
+                        <GroupBox Header="Request" Margin="0" Padding="6">
+                            <TextBox x:Name="RequestJsonText"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     FontFamily="Consolas"
+                                     FontSize="12"
+                                     Height="140"
+                                     IsReadOnly="{Binding IsPromptReadOnly}" />
+                        </GroupBox>
+                    </TabItem>
+                    <TabItem Header="Response">
+                        <GroupBox Header="Response JSON" Margin="0" Padding="6">
+                            <ScrollViewer>
+                                <TextBlock x:Name="ResponseJsonText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" />
+                            </ScrollViewer>
+                        </GroupBox>
+                    </TabItem>
+                    <TabItem Header="Log">
                         <ScrollViewer>
-                            <TextBlock x:Name="ResponseJsonText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12" />
+                            <TextBlock x:Name="LogText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" Margin="0,8,0,0" />
                         </ScrollViewer>
-                    </GroupBox>
-                </TabItem>
-                <TabItem Header="Log">
-                    <ScrollViewer>
-                        <TextBlock x:Name="LogText" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" Margin="0,8,0,0" />
-                    </ScrollViewer>
-                </TabItem>
-            </TabControl>
+                    </TabItem>
+                </TabControl>
+            </StackPanel>
 
             <!-- Inline settings panel (initially collapsed) -->
             <Border Grid.Column="1" Margin="8,0,0,0" BorderBrush="Gray" BorderThickness="1" Padding="8" Background="{DynamicResource {x:Static SystemColors.ControlLightBrushKey}}" Visibility="Collapsed" x:Name="SettingsPanel">

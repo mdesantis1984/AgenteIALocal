@@ -14,6 +14,7 @@ using MaterialDesignThemes.Wpf;
 using AgenteIALocalVSIX.Chats;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -46,6 +47,11 @@ namespace AgenteIALocalVSIX.ToolWindows
         // Chat state
         private List<ChatSession> chats = new List<ChatSession>();
         private ChatSession activeChat = null;
+
+        // Mock modified files
+        public List<string> ModifiedFiles { get; private set; } = new List<string> { "ProjectA/File1.cs", "ProjectB/Helper.cs", "Shared/Utils.cs" };
+        private bool isChangesExpanded = false;
+        public bool IsChangesExpanded { get { return isChangesExpanded; } set { if (isChangesExpanded == value) return; isChangesExpanded = value; OnPropertyChanged(nameof(IsChangesExpanded)); } }
 
         public ExecutionState CurrentExecutionState
         {
@@ -127,6 +133,61 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch
             {
                 // ignore chat errors
+            }
+
+            // Ensure mock modified files are available for binding
+            OnPropertyChanged(nameof(ModifiedFiles));
+            OnPropertyChanged(nameof(ModifiedFilesCount));
+        }
+
+        public int ModifiedFilesCount => ModifiedFiles?.Count ?? 0;
+
+        private void ApplyChanges_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var res = MessageBox.Show("You are applying the changes. Are you sure?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (res != MessageBoxResult.Yes) return;
+
+                // Mock: show message and keep list unchanged
+                MessageBox.Show("Apply changes (mock) executed.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private void RevertChanges_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var res = MessageBox.Show("You are reverting the changes. Are you sure?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (res != MessageBoxResult.Yes) return;
+
+                // Mock: show message
+                MessageBox.Show("Revert changes (mock) executed.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private void ClearChanges_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var res = MessageBox.Show("You are clearing the list of changes. Are you sure?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (res != MessageBoxResult.Yes) return;
+
+                ModifiedFiles.Clear();
+                OnPropertyChanged(nameof(ModifiedFiles));
+                OnPropertyChanged(nameof(ModifiedFilesCount));
+            }
+            catch
+            {
+                // ignore
             }
         }
 
