@@ -27,6 +27,19 @@ namespace AgenteIALocalVSIX.ToolWindows
         public Brush StateColor { get; private set; }
         public string StateLabel { get; private set; }
 
+        // New bindable properties for control enablement
+        private bool runButtonEnabled;
+        public bool RunButtonEnabled { get { return runButtonEnabled; } private set { if (runButtonEnabled == value) return; runButtonEnabled = value; OnPropertyChanged(nameof(RunButtonEnabled)); } }
+
+        private bool clearButtonEnabled;
+        public bool ClearButtonEnabled { get { return clearButtonEnabled; } private set { if (clearButtonEnabled == value) return; clearButtonEnabled = value; OnPropertyChanged(nameof(ClearButtonEnabled)); } }
+
+        private bool isPromptReadOnly;
+        public bool IsPromptReadOnly { get { return isPromptReadOnly; } private set { if (isPromptReadOnly == value) return; isPromptReadOnly = value; OnPropertyChanged(nameof(IsPromptReadOnly)); } }
+
+        private bool isLlmConfigured;
+        private bool IsLlmConfigured { get { return isLlmConfigured; } set { if (isLlmConfigured == value) return; isLlmConfigured = value; OnPropertyChanged(nameof(IsLlmConfigured)); } }
+
         public ExecutionState CurrentExecutionState
         {
             get => currentExecutionState;
@@ -48,6 +61,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             // Set DataContext for XAML bindings
             this.DataContext = this;
 
+            // Initial UI state - will be refreshed after loading settings
             UpdateUiState(ExecutionState.Idle);
 
             // Do not override AgentComposition.Logger here; package provides a file-based logger.
@@ -78,6 +92,10 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 var settings = AgentSettingsStore.Load();
                 PopulateSettingsPanel(settings);
+
+                // compute LLM configured state and refresh UI
+                ComputeIsLlmConfigured(settings);
+                UpdateUiState(CurrentExecutionState);
             }
             catch { }
         }
@@ -106,6 +124,29 @@ namespace AgenteIALocalVSIX.ToolWindows
                 ServerModelTextBox.Text = srv.Model ?? string.Empty;
                 ServerApiKeyTextBox.Text = srv.ApiKey ?? string.Empty;
                 ActiveServerIdTextBox.Text = srv.Id ?? string.Empty;
+            }
+        }
+
+        private void ComputeIsLlmConfigured(AgentSettings settings)
+        {
+            try
+            {
+                bool configured = false;
+                if (settings != null && !string.IsNullOrEmpty(settings.ActiveServerId) && settings.Servers != null)
+                {
+                    var srv = settings.Servers.Find(s => s.Id == settings.ActiveServerId);
+                    if (srv != null)
+                    {
+                        if (!string.IsNullOrEmpty(srv.BaseUrl) && !string.IsNullOrEmpty(srv.Model)) configured = true;
+                    }
+                }
+
+                IsLlmConfigured = configured;
+            }
+            catch
+            {
+                // never throw from UI
+                IsLlmConfigured = false;
             }
         }
 
@@ -144,6 +185,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                 srv.ApiKey = ServerApiKeyTextBox.Text ?? string.Empty;
 
                 AgentSettingsStore.Save(settings);
+
+                // recompute configuration and update UI
+                ComputeIsLlmConfigured(settings);
+                UpdateUiState(CurrentExecutionState);
 
                 // feedback
                 Log("Settings saved.");
@@ -272,9 +317,33 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             CurrentExecutionState = newState;
 
-            // Keep previous enable/disable rules
-            RunButton.IsEnabled = CurrentExecutionState == ExecutionState.Idle || CurrentExecutionState == ExecutionState.Completed || CurrentExecutionState == ExecutionState.Error;
-            ClearButton.IsEnabled = CurrentExecutionState != ExecutionState.Running;
+            // Apply enable/disable rules based on LLM configuration and state
+            if (!IsLlmConfigured)
+            {
+                // No LLM configured: disable interactive controls except settings/help, allow prompt read-only
+                RunButtonEnabled = false;
+                ClearButtonEnabled = false;
+                IsPromptReadOnly = true;
+                return;
+            }
+
+            // LLM configured: apply state-specific rules
+            switch (CurrentExecutionState)
+            {
+                case ExecutionState.Running:
+                    RunButtonEnabled = false;
+                    ClearButtonEnabled = false;
+                    IsPromptReadOnly = false;
+                    break;
+                case ExecutionState.Idle:
+                case ExecutionState.Completed:
+                case ExecutionState.Error:
+                default:
+                    RunButtonEnabled = true;
+                    ClearButtonEnabled = true;
+                    IsPromptReadOnly = false;
+                    break;
+            }
         }
 
         private async void RunButton_Click(object sender, System.Windows.RoutedEventArgs e)

@@ -48,8 +48,8 @@
         </StackPanel>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button x:Name="RunButton" Content="Run" Width="80" Click="RunButton_Click" />
-            <Button x:Name="ClearButton" Content="Clear" Width="80" Margin="8,0,0,0" Click="ClearButton_Click" />
+            <Button x:Name="RunButton" Content="Run" Width="80" Click="RunButton_Click" IsEnabled="{Binding RunButtonEnabled}" />
+            <Button x:Name="ClearButton" Content="Clear" Width="80" Margin="8,0,0,0" Click="ClearButton_Click" IsEnabled="{Binding ClearButtonEnabled}" />
         </StackPanel>
 
         <Grid Grid.Row="3">
@@ -67,7 +67,8 @@
                                  VerticalScrollBarVisibility="Auto"
                                  FontFamily="Consolas"
                                  FontSize="12"
-                                 Height="140" />
+                                 Height="140"
+                                 IsReadOnly="{Binding IsPromptReadOnly}" />
                     </GroupBox>
                 </TabItem>
                 <TabItem Header="Response">
