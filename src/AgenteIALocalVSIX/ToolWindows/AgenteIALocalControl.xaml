@@ -104,13 +104,35 @@
       </Grid.ColumnDefinitions>
 
       <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-        <ComboBox x:Name="ChatComboBox" Width="220" SelectionChanged="ChatComboBox_SelectionChanged" />
-        <Button x:Name="NewChatButton" Content="+" Margin="8,0,0,0" Click="NewChatButton_Click" />
-        <Button x:Name="DeleteChatButton" Content="-" Margin="8,0,0,0" Click="DeleteChatButton_Click" />
+        <ComboBox x:Name="ChatComboBox"
+                  Width="260"
+                  Height="32"
+                  Padding="12,4,12,4"
+                  SelectionChanged="ChatComboBox_SelectionChanged"
+                  Style="{StaticResource MaterialDesignOutlinedComboBox}" />
+        <Button x:Name="NewChatButton"
+                Width="36"
+                Height="36"
+                Margin="8,0,0,0"
+                Click="NewChatButton_Click"
+                Style="{StaticResource MaterialDesignToolButton}">
+          <md:PackIcon Kind="Plus"
+                       Width="20"
+                       Height="20" />
+        </Button>
       </StackPanel>
 
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-        <Button x:Name="RunButton" Content="Run" Click="RunButton_Click" IsEnabled="{Binding RunButtonEnabled}" />
+        <Button x:Name="DeleteChatButton"
+                Width="36"
+                Height="36"
+                Click="DeleteChatButton_Click"
+                Style="{StaticResource MaterialDesignToolButton}">
+          <md:PackIcon Kind="TrashCanOutline"
+                       Width="20"
+                       Height="20" />
+        </Button>
+        <Button x:Name="RunButton" Content="Run" Margin="8,0,0,0" Click="RunButton_Click" IsEnabled="{Binding RunButtonEnabled}" />
         <Button x:Name="ClearButton" Content="Clear" Margin="8,0,0,0" Click="ClearButton_Click" IsEnabled="{Binding ClearButtonEnabled}" />
       </StackPanel>
     </Grid>
