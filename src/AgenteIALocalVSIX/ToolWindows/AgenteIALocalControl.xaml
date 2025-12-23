@@ -176,32 +176,48 @@
                 BorderBrush="{DynamicResource MaterialDesignDivider}"
                 BorderThickness="1">
         <Expander.Header>
-          <Grid x:Name="ChangesAccordionHeaderGrid" Margin="12,4" VerticalAlignment="Center">
+          <Grid x:Name="ChangesAccordionHeaderGrid"
+                Height="40"
+                VerticalAlignment="Center">
             <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="12" />
+              <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="Changes (N)"
+
+            <md:PackIcon Grid.Column="0"
+                         Kind="ChevronDown"
+                         Width="16"
+                         Height="16"
+                         VerticalAlignment="Center" />
+
+            <TextBlock Grid.Column="2"
+                       Text="Changes (N)"
+                       FontSize="13"
                        FontWeight="SemiBold"
                        VerticalAlignment="Center"
                        Style="{StaticResource MaterialDesignBody1TextBlock}" />
-            <StackPanel Grid.Column="1"
+
+            <StackPanel Grid.Column="4"
                         Orientation="Horizontal"
                         VerticalAlignment="Center">
               <Button Width="32" Height="32" Style="{StaticResource MaterialDesignToolButton}">
-                <md:PackIcon Kind="ContentSave" Width="20" Height="20" />
+                <md:PackIcon Kind="ContentSave" Width="16" Height="16" />
               </Button>
-              <Button Width="32" Height="32" Margin="4,0,0,0" Style="{StaticResource MaterialDesignToolButton}">
-                <md:PackIcon Kind="DeleteSweepOutline" Width="20" Height="20" />
+              <Button Width="32" Height="32" Margin="8,0,0,0" Style="{StaticResource MaterialDesignToolButton}">
+                <md:PackIcon Kind="DeleteSweepOutline" Width="16" Height="16" />
               </Button>
-              <Button Width="32" Height="32" Margin="4,0,0,0" Style="{StaticResource MaterialDesignToolButton}">
-                <md:PackIcon Kind="EraserVariant" Width="20" Height="20" />
+              <Button Width="32" Height="32" Margin="8,0,0,0" Style="{StaticResource MaterialDesignToolButton}">
+                <md:PackIcon Kind="EraserVariant" Width="16" Height="16" />
               </Button>
             </StackPanel>
           </Grid>
         </Expander.Header>
 
-        <ItemsControl Margin="12,8" ItemTemplate="{DynamicResource MaterialDesignTextBlockListItem}">
+        <ItemsControl Margin="16"
+                      ItemTemplate="{DynamicResource MaterialDesignTextBlockListItem}">
           <ItemsControl.Items>
             <TextBlock Text="src/App.xaml" Style="{StaticResource MaterialDesignBody2TextBlock}" />
             <TextBlock Text="src/Services/Runner.cs" Style="{StaticResource MaterialDesignBody2TextBlock}" />
