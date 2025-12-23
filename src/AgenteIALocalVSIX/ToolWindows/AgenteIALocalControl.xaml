@@ -12,7 +12,12 @@
     </Grid.RowDefinitions>
 
     <!-- HEADER (Items 1–6) -->
-    <Grid Grid.Row="0" Margin="16,12,16,12">
+    <Grid Grid.Row="0" Margin="16,12,16,12" Background="{StaticResource HeaderBackgroundBrush}">
+      <Grid.Resources>
+        <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FF1E1E22" />
+        <SolidColorBrush x:Key="HeaderHighEmphasisBrush" Color="#FFFFFFFF" />
+        <SolidColorBrush x:Key="HeaderMediumEmphasisBrush" Color="#CCFFFFFF" />
+      </Grid.Resources>
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
@@ -25,6 +30,7 @@
                  FontSize="21"
                  FontWeight="SemiBold"
                  VerticalAlignment="Center"
+                 Foreground="{StaticResource HeaderHighEmphasisBrush}"
                  Style="{StaticResource MaterialDesignHeadline6TextBlock}" />
 
       <!-- Counters + State block -->
@@ -36,11 +42,21 @@
         </Grid.ColumnDefinitions>
 
         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-          <TextBlock Text="Solutions: " Style="{StaticResource MaterialDesignBody2TextBlock}" />
-          <TextBlock x:Name="SolutionNameText" Text="0" Style="{StaticResource MaterialDesignBody2TextBlock}" />
+          <TextBlock Text="Solutions: "
+                     Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
+          <TextBlock x:Name="SolutionNameText"
+                     Text="0"
+                     Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
           <TextBlock Text="  " />
-          <TextBlock Text="Projects: " Style="{StaticResource MaterialDesignBody2TextBlock}" />
-          <TextBlock x:Name="ProjectCountText" Text="0" Style="{StaticResource MaterialDesignBody2TextBlock}" />
+          <TextBlock Text="Projects: "
+                     Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
+          <TextBlock x:Name="ProjectCountText"
+                     Text="0"
+                     Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
         </StackPanel>
 
         <StackPanel Grid.Column="2"
@@ -55,6 +71,7 @@
           <TextBlock x:Name="StateLabelText"
                      Text="{Binding StateLabel}"
                      Margin="6,0,0,0"
+                     Foreground="{Binding StateColor}"
                      Style="{StaticResource MaterialDesignBody2TextBlock}" />
         </StackPanel>
       </Grid>
@@ -66,13 +83,15 @@
                 Style="{StaticResource MaterialDesignToolButton}">
           <md:PackIcon Kind="Cog"
                        Width="20"
-                       Height="20" />
+                       Height="20"
+                       Foreground="{StaticResource HeaderHighEmphasisBrush}" />
         </Button>
         <Button Margin="8,0,0,0"
                 Style="{StaticResource MaterialDesignToolButton}">
           <md:PackIcon Kind="HelpCircleOutline"
                        Width="20"
-                       Height="20" />
+                       Height="20"
+                       Foreground="{StaticResource HeaderHighEmphasisBrush}" />
         </Button>
       </StackPanel>
     </Grid>
