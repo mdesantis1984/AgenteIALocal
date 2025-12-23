@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d"
              Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"
              Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}">
@@ -18,7 +19,21 @@
             <TextBlock Text="Agente IA Local" FontWeight="Bold" FontSize="16" />
             <TextBlock Width="12" />
             <TextBlock Text="State:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,4,0" />
-            <TextBlock x:Name="StateText" Text="Idle" VerticalAlignment="Center" FontFamily="Consolas" />
+
+            <!-- State indicator: icon + label bound to code-behind properties -->
+            <md:PackIcon x:Name="StateIcon"
+                         Kind="{Binding StateIconKind}"
+                         Width="18" Height="18"
+                         VerticalAlignment="Center"
+                         Foreground="{Binding StateColor}"
+                         Margin="0,0,6,0" />
+
+            <TextBlock x:Name="StateLabelText"
+                       Text="{Binding StateLabel}"
+                       VerticalAlignment="Center"
+                       FontFamily="Consolas"
+                       Foreground="{Binding StateColor}" />
+
             <Button x:Name="SettingsButton" Width="24" Height="24" Margin="8,0,0,0" ToolTip="Settings" Click="SettingsButton_Click">
                 <TextBlock Text="⚙" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Center" />
             </Button>

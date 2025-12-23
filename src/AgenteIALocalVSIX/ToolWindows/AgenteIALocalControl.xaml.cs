@@ -8,20 +8,47 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
+using System.ComponentModel;
+using System.Windows.Media;
+using MaterialDesignThemes.Wpf;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
-    public partial class AgenteIALocalControl : UserControl
+    public partial class AgenteIALocalControl : UserControl, INotifyPropertyChanged
     {
-        private enum UiState { Idle, Running, Completed, Error }
-        private UiState state = UiState.Idle;
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public enum ExecutionState { Idle, Running, Completed, Error }
+
+        private ExecutionState currentExecutionState = ExecutionState.Idle;
+
+        // Bindable properties for UI (icon, color, text)
+        public PackIconKind StateIconKind { get; private set; }
+        public Brush StateColor { get; private set; }
+        public string StateLabel { get; private set; }
+
+        public ExecutionState CurrentExecutionState
+        {
+            get => currentExecutionState;
+            private set
+            {
+                if (currentExecutionState == value) return;
+                currentExecutionState = value;
+                OnPropertyChanged(nameof(CurrentExecutionState));
+                UpdateStateProperties(value);
+            }
+        }
 
         private CancellationTokenSource logRefreshCts;
 
         public AgenteIALocalControl()
         {
             InitializeComponent();
-            UpdateUiState(UiState.Idle);
+
+            // Set DataContext for XAML bindings
+            this.DataContext = this;
+
+            UpdateUiState(ExecutionState.Idle);
 
             // Do not override AgentComposition.Logger here; package provides a file-based logger.
 
@@ -203,20 +230,59 @@ namespace AgenteIALocalVSIX.ToolWindows
             return JsonConvert.SerializeObject(obj, Formatting.Indented);
         }
 
-        private void UpdateUiState(UiState newState)
+        private void UpdateStateProperties(ExecutionState newState)
         {
-            state = newState;
-            StateText.Text = state.ToString();
-            RunButton.IsEnabled = state == UiState.Idle || state == UiState.Completed || state == UiState.Error;
-            ClearButton.IsEnabled = state != UiState.Running;
+            // Map states to icon kind, color and label according to UX spec
+            switch (newState)
+            {
+                case ExecutionState.Idle:
+                    StateIconKind = PackIconKind.PauseCircleOutline;
+                    StateColor = Brushes.Gray;
+                    StateLabel = "Idle";
+                    break;
+                case ExecutionState.Running:
+                    StateIconKind = PackIconKind.ProgressClock;
+                    StateColor = Brushes.DodgerBlue;
+                    StateLabel = "Running";
+                    break;
+                case ExecutionState.Completed:
+                    StateIconKind = PackIconKind.CheckCircleOutline;
+                    StateColor = Brushes.LimeGreen;
+                    StateLabel = "Completed";
+                    break;
+                case ExecutionState.Error:
+                    StateIconKind = PackIconKind.AlertCircleOutline;
+                    StateColor = Brushes.IndianRed;
+                    StateLabel = "Error";
+                    break;
+                default:
+                    StateIconKind = PackIconKind.PauseCircleOutline;
+                    StateColor = Brushes.Gray;
+                    StateLabel = newState.ToString();
+                    break;
+            }
+
+            // Notify bindings for related properties
+            OnPropertyChanged(nameof(StateIconKind));
+            OnPropertyChanged(nameof(StateColor));
+            OnPropertyChanged(nameof(StateLabel));
+        }
+
+        private void UpdateUiState(ExecutionState newState)
+        {
+            CurrentExecutionState = newState;
+
+            // Keep previous enable/disable rules
+            RunButton.IsEnabled = CurrentExecutionState == ExecutionState.Idle || CurrentExecutionState == ExecutionState.Completed || CurrentExecutionState == ExecutionState.Error;
+            ClearButton.IsEnabled = CurrentExecutionState != ExecutionState.Running;
         }
 
         private async void RunButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            if (state == UiState.Running) return;
+            if (CurrentExecutionState == ExecutionState.Running) return;
 
             Log("Run clicked.");
-            UpdateUiState(UiState.Running);
+            UpdateUiState(ExecutionState.Running);
             Log("Execution started.");
 
             try
@@ -288,7 +354,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 this.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     ResponseJsonText.Text = display;
-                    UpdateUiState(UiState.Completed);
+                    UpdateUiState(ExecutionState.Completed);
                     Log("Execution completed successfully.");
 
                     // Refresh log tab to show newly appended entries (immediately)
@@ -309,7 +375,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                UpdateUiState(UiState.Error);
+                UpdateUiState(ExecutionState.Error);
                 Log("Execution failed: " + ex.Message);
                 Trace.TraceError("[AgenteIALocalControl] Execution failed: " + ex);
                 ResponseJsonText.Text = "{ \"error\": \"Execution failed\" }";
@@ -336,7 +402,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             RefreshLogFromFile();
 
-            UpdateUiState(UiState.Idle);
+            UpdateUiState(ExecutionState.Idle);
         }
 
         private void RefreshLogFromFile()
@@ -460,6 +526,10 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
+        private void OnPropertyChanged(string name)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
 
     }
 }
