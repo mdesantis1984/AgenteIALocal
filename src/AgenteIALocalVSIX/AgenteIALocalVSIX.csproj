@@ -86,6 +86,9 @@
   </ItemGroup>
   <!-- XAML -->
   <ItemGroup>
+    <Page Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Options\AgenteIALocalOptionsControl.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
