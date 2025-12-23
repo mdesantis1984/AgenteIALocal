@@ -213,40 +213,50 @@
       <!-- MAIN CONTENT (Request / Response / Log) -->
       <TabControl Grid.Row="2"
                   Margin="16"
+                  Padding="0"
                   Style="{StaticResource MaterialDesignTabControl}"
                   md:ColorZoneAssist.Mode="PrimaryDark">
-        <TabItem Header="Request">
-          <Grid x:Name="RequestTabContentGrid" Margin="12">
+        <TabItem Header="Request"
+                 MinHeight="40"
+                 Padding="16,10"
+                 VerticalContentAlignment="Center">
+          <Grid x:Name="RequestTabContentGrid" Margin="16">
             <TextBox x:Name="RequestJsonText"
                      AcceptsReturn="True"
                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
                      TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto"
-                     Padding="12"
+                     Padding="16"
                      MinHeight="180" />
           </Grid>
         </TabItem>
-        <TabItem Header="Response">
-          <Grid x:Name="ResponseTabContentGrid" Margin="12">
+        <TabItem Header="Response"
+                 MinHeight="40"
+                 Padding="16,10"
+                 VerticalContentAlignment="Center">
+          <Grid x:Name="ResponseTabContentGrid" Margin="16">
             <TextBox x:Name="ResponseJsonText"
                      AcceptsReturn="True"
                      IsReadOnly="True"
                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
                      TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto"
-                     Padding="12"
+                     Padding="16"
                      MinHeight="180" />
           </Grid>
         </TabItem>
-        <TabItem Header="Log">
-          <Grid x:Name="LogTabContentGrid" Margin="12">
+        <TabItem Header="Log"
+                 MinHeight="40"
+                 Padding="16,10"
+                 VerticalContentAlignment="Center">
+          <Grid x:Name="LogTabContentGrid" Margin="16">
             <TextBox x:Name="LogText"
                      AcceptsReturn="True"
                      IsReadOnly="True"
                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
                      TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto"
-                     Padding="12"
+                     Padding="16"
                      MinHeight="180" />
           </Grid>
         </TabItem>
