@@ -263,20 +263,50 @@
       </TabControl>
 
       <!-- PROMPT AREA (Items 14–19) -->
-      <Grid x:Name="PromptAreaGrid" Grid.Row="3" Margin="16">
+      <Grid x:Name="PromptAreaGrid" Grid.Row="3" Margin="16" MinHeight="80">
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="16" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="12" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="12" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="12" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-        <TextBox x:Name="PromptTextBox" Height="60" AcceptsReturn="True" />
+        <TextBox x:Name="PromptTextBox"
+                 Grid.Column="0"
+                 Height="36"
+                 MinHeight="36"
+                 Padding="12,8,12,8"
+                 VerticalContentAlignment="Center"
+                 VerticalAlignment="Center"
+                 AcceptsReturn="True" />
 
-        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-          <ComboBox Width="120" />
-          <ComboBox Width="160" Margin="8,0,0,0" />
-          <ComboBox Width="120" Margin="8,0,0,0" />
-          <Button Content="Send" Margin="8,0,0,0" />
-        </StackPanel>
+        <ComboBox Grid.Column="2"
+                  Width="120"
+                  Height="36"
+                  MinHeight="36"
+                  VerticalAlignment="Center" />
+
+        <ComboBox Grid.Column="4"
+                  Width="160"
+                  Height="36"
+                  MinHeight="36"
+                  VerticalAlignment="Center" />
+
+        <ComboBox Grid.Column="6"
+                  Width="120"
+                  Height="36"
+                  MinHeight="36"
+                  VerticalAlignment="Center" />
+
+        <Button Grid.Column="8"
+                Content="Send"
+                Height="36"
+                VerticalAlignment="Center" />
       </Grid>
     </Grid>
 
