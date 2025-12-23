@@ -7,6 +7,22 @@
     <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FF1E1E22" />
     <SolidColorBrush x:Key="HeaderHighEmphasisBrush" Color="#FFFFFFFF" />
     <SolidColorBrush x:Key="HeaderMediumEmphasisBrush" Color="#CCFFFFFF" />
+    <Style x:Key="Text.Headline" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="22" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style x:Key="Text.Subtitle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style x:Key="Text.Body" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style x:Key="Text.Caption" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="Normal" />
+    </Style>
   </UserControl.Resources>
 
   <Grid>
@@ -33,11 +49,9 @@
           <!-- Title block -->
           <TextBlock Grid.Column="0"
                      Text="Agente IA Local"
-                     FontSize="22"
-                     FontWeight="Bold"
                      VerticalAlignment="Center"
                      Foreground="{StaticResource HeaderHighEmphasisBrush}"
-                     Style="{StaticResource MaterialDesignHeadline6TextBlock}" />
+                     Style="{StaticResource Text.Headline}" />
 
           <!-- Counters + State block -->
           <Grid Grid.Column="1" Margin="32,0,32,0" VerticalAlignment="Center">
@@ -49,26 +63,20 @@
 
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
               <TextBlock Text="Solutions: "
-                         FontSize="13"
                          Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                         Style="{StaticResource MaterialDesignBody2TextBlock}" />
+                         Style="{StaticResource Text.Body}" />
               <TextBlock x:Name="SolutionNameText"
                          Text="0"
-                         FontSize="13"
-                         FontWeight="SemiBold"
                          Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                         Style="{StaticResource MaterialDesignBody2TextBlock}" />
+                         Style="{StaticResource Text.Body}" />
               <TextBlock Text="  " />
               <TextBlock Text="Projects: "
-                         FontSize="13"
                          Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                         Style="{StaticResource MaterialDesignBody2TextBlock}" />
+                         Style="{StaticResource Text.Body}" />
               <TextBlock x:Name="ProjectCountText"
                          Text="0"
-                         FontSize="13"
-                         FontWeight="SemiBold"
                          Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                         Style="{StaticResource MaterialDesignBody2TextBlock}" />
+                         Style="{StaticResource Text.Body}" />
             </StackPanel>
 
             <StackPanel Grid.Column="2"
@@ -84,10 +92,8 @@
               <TextBlock x:Name="StateLabelText"
                          Text="{Binding StateLabel}"
                          Margin="6,0,0,0"
-                         FontSize="13"
-                         FontWeight="SemiBold"
                          Foreground="{Binding StateColor}"
-                         Style="{StaticResource MaterialDesignBody2TextBlock}" />
+                         Style="{StaticResource Text.Body}" />
             </StackPanel>
           </Grid>
 
@@ -98,8 +104,7 @@
             <Button x:Name="SettingsButton"
                     Width="36"
                     Height="36"
-                    Click="SettingsButton_Click"
-                    Style="{StaticResource MaterialDesignToolButton}">
+                    Click="SettingsButton_Click">
               <md:PackIcon Kind="Cog"
                            Width="20"
                            Height="20"
@@ -107,8 +112,7 @@
             </Button>
             <Button Width="36"
                     Height="36"
-                    Margin="8,0,0,0"
-                    Style="{StaticResource MaterialDesignToolButton}">
+                    Margin="8,0,0,0">
               <md:PackIcon Kind="HelpCircleOutline"
                            Width="20"
                            Height="20"
@@ -140,14 +144,12 @@
                     Width="260"
                     Height="32"
                     Padding="12,4,12,4"
-                    SelectionChanged="ChatComboBox_SelectionChanged"
-                    Style="{StaticResource MaterialDesignOutlinedComboBox}" />
+                    SelectionChanged="ChatComboBox_SelectionChanged" />
           <Button x:Name="NewChatButton"
                   Width="36"
                   Height="36"
                   Margin="8,0,0,0"
-                  Click="NewChatButton_Click"
-                  Style="{StaticResource MaterialDesignToolButton}">
+                  Click="NewChatButton_Click">
             <md:PackIcon Kind="Plus"
                          Width="20"
                          Height="20" />
@@ -158,8 +160,7 @@
           <Button x:Name="DeleteChatButton"
                   Width="36"
                   Height="36"
-                  Click="DeleteChatButton_Click"
-                  Style="{StaticResource MaterialDesignToolButton}">
+                  Click="DeleteChatButton_Click">
             <md:PackIcon Kind="TrashCanOutline"
                          Width="20"
                          Height="20" />
@@ -172,8 +173,6 @@
       <!-- CHANGES ACCORDION (Items 10–13) -->
       <Expander Grid.Row="1"
                 Margin="16,0,16,8"
-                Background="{DynamicResource MaterialDesignPaper}"
-                BorderBrush="{DynamicResource MaterialDesignDivider}"
                 BorderThickness="1">
         <Expander.Header>
           <Grid x:Name="ChangesAccordionHeaderGrid"
@@ -195,33 +194,30 @@
 
             <TextBlock Grid.Column="2"
                        Text="Changes (N)"
-                       FontSize="13"
-                       FontWeight="SemiBold"
                        VerticalAlignment="Center"
-                       Style="{StaticResource MaterialDesignBody1TextBlock}" />
+                       Style="{StaticResource Text.Subtitle}" />
 
             <StackPanel Grid.Column="4"
                         Orientation="Horizontal"
                         VerticalAlignment="Center">
-              <Button Width="32" Height="32" Style="{StaticResource MaterialDesignToolButton}">
+              <Button Width="32" Height="32">
                 <md:PackIcon Kind="ContentSave" Width="16" Height="16" />
               </Button>
-              <Button Width="32" Height="32" Margin="8,0,0,0" Style="{StaticResource MaterialDesignToolButton}">
+              <Button Width="32" Height="32" Margin="8,0,0,0">
                 <md:PackIcon Kind="DeleteSweepOutline" Width="16" Height="16" />
               </Button>
-              <Button Width="32" Height="32" Margin="8,0,0,0" Style="{StaticResource MaterialDesignToolButton}">
+              <Button Width="32" Height="32" Margin="8,0,0,0">
                 <md:PackIcon Kind="EraserVariant" Width="16" Height="16" />
               </Button>
             </StackPanel>
           </Grid>
         </Expander.Header>
 
-        <ItemsControl Margin="16"
-                      ItemTemplate="{DynamicResource MaterialDesignTextBlockListItem}">
+        <ItemsControl Margin="16">
           <ItemsControl.Items>
-            <TextBlock Text="src/App.xaml" Style="{StaticResource MaterialDesignBody2TextBlock}" />
-            <TextBlock Text="src/Services/Runner.cs" Style="{StaticResource MaterialDesignBody2TextBlock}" />
-            <TextBlock Text="tests/RunnerTests.cs" Style="{StaticResource MaterialDesignBody2TextBlock}" />
+            <TextBlock Text="src/App.xaml" Style="{StaticResource Text.Body}" />
+            <TextBlock Text="src/Services/Runner.cs" Style="{StaticResource Text.Body}" />
+            <TextBlock Text="tests/RunnerTests.cs" Style="{StaticResource Text.Body}" />
           </ItemsControl.Items>
         </ItemsControl>
       </Expander>
@@ -230,7 +226,6 @@
       <TabControl Grid.Row="2"
                   Margin="16"
                   Padding="0"
-                  Style="{StaticResource MaterialDesignTabControl}"
                   md:ColorZoneAssist.Mode="PrimaryDark">
         <TabItem Header="Request"
                  MinHeight="40"
@@ -239,7 +234,6 @@
           <Grid x:Name="RequestTabContentGrid" Margin="16">
             <TextBox x:Name="RequestJsonText"
                      AcceptsReturn="True"
-                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
                      TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto"
                      Padding="16"
@@ -254,7 +248,6 @@
             <TextBox x:Name="ResponseJsonText"
                      AcceptsReturn="True"
                      IsReadOnly="True"
-                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
                      TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto"
                      Padding="16"
@@ -269,7 +262,6 @@
             <TextBox x:Name="LogText"
                      AcceptsReturn="True"
                      IsReadOnly="True"
-                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
                      TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto"
                      Padding="16"
@@ -278,52 +270,6 @@
         </TabItem>
       </TabControl>
 
-      <!-- PROMPT AREA (Items 14–19) -->
-      <Grid x:Name="PromptAreaGrid" Grid.Row="3" Margin="16" MinHeight="80">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="16" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="12" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="12" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="12" />
-          <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-
-        <TextBox x:Name="PromptTextBox"
-                 Grid.Column="0"
-                 Height="36"
-                 MinHeight="36"
-                 Padding="12,8,12,8"
-                 VerticalContentAlignment="Center"
-                 VerticalAlignment="Center"
-                 AcceptsReturn="True" />
-
-        <ComboBox Grid.Column="2"
-                  Width="120"
-                  Height="36"
-                  MinHeight="36"
-                  VerticalAlignment="Center" />
-
-        <ComboBox Grid.Column="4"
-                  Width="160"
-                  Height="36"
-                  MinHeight="36"
-                  VerticalAlignment="Center" />
-
-        <ComboBox Grid.Column="6"
-                  Width="120"
-                  Height="36"
-                  MinHeight="36"
-                  VerticalAlignment="Center" />
-
-        <Button Grid.Column="8"
-                Content="Send"
-                Height="36"
-                VerticalAlignment="Center" />
-      </Grid>
     </Grid>
 
     <!-- FOOTER SECTION -->
@@ -342,18 +288,18 @@
             Visibility="Collapsed"
             Panel.ZIndex="1">
       <StackPanel>
-        <TextBlock Text="Settings (active server)" FontWeight="Bold" Margin="0,0,0,8" />
+        <TextBlock Text="Settings (active server)" Style="{StaticResource Text.Subtitle}" Margin="0,0,0,8" />
 
-        <TextBlock Text="Active Server ID:" />
+        <TextBlock Text="Active Server ID:" Style="{StaticResource Text.Body}" />
         <TextBox x:Name="ActiveServerIdTextBox" Margin="0,4,0,8" />
 
-        <TextBlock Text="Base URL:" />
+        <TextBlock Text="Base URL:" Style="{StaticResource Text.Body}" />
         <TextBox x:Name="ServerBaseUrlTextBox" Margin="0,4,0,8" />
 
-        <TextBlock Text="Model:" />
+        <TextBlock Text="Model:" Style="{StaticResource Text.Body}" />
         <TextBox x:Name="ServerModelTextBox" Margin="0,4,0,8" />
 
-        <TextBlock Text="API Key:" />
+        <TextBlock Text="API Key:" Style="{StaticResource Text.Body}" />
         <TextBox x:Name="ServerApiKeyTextBox" Margin="0,4,0,8" />
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
