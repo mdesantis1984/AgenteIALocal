@@ -284,3 +284,13 @@ Short status note:
 
 Short status note:
 - Sprint 5 is currently in progress with focus on UX polish and ensuring no silent failures in the ToolWindow. No architecture decisions changed in this update.
+
+---
+
+### Sprint 007 — MaterialDesign foundation (documentation)
+
+- No code commits: the architecture already met the MaterialDesign requirements, so this sprint only produced documentation.
+- Validated items: `App.xaml` still merges `MaterialDesignTheme.Dark` and `MaterialDesignTheme.Defaults` exactly once, keeps the Blue primary / Lime accent palette, and contains no duplicate dictionaries; the ban on scripts (Python/PowerShell) was enforced and no external tooling was executed.
+- Rejected items: adding `MaterialDesignTheme.Fonts.xaml` or similar dictionaries was rejected because it would have duplicated resources without delivering visual value.
+- Recorded decisions: `md:PackIcon` and `md:ColorZoneAssist.Mode` remain in the ToolWindow as controlled dependencies until the UX replacement strategy is approved.
+- Exit condition: architecture documentation updated, runtime unchanged, and Sprint 008 (UX pixel-perfect) unblocked.

@@ -316,3 +316,13 @@ Short status note:
 
 Short status note:
 - Sprint 5 is currently in progress with focus on UX polish and ensuring no silent failures in the ToolWindow. No architecture decisions changed in this update.
+
+---
+
+### Sprint 007 — MaterialDesign foundation (documentación)
+
+- Sin commits de código: se confirmó que la arquitectura global ya cumplía con los requisitos de MaterialDesign y solo se añadieron registros documentales.
+- Qué se validó: `App.xaml` mantiene una sola carga de `MaterialDesignTheme.Dark` y `MaterialDesignTheme.Defaults`, conserva la paleta Azul/Lima y respeta la regla de no duplicar diccionarios; la prohibición de scripts (Python/PowerShell) se auditó y se cumplieron las restricciones.
+- Qué se rechazó: incorporar `MaterialDesignTheme.Fonts.xaml` u otros diccionarios, porque hubiera roto la premisa de una única fuente global y no aportaba cambios visuales necesarios.
+- Decisiones registradas: `md:PackIcon` y `md:ColorZoneAssist.Mode` permanecen en la ToolWindow como dependencias controladas, documentadas hasta que la estrategia UX proponga una alternativa.
+- Exit condition: documentación arquitectónica sincronizada, sin cambios de runtime, y Sprint 008 (UX pixel-perfect) habilitado.

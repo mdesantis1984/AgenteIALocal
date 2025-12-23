@@ -116,3 +116,13 @@ Branch actual:
 - `sprint-005-ux`
 
 ---
+
+### Sprint 007 — MaterialDesign foundation (documentación)
+
+- Estado: cerrado sin commits de código; todas las acciones se limitaron a verificación y documentación.
+- Validaciones: `App.xaml` ya tenía una sola carga de `MaterialDesignTheme.Dark` y `MaterialDesignTheme.Defaults`, paleta primaria Azul y acento Lima, por lo que no se requerían cambios; se confirmó la prohibición de scripts (Python/PowerShell) y no se ejecutó ninguna herramienta externa.
+- Rechazos: se descartó incorporar `MaterialDesignTheme.Fonts.xaml` u otros recursos adicionales para evitar duplicidad y mantener el baseline estable.
+- Decisiones explícitas: los controles `md:PackIcon` y el uso de `md:ColorZoneAssist.Mode` permanecen activos y documentados hasta que exista una alternativa equivalente.
+- Exit condition: documentación actualizada, dependencias MaterialDesign auditadas y Sprint 008 (UX pixel-perfect) desbloqueado sin impactos visuales ni de runtime.
+
+---

@@ -233,4 +233,14 @@ Immediate checklist:
 Notes:
 - Do not remove or alter prior sprint entries. If parts become outdated they are marked as Deprecated/Outdated and kept for history.
 
+---
+
+### Sprint 007 — MaterialDesign foundation (documentation)
+
+- Status: closed with no code commits; the iteration focused solely on validation and reporting.
+- Validations: `App.xaml` already contained a single merge of `MaterialDesignTheme.Dark` and `MaterialDesignTheme.Defaults` plus the Blue primary / Lime accent palettes, so no edits were required; the prohibition of running scripts (Python/PowerShell) was enforced and no external commands were executed.
+- Rejections: adding `MaterialDesignTheme.Fonts.xaml` or any extra dictionaries was rejected because it would have introduced redundant resources and risked baseline drift.
+- Explicit decisions: `md:PackIcon` controls and the use of `md:ColorZoneAssist.Mode` remain as-is until an approved equivalent replacement exists.
+- Exit condition: documentation updated, MaterialDesign dependencies audited, and Sprint 008 (UX pixel-perfect) officially unblocked with zero visual/runtime impact.
+
 
