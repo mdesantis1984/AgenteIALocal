@@ -7,6 +7,20 @@
              mc:Ignorable="d"
              Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"
              Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}">
+
+    <UserControl.Resources>
+        <!-- Local brushes and sizes to improve visual fidelity with mock -->
+        <SolidColorBrush x:Key="HeaderMutedBrush" Color="#FF9AA0A6" />
+        <SolidColorBrush x:Key="AccentBackgroundBrush" Color="#FF2D2D30" />
+        <Thickness x:Key="HeaderElementSpacing">8,0,8,0</Thickness>
+        <Style x:Key="IconButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="MinWidth" Value="24" />
+            <Setter Property="MinHeight" Value="24" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+    </UserControl.Resources>
+
     <Grid Margin="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -16,14 +30,14 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
-            <TextBlock Text="Agente IA Local" FontWeight="Bold" FontSize="16" />
+            <TextBlock Text="Agente IA Local" FontWeight="Bold" FontSize="18" VerticalAlignment="Center" />
             <TextBlock Width="12" />
-            <TextBlock Text="State:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,4,0" />
+            <TextBlock Text="State:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,4,0" Foreground="{StaticResource HeaderMutedBrush}" />
 
             <!-- State indicator: icon + label bound to code-behind properties -->
             <md:PackIcon x:Name="StateIcon"
                          Kind="{Binding StateIconKind}"
-                         Width="18" Height="18"
+                         Width="20" Height="20"
                          VerticalAlignment="Center"
                          Foreground="{Binding StateColor}"
                          Margin="0,0,6,0" />
@@ -32,9 +46,11 @@
                        Text="{Binding StateLabel}"
                        VerticalAlignment="Center"
                        FontFamily="Consolas"
-                       Foreground="{Binding StateColor}" />
+                       FontSize="12"
+                       Foreground="{Binding StateColor}"
+                       Margin="0,0,6,0" />
 
-            <Button x:Name="SettingsButton" Width="24" Height="24" Margin="8,0,0,0" ToolTip="Settings" Click="SettingsButton_Click">
+            <Button x:Name="SettingsButton" Width="28" Height="28" Margin="8,0,0,0" ToolTip="Settings" Click="SettingsButton_Click" Style="{StaticResource IconButtonStyle}">
                 <TextBlock Text="⚙" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Center" />
             </Button>
         </StackPanel>
@@ -47,14 +63,14 @@
             <TextBlock x:Name="ProjectCountText" Text="0" />
         </StackPanel>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center" HorizontalAlignment="Left">
             <!-- Chat history combo and actions -->
-            <ComboBox x:Name="ChatComboBox" Width="280" Margin="0,0,8,0" SelectionChanged="ChatComboBox_SelectionChanged" />
-            <Button x:Name="NewChatButton" Width="28" Height="24" Margin="0,0,4,0" ToolTip="New Chat" Click="NewChatButton_Click">+</Button>
-            <Button x:Name="DeleteChatButton" Width="28" Height="24" Margin="0,0,12,0" ToolTip="Delete Chat" Click="DeleteChatButton_Click">-</Button>
+            <ComboBox x:Name="ChatComboBox" Width="280" Height="26" Margin="0,0,8,0" SelectionChanged="ChatComboBox_SelectionChanged" VerticalContentAlignment="Center" />
+            <Button x:Name="NewChatButton" Width="28" Height="26" Margin="0,0,4,0" ToolTip="New Chat" Click="NewChatButton_Click" Style="{StaticResource IconButtonStyle}">+</Button>
+            <Button x:Name="DeleteChatButton" Width="28" Height="26" Margin="0,0,12,0" ToolTip="Delete Chat" Click="DeleteChatButton_Click" Style="{StaticResource IconButtonStyle}">-</Button>
 
-            <Button x:Name="RunButton" Content="Run" Width="80" Click="RunButton_Click" IsEnabled="{Binding RunButtonEnabled}" />
-            <Button x:Name="ClearButton" Content="Clear" Width="80" Margin="8,0,0,0" Click="ClearButton_Click" IsEnabled="{Binding ClearButtonEnabled}" />
+            <Button x:Name="RunButton" Content="Run" Width="80" Height="28" Click="RunButton_Click" IsEnabled="{Binding RunButtonEnabled}" Margin="0,0,8,0" />
+            <Button x:Name="ClearButton" Content="Clear" Width="80" Height="28" Margin="0,0,0,0" Click="ClearButton_Click" IsEnabled="{Binding ClearButtonEnabled}" />
         </StackPanel>
 
         <Grid Grid.Row="3">
@@ -83,7 +99,7 @@
                     </StackPanel>
                 </Expander>
 
-                <TabControl>
+                <TabControl Margin="0,4,0,0">
                     <TabItem Header="Request">
                         <GroupBox Header="Request" Margin="0" Padding="6">
                             <TextBox x:Name="RequestJsonText"
