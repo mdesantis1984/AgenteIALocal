@@ -17,86 +17,106 @@
     </Grid.RowDefinitions>
 
     <!-- HEADER SECTION -->
-    <Grid x:Name="HeaderContainer" Grid.Row="0">
-      <!-- HEADER (Items 1–6) -->
-      <Grid Margin="16,12,16,12" Background="{StaticResource HeaderBackgroundBrush}">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-
-        <!-- Title block -->
-        <TextBlock Grid.Column="0"
-                   Text="Agente IA Local"
-                   FontSize="21"
-                   FontWeight="SemiBold"
-                   VerticalAlignment="Center"
-                   Foreground="{StaticResource HeaderHighEmphasisBrush}"
-                   Style="{StaticResource MaterialDesignHeadline6TextBlock}" />
-
-        <!-- Counters + State block -->
-        <Grid Grid.Column="1" Margin="24,0,24,0">
+    <Grid x:Name="HeaderContainer" Grid.Row="0" MinHeight="88">
+      <Border Margin="16,8,16,0"
+              Padding="20,12"
+              Background="{StaticResource HeaderBackgroundBrush}"
+              BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
+              BorderThickness="0,0,0,1">
+        <Grid VerticalAlignment="Center">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
 
-          <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="Solutions: "
-                       Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                       Style="{StaticResource MaterialDesignBody2TextBlock}" />
-            <TextBlock x:Name="SolutionNameText"
-                       Text="0"
-                       Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                       Style="{StaticResource MaterialDesignBody2TextBlock}" />
-            <TextBlock Text="  " />
-            <TextBlock Text="Projects: "
-                       Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                       Style="{StaticResource MaterialDesignBody2TextBlock}" />
-            <TextBlock x:Name="ProjectCountText"
-                       Text="0"
-                       Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                       Style="{StaticResource MaterialDesignBody2TextBlock}" />
-          </StackPanel>
+          <!-- Title block -->
+          <TextBlock Grid.Column="0"
+                     Text="Agente IA Local"
+                     FontSize="22"
+                     FontWeight="Bold"
+                     VerticalAlignment="Center"
+                     Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                     Style="{StaticResource MaterialDesignHeadline6TextBlock}" />
 
+          <!-- Counters + State block -->
+          <Grid Grid.Column="1" Margin="32,0,32,0" VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+              <TextBlock Text="Solutions: "
+                         FontSize="13"
+                         Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                         Style="{StaticResource MaterialDesignBody2TextBlock}" />
+              <TextBlock x:Name="SolutionNameText"
+                         Text="0"
+                         FontSize="13"
+                         FontWeight="SemiBold"
+                         Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                         Style="{StaticResource MaterialDesignBody2TextBlock}" />
+              <TextBlock Text="  " />
+              <TextBlock Text="Projects: "
+                         FontSize="13"
+                         Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                         Style="{StaticResource MaterialDesignBody2TextBlock}" />
+              <TextBlock x:Name="ProjectCountText"
+                         Text="0"
+                         FontSize="13"
+                         FontWeight="SemiBold"
+                         Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                         Style="{StaticResource MaterialDesignBody2TextBlock}" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Margin="12,0,0,0">
+              <md:PackIcon x:Name="StateIcon"
+                           Kind="{Binding StateIconKind}"
+                           Width="20"
+                           Height="20"
+                           Foreground="{Binding StateColor}" />
+              <TextBlock x:Name="StateLabelText"
+                         Text="{Binding StateLabel}"
+                         Margin="6,0,0,0"
+                         FontSize="13"
+                         FontWeight="SemiBold"
+                         Foreground="{Binding StateColor}"
+                         Style="{StaticResource MaterialDesignBody2TextBlock}" />
+            </StackPanel>
+          </Grid>
+
+          <!-- Actions block -->
           <StackPanel Grid.Column="2"
                       Orientation="Horizontal"
-                      HorizontalAlignment="Right"
                       VerticalAlignment="Center">
-            <md:PackIcon x:Name="StateIcon"
-                         Kind="{Binding StateIconKind}"
-                         Width="20"
-                         Height="20"
-                         Foreground="{Binding StateColor}" />
-            <TextBlock x:Name="StateLabelText"
-                       Text="{Binding StateLabel}"
-                       Margin="6,0,0,0"
-                       Foreground="{Binding StateColor}"
-                       Style="{StaticResource MaterialDesignBody2TextBlock}" />
+            <Button x:Name="SettingsButton"
+                    Width="36"
+                    Height="36"
+                    Click="SettingsButton_Click"
+                    Style="{StaticResource MaterialDesignToolButton}">
+              <md:PackIcon Kind="Cog"
+                           Width="20"
+                           Height="20"
+                           Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+            </Button>
+            <Button Width="36"
+                    Height="36"
+                    Margin="8,0,0,0"
+                    Style="{StaticResource MaterialDesignToolButton}">
+              <md:PackIcon Kind="HelpCircleOutline"
+                           Width="20"
+                           Height="20"
+                           Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+            </Button>
           </StackPanel>
         </Grid>
-
-        <!-- Actions block -->
-        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-          <Button x:Name="SettingsButton"
-                  Click="SettingsButton_Click"
-                  Style="{StaticResource MaterialDesignToolButton}">
-            <md:PackIcon Kind="Cog"
-                         Width="20"
-                         Height="20"
-                         Foreground="{StaticResource HeaderHighEmphasisBrush}" />
-          </Button>
-          <Button Margin="8,0,0,0"
-                  Style="{StaticResource MaterialDesignToolButton}">
-            <md:PackIcon Kind="HelpCircleOutline"
-                         Width="20"
-                         Height="20"
-                         Foreground="{StaticResource HeaderHighEmphasisBrush}" />
-          </Button>
-        </StackPanel>
-      </Grid>
+      </Border>
     </Grid>
 
     <!-- BODY SECTION -->
