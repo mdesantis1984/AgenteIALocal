@@ -52,6 +52,8 @@
     <Compile Include="AgentSettingsStore.cs" />
     <Compile Include="Application\ApplicationContextAdapter.cs" />
     <Compile Include="Application\VisualStudioWorkspaceProvider.cs" />
+    <Compile Include="Chats\ChatSession.cs" />
+    <Compile Include="Chats\ChatStore.cs" />
     <Compile Include="Commands\OpenAgenteIALocalCommand.cs" />
     <Compile Include="Commands\VsctConsistencyValidator.cs" />
     <Compile Include="Contracts\CopilotRequest.cs" />

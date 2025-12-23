@@ -11,6 +11,9 @@ using System.Threading;
 using System.ComponentModel;
 using System.Windows.Media;
 using MaterialDesignThemes.Wpf;
+using AgenteIALocalVSIX.Chats;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -39,6 +42,10 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         private bool isLlmConfigured;
         private bool IsLlmConfigured { get { return isLlmConfigured; } set { if (isLlmConfigured == value) return; isLlmConfigured = value; OnPropertyChanged(nameof(IsLlmConfigured)); } }
+
+        // Chat state
+        private List<ChatSession> chats = new List<ChatSession>();
+        private ChatSession activeChat = null;
 
         public ExecutionState CurrentExecutionState
         {
@@ -98,6 +105,160 @@ namespace AgenteIALocalVSIX.ToolWindows
                 UpdateUiState(CurrentExecutionState);
             }
             catch { }
+
+            // Load chats
+            try
+            {
+                chats = ChatStore.LoadAll().ToList();
+                if (chats.Count == 0)
+                {
+                    activeChat = ChatStore.CreateNew();
+                    chats.Add(activeChat);
+                }
+                else
+                {
+                    // select last active (first in sorted list)
+                    activeChat = chats[0];
+                }
+
+                RefreshChatCombo();
+                LoadActiveChatToUi();
+            }
+            catch
+            {
+                // ignore chat errors
+            }
+        }
+
+        private void RefreshChatCombo()
+        {
+            try
+            {
+                ChatComboBox.Items.Clear();
+                foreach (var c in chats)
+                {
+                    var tb = new System.Windows.Controls.TextBlock { Text = c.Title };
+                    ChatComboBox.Items.Add(new ComboBoxItem { Content = c.Title, Tag = c.Id });
+                }
+
+                // select active
+                if (activeChat != null)
+                {
+                    for (int i = 0; i < ChatComboBox.Items.Count; i++)
+                    {
+                        var item = (ComboBoxItem)ChatComboBox.Items[i];
+                        if ((string)item.Tag == activeChat.Id)
+                        {
+                            ChatComboBox.SelectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private void LoadActiveChatToUi()
+        {
+            try
+            {
+                if (activeChat == null)
+                {
+                    RequestJsonText.Text = string.Empty;
+                    ResponseJsonText.Text = string.Empty;
+                    return;
+                }
+
+                // For simplicity in this sprint, show messages concatenated in Response area and keep request empty
+                var sb = new StringBuilder();
+                foreach (var m in activeChat.Messages)
+                {
+                    sb.AppendLine($"[{m.Timestamp}] {m.Sender}: {m.Content}");
+                }
+
+                ResponseJsonText.Text = sb.ToString();
+                RequestJsonText.Text = string.Empty;
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private void ChatComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                var cb = sender as ComboBox;
+                if (cb == null) return;
+                var item = cb.SelectedItem as ComboBoxItem;
+                if (item == null) return;
+                var id = item.Tag as string;
+                if (string.IsNullOrEmpty(id)) return;
+
+                var s = ChatStore.Load(id);
+                if (s != null)
+                {
+                    activeChat = s;
+                    LoadActiveChatToUi();
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private void NewChatButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            try
+            {
+                var res = System.Windows.MessageBox.Show("You are creating a new chat. Are you sure?", "Confirm", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
+                if (res != System.Windows.MessageBoxResult.Yes) return;
+
+                var s = ChatStore.CreateNew();
+                chats.Insert(0, s);
+                activeChat = s;
+                RefreshChatCombo();
+                LoadActiveChatToUi();
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private void DeleteChatButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            try
+            {
+                if (activeChat == null) return;
+                var res = System.Windows.MessageBox.Show("Are you sure you want to delete this chat?", "Confirm", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+                if (res != System.Windows.MessageBoxResult.Yes) return;
+
+                ChatStore.Delete(activeChat.Id);
+                chats.RemoveAll(c => c.Id == activeChat.Id);
+
+                if (chats.Count > 0)
+                {
+                    activeChat = chats[0];
+                }
+                else
+                {
+                    activeChat = ChatStore.CreateNew();
+                    chats.Add(activeChat);
+                }
+
+                RefreshChatCombo();
+                LoadActiveChatToUi();
+            }
+            catch
+            {
+                // ignore
+            }
         }
 
         private void PopulateSettingsPanel(AgentSettings settings)

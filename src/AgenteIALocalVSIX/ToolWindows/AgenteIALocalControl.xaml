@@ -47,7 +47,12 @@
             <TextBlock x:Name="ProjectCountText" Text="0" />
         </StackPanel>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
+            <!-- Chat history combo and actions -->
+            <ComboBox x:Name="ChatComboBox" Width="280" Margin="0,0,8,0" SelectionChanged="ChatComboBox_SelectionChanged" />
+            <Button x:Name="NewChatButton" Width="28" Height="24" Margin="0,0,4,0" ToolTip="New Chat" Click="NewChatButton_Click">+</Button>
+            <Button x:Name="DeleteChatButton" Width="28" Height="24" Margin="0,0,12,0" ToolTip="Delete Chat" Click="DeleteChatButton_Click">-</Button>
+
             <Button x:Name="RunButton" Content="Run" Width="80" Click="RunButton_Click" IsEnabled="{Binding RunButtonEnabled}" />
             <Button x:Name="ClearButton" Content="Clear" Width="80" Margin="8,0,0,0" Click="ClearButton_Click" IsEnabled="{Binding ClearButtonEnabled}" />
         </StackPanel>
