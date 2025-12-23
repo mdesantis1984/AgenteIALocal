@@ -16,6 +16,7 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
+    <!-- HEADER SECTION -->
     <Grid x:Name="HeaderContainer" Grid.Row="0">
       <!-- HEADER (Items 1–6) -->
       <Grid Margin="16,12,16,12" Background="{StaticResource HeaderBackgroundBrush}">
@@ -98,6 +99,7 @@
       </Grid>
     </Grid>
 
+    <!-- BODY SECTION -->
     <Grid x:Name="BodyContainer" Grid.Row="1">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
@@ -107,7 +109,7 @@
       </Grid.RowDefinitions>
 
       <!-- CHAT TOOLBAR (Items 7–9) -->
-      <Grid Grid.Row="0" Margin="16,0,16,8">
+      <Grid x:Name="ChatToolbarGrid" Grid.Row="0" Margin="16,0,16,8">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="Auto" />
@@ -154,7 +156,7 @@
                 BorderBrush="{DynamicResource MaterialDesignDivider}"
                 BorderThickness="1">
         <Expander.Header>
-          <Grid Margin="12,4" VerticalAlignment="Center">
+          <Grid x:Name="ChangesAccordionHeaderGrid" Margin="12,4" VerticalAlignment="Center">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
@@ -194,7 +196,7 @@
                   Style="{StaticResource MaterialDesignTabControl}"
                   md:ColorZoneAssist.Mode="PrimaryDark">
         <TabItem Header="Request">
-          <Grid Margin="12">
+          <Grid x:Name="RequestTabContentGrid" Margin="12">
             <TextBox x:Name="RequestJsonText"
                      AcceptsReturn="True"
                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
@@ -205,7 +207,7 @@
           </Grid>
         </TabItem>
         <TabItem Header="Response">
-          <Grid Margin="12">
+          <Grid x:Name="ResponseTabContentGrid" Margin="12">
             <TextBox x:Name="ResponseJsonText"
                      AcceptsReturn="True"
                      IsReadOnly="True"
@@ -217,7 +219,7 @@
           </Grid>
         </TabItem>
         <TabItem Header="Log">
-          <Grid Margin="12">
+          <Grid x:Name="LogTabContentGrid" Margin="12">
             <TextBox x:Name="LogText"
                      AcceptsReturn="True"
                      IsReadOnly="True"
@@ -231,7 +233,7 @@
       </TabControl>
 
       <!-- PROMPT AREA (Items 14–19) -->
-      <Grid Grid.Row="3" Margin="16">
+      <Grid x:Name="PromptAreaGrid" Grid.Row="3" Margin="16">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="Auto" />
@@ -248,6 +250,7 @@
       </Grid>
     </Grid>
 
+    <!-- FOOTER SECTION -->
     <Grid x:Name="FooterContainer" Grid.Row="2" />
 
     <!-- SETTINGS PANEL (hidden overlay) -->
