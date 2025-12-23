@@ -12,237 +12,247 @@
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <!-- HEADER (Items 1–6) -->
-    <Grid Grid.Row="0" Margin="16,12,16,12" Background="{StaticResource HeaderBackgroundBrush}">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="Auto" />
-      </Grid.ColumnDefinitions>
-
-      <!-- Title block -->
-      <TextBlock Grid.Column="0"
-                 Text="Agente IA Local"
-                 FontSize="21"
-                 FontWeight="SemiBold"
-                 VerticalAlignment="Center"
-                 Foreground="{StaticResource HeaderHighEmphasisBrush}"
-                 Style="{StaticResource MaterialDesignHeadline6TextBlock}" />
-
-      <!-- Counters + State block -->
-      <Grid Grid.Column="1" Margin="24,0,24,0">
+    <Grid x:Name="HeaderContainer" Grid.Row="0">
+      <!-- HEADER (Items 1–6) -->
+      <Grid Margin="16,12,16,12" Background="{StaticResource HeaderBackgroundBrush}">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-          <TextBlock Text="Solutions: "
-                     Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
-          <TextBlock x:Name="SolutionNameText"
-                     Text="0"
-                     Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
-          <TextBlock Text="  " />
-          <TextBlock Text="Projects: "
-                     Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
-          <TextBlock x:Name="ProjectCountText"
-                     Text="0"
-                     Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
+        <!-- Title block -->
+        <TextBlock Grid.Column="0"
+                   Text="Agente IA Local"
+                   FontSize="21"
+                   FontWeight="SemiBold"
+                   VerticalAlignment="Center"
+                   Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                   Style="{StaticResource MaterialDesignHeadline6TextBlock}" />
+
+        <!-- Counters + State block -->
+        <Grid Grid.Column="1" Margin="24,0,24,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+
+          <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="Solutions: "
+                       Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                       Style="{StaticResource MaterialDesignBody2TextBlock}" />
+            <TextBlock x:Name="SolutionNameText"
+                       Text="0"
+                       Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                       Style="{StaticResource MaterialDesignBody2TextBlock}" />
+            <TextBlock Text="  " />
+            <TextBlock Text="Projects: "
+                       Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                       Style="{StaticResource MaterialDesignBody2TextBlock}" />
+            <TextBlock x:Name="ProjectCountText"
+                       Text="0"
+                       Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                       Style="{StaticResource MaterialDesignBody2TextBlock}" />
+          </StackPanel>
+
+          <StackPanel Grid.Column="2"
+                      Orientation="Horizontal"
+                      HorizontalAlignment="Right"
+                      VerticalAlignment="Center">
+            <md:PackIcon x:Name="StateIcon"
+                         Kind="{Binding StateIconKind}"
+                         Width="20"
+                         Height="20"
+                         Foreground="{Binding StateColor}" />
+            <TextBlock x:Name="StateLabelText"
+                       Text="{Binding StateLabel}"
+                       Margin="6,0,0,0"
+                       Foreground="{Binding StateColor}"
+                       Style="{StaticResource MaterialDesignBody2TextBlock}" />
+          </StackPanel>
+        </Grid>
+
+        <!-- Actions block -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button x:Name="SettingsButton"
+                  Click="SettingsButton_Click"
+                  Style="{StaticResource MaterialDesignToolButton}">
+            <md:PackIcon Kind="Cog"
+                         Width="20"
+                         Height="20"
+                         Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+          </Button>
+          <Button Margin="8,0,0,0"
+                  Style="{StaticResource MaterialDesignToolButton}">
+            <md:PackIcon Kind="HelpCircleOutline"
+                         Width="20"
+                         Height="20"
+                         Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Grid>
+
+    <Grid x:Name="BodyContainer" Grid.Row="1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <!-- CHAT TOOLBAR (Items 7–9) -->
+      <Grid Grid.Row="0" Margin="16,0,16,8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <ComboBox x:Name="ChatComboBox"
+                    Width="260"
+                    Height="32"
+                    Padding="12,4,12,4"
+                    SelectionChanged="ChatComboBox_SelectionChanged"
+                    Style="{StaticResource MaterialDesignOutlinedComboBox}" />
+          <Button x:Name="NewChatButton"
+                  Width="36"
+                  Height="36"
+                  Margin="8,0,0,0"
+                  Click="NewChatButton_Click"
+                  Style="{StaticResource MaterialDesignToolButton}">
+            <md:PackIcon Kind="Plus"
+                         Width="20"
+                         Height="20" />
+          </Button>
         </StackPanel>
 
-        <StackPanel Grid.Column="2"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center">
-          <md:PackIcon x:Name="StateIcon"
-                       Kind="{Binding StateIconKind}"
-                       Width="20"
-                       Height="20"
-                       Foreground="{Binding StateColor}" />
-          <TextBlock x:Name="StateLabelText"
-                     Text="{Binding StateLabel}"
-                     Margin="6,0,0,0"
-                     Foreground="{Binding StateColor}"
-                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button x:Name="DeleteChatButton"
+                  Width="36"
+                  Height="36"
+                  Click="DeleteChatButton_Click"
+                  Style="{StaticResource MaterialDesignToolButton}">
+            <md:PackIcon Kind="TrashCanOutline"
+                         Width="20"
+                         Height="20" />
+          </Button>
+          <Button x:Name="RunButton" Content="Run" Margin="8,0,0,0" Click="RunButton_Click" IsEnabled="{Binding RunButtonEnabled}" />
+          <Button x:Name="ClearButton" Content="Clear" Margin="8,0,0,0" Click="ClearButton_Click" IsEnabled="{Binding ClearButtonEnabled}" />
         </StackPanel>
       </Grid>
 
-      <!-- Actions block -->
-      <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-        <Button x:Name="SettingsButton"
-                Click="SettingsButton_Click"
-                Style="{StaticResource MaterialDesignToolButton}">
-          <md:PackIcon Kind="Cog"
-                       Width="20"
-                       Height="20"
-                       Foreground="{StaticResource HeaderHighEmphasisBrush}" />
-        </Button>
-        <Button Margin="8,0,0,0"
-                Style="{StaticResource MaterialDesignToolButton}">
-          <md:PackIcon Kind="HelpCircleOutline"
-                       Width="20"
-                       Height="20"
-                       Foreground="{StaticResource HeaderHighEmphasisBrush}" />
-        </Button>
-      </StackPanel>
+      <!-- CHANGES ACCORDION (Items 10–13) -->
+      <Expander Grid.Row="1"
+                Margin="16,0,16,8"
+                Background="{DynamicResource MaterialDesignPaper}"
+                BorderBrush="{DynamicResource MaterialDesignDivider}"
+                BorderThickness="1">
+        <Expander.Header>
+          <Grid Margin="12,4" VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Changes (N)"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Style="{StaticResource MaterialDesignBody1TextBlock}" />
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center">
+              <Button Width="32" Height="32" Style="{StaticResource MaterialDesignToolButton}">
+                <md:PackIcon Kind="ContentSave" Width="20" Height="20" />
+              </Button>
+              <Button Width="32" Height="32" Margin="4,0,0,0" Style="{StaticResource MaterialDesignToolButton}">
+                <md:PackIcon Kind="DeleteSweepOutline" Width="20" Height="20" />
+              </Button>
+              <Button Width="32" Height="32" Margin="4,0,0,0" Style="{StaticResource MaterialDesignToolButton}">
+                <md:PackIcon Kind="EraserVariant" Width="20" Height="20" />
+              </Button>
+            </StackPanel>
+          </Grid>
+        </Expander.Header>
+
+        <ItemsControl Margin="12,8" ItemTemplate="{DynamicResource MaterialDesignTextBlockListItem}">
+          <ItemsControl.Items>
+            <TextBlock Text="src/App.xaml" Style="{StaticResource MaterialDesignBody2TextBlock}" />
+            <TextBlock Text="src/Services/Runner.cs" Style="{StaticResource MaterialDesignBody2TextBlock}" />
+            <TextBlock Text="tests/RunnerTests.cs" Style="{StaticResource MaterialDesignBody2TextBlock}" />
+          </ItemsControl.Items>
+        </ItemsControl>
+      </Expander>
+
+      <!-- MAIN CONTENT (Request / Response / Log) -->
+      <TabControl Grid.Row="2"
+                  Margin="16"
+                  Style="{StaticResource MaterialDesignTabControl}"
+                  md:ColorZoneAssist.Mode="PrimaryDark">
+        <TabItem Header="Request">
+          <Grid Margin="12">
+            <TextBox x:Name="RequestJsonText"
+                     AcceptsReturn="True"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     Padding="12"
+                     MinHeight="180" />
+          </Grid>
+        </TabItem>
+        <TabItem Header="Response">
+          <Grid Margin="12">
+            <TextBox x:Name="ResponseJsonText"
+                     AcceptsReturn="True"
+                     IsReadOnly="True"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     Padding="12"
+                     MinHeight="180" />
+          </Grid>
+        </TabItem>
+        <TabItem Header="Log">
+          <Grid Margin="12">
+            <TextBox x:Name="LogText"
+                     AcceptsReturn="True"
+                     IsReadOnly="True"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     Padding="12"
+                     MinHeight="180" />
+          </Grid>
+        </TabItem>
+      </TabControl>
+
+      <!-- PROMPT AREA (Items 14–19) -->
+      <Grid Grid.Row="3" Margin="16">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <TextBox x:Name="PromptTextBox" Height="60" AcceptsReturn="True" />
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <ComboBox Width="120" />
+          <ComboBox Width="160" Margin="8,0,0,0" />
+          <ComboBox Width="120" Margin="8,0,0,0" />
+          <Button Content="Send" Margin="8,0,0,0" />
+        </StackPanel>
+      </Grid>
     </Grid>
 
-    <!-- CHAT TOOLBAR (Items 7–9) -->
-    <Grid Grid.Row="1" Margin="16,0,16,8">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="Auto" />
-      </Grid.ColumnDefinitions>
-
-      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-        <ComboBox x:Name="ChatComboBox"
-                  Width="260"
-                  Height="32"
-                  Padding="12,4,12,4"
-                  SelectionChanged="ChatComboBox_SelectionChanged"
-                  Style="{StaticResource MaterialDesignOutlinedComboBox}" />
-        <Button x:Name="NewChatButton"
-                Width="36"
-                Height="36"
-                Margin="8,0,0,0"
-                Click="NewChatButton_Click"
-                Style="{StaticResource MaterialDesignToolButton}">
-          <md:PackIcon Kind="Plus"
-                       Width="20"
-                       Height="20" />
-        </Button>
-      </StackPanel>
-
-      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-        <Button x:Name="DeleteChatButton"
-                Width="36"
-                Height="36"
-                Click="DeleteChatButton_Click"
-                Style="{StaticResource MaterialDesignToolButton}">
-          <md:PackIcon Kind="TrashCanOutline"
-                       Width="20"
-                       Height="20" />
-        </Button>
-        <Button x:Name="RunButton" Content="Run" Margin="8,0,0,0" Click="RunButton_Click" IsEnabled="{Binding RunButtonEnabled}" />
-        <Button x:Name="ClearButton" Content="Clear" Margin="8,0,0,0" Click="ClearButton_Click" IsEnabled="{Binding ClearButtonEnabled}" />
-      </StackPanel>
-    </Grid>
-
-    <!-- CHANGES ACCORDION (Items 10–13) -->
-        <Expander xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-          xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
-          Margin="16,0,16,8"
-          Background="{DynamicResource MaterialDesignPaper}" 
-          BorderBrush="{DynamicResource MaterialDesignDivider}" 
-          BorderThickness="1">
-            <Expander.Header>
-                <Grid Margin="12,4" VerticalAlignment="Center">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Changes (N)"
-                 FontWeight="SemiBold"
-                 VerticalAlignment="Center"
-                 Style="{StaticResource MaterialDesignBody1TextBlock}" />
-                    <StackPanel Grid.Column="1"
-                  Orientation="Horizontal"
-                  VerticalAlignment="Center">
-                        <Button Width="32" Height="32" Style="{StaticResource MaterialDesignToolButton}">
-                            <md:PackIcon Kind="ContentSave" Width="20" Height="20" />
-                        </Button>
-                        <Button Width="32" Height="32" Margin="4,0,0,0" Style="{StaticResource MaterialDesignToolButton}">
-                            <md:PackIcon Kind="DeleteSweepOutline" Width="20" Height="20" />
-                        </Button>
-                        <Button Width="32" Height="32" Margin="4,0,0,0" Style="{StaticResource MaterialDesignToolButton}">
-                            <md:PackIcon Kind="EraserVariant" Width="20" Height="20" />
-                        </Button>
-                    </StackPanel>
-                </Grid>
-            </Expander.Header>
-
-            <ItemsControl Margin="12,8" ItemTemplate="{DynamicResource MaterialDesignTextBlockListItem}">
-                <ItemsControl.Items>
-                    <TextBlock Text="src/App.xaml" Style="{StaticResource MaterialDesignBody2TextBlock}" />
-                    <TextBlock Text="src/Services/Runner.cs" Style="{StaticResource MaterialDesignBody2TextBlock}" />
-                    <TextBlock Text="tests/RunnerTests.cs" Style="{StaticResource MaterialDesignBody2TextBlock}" />
-                </ItemsControl.Items>
-            </ItemsControl>
-        </Expander>
-
-        <!-- MAIN CONTENT (Request / Response / Log) -->
-    <TabControl Grid.Row="2"
-                Margin="16"
-                Style="{StaticResource MaterialDesignTabControl}"
-                md:ColorZoneAssist.Mode="PrimaryDark">
-      <TabItem Header="Request">
-        <Grid Margin="12">
-          <TextBox x:Name="RequestJsonText"
-                   AcceptsReturn="True"
-                   Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                   TextWrapping="Wrap"
-                   VerticalScrollBarVisibility="Auto"
-                   Padding="12"
-                   MinHeight="180" />
-        </Grid>
-      </TabItem>
-      <TabItem Header="Response">
-        <Grid Margin="12">
-          <TextBox x:Name="ResponseJsonText"
-                   AcceptsReturn="True"
-                   IsReadOnly="True"
-                   Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                   TextWrapping="Wrap"
-                   VerticalScrollBarVisibility="Auto"
-                   Padding="12"
-                   MinHeight="180" />
-        </Grid>
-      </TabItem>
-      <TabItem Header="Log">
-        <Grid Margin="12">
-          <TextBox x:Name="LogText"
-                   AcceptsReturn="True"
-                   IsReadOnly="True"
-                   Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                   TextWrapping="Wrap"
-                   VerticalScrollBarVisibility="Auto"
-                   Padding="12"
-                   MinHeight="180" />
-        </Grid>
-      </TabItem>
-    </TabControl>
-
-    <!-- PROMPT AREA (Items 14–19) -->
-    <Grid Grid.Row="3" Margin="16">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="Auto" />
-      </Grid.ColumnDefinitions>
-
-      <TextBox x:Name="PromptTextBox" Height="60" AcceptsReturn="True" />
-
-      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-        <ComboBox Width="120" />
-        <ComboBox Width="160" Margin="8,0,0,0" />
-        <ComboBox Width="120" Margin="8,0,0,0" />
-        <Button Content="Send" Margin="8,0,0,0" />
-      </StackPanel>
-    </Grid>
+    <Grid x:Name="FooterContainer" Grid.Row="2" />
 
     <!-- SETTINGS PANEL (hidden overlay) -->
     <Border x:Name="SettingsPanel"
-            Grid.RowSpan="4"
+            Grid.RowSpan="3"
             HorizontalAlignment="Right"
             Margin="16"
             Padding="12"
