@@ -12,37 +12,68 @@
     </Grid.RowDefinitions>
 
     <!-- HEADER (Items 1–6) -->
-    <Grid Grid.Row="0" Margin="16">
+    <Grid Grid.Row="0" Margin="16,12,16,12">
       <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
 
-      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-        <TextBlock Text="Agente IA Local" FontSize="20" FontWeight="Bold" />
-        <TextBlock Margin="16,0,0,0">
-          <Run Text="Solutions: " />
-          <Run x:Name="SolutionNameText" Text="0" />
-        </TextBlock>
-        <TextBlock Margin="16,0,0,0">
-          <Run Text="Projects: " />
-          <Run x:Name="ProjectCountText" Text="0" />
-        </TextBlock>
-        <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+      <!-- Title block -->
+      <TextBlock Grid.Column="0"
+                 Text="Agente IA Local"
+                 FontSize="21"
+                 FontWeight="SemiBold"
+                 VerticalAlignment="Center"
+                 Style="{StaticResource MaterialDesignHeadline6TextBlock}" />
+
+      <!-- Counters + State block -->
+      <Grid Grid.Column="1" Margin="24,0,24,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock Text="Solutions: " Style="{StaticResource MaterialDesignBody2TextBlock}" />
+          <TextBlock x:Name="SolutionNameText" Text="0" Style="{StaticResource MaterialDesignBody2TextBlock}" />
+          <TextBlock Text="  " />
+          <TextBlock Text="Projects: " Style="{StaticResource MaterialDesignBody2TextBlock}" />
+          <TextBlock x:Name="ProjectCountText" Text="0" Style="{StaticResource MaterialDesignBody2TextBlock}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center">
           <md:PackIcon x:Name="StateIcon"
                        Kind="{Binding StateIconKind}"
-                       Width="14"
-                       Height="14"
+                       Width="20"
+                       Height="20"
                        Foreground="{Binding StateColor}" />
           <TextBlock x:Name="StateLabelText"
                      Text="{Binding StateLabel}"
-                     Margin="4,0,0,0" />
+                     Margin="6,0,0,0"
+                     Style="{StaticResource MaterialDesignBody2TextBlock}" />
         </StackPanel>
-      </StackPanel>
+      </Grid>
 
-      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-        <Button x:Name="SettingsButton" Content="⚙" Click="SettingsButton_Click" />
-        <Button Content="?" Margin="8,0,0,0" />
+      <!-- Actions block -->
+      <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button x:Name="SettingsButton"
+                Click="SettingsButton_Click"
+                Style="{StaticResource MaterialDesignToolButton}">
+          <md:PackIcon Kind="Cog"
+                       Width="20"
+                       Height="20" />
+        </Button>
+        <Button Margin="8,0,0,0"
+                Style="{StaticResource MaterialDesignToolButton}">
+          <md:PackIcon Kind="HelpCircleOutline"
+                       Width="20"
+                       Height="20" />
+        </Button>
       </StackPanel>
     </Grid>
 
