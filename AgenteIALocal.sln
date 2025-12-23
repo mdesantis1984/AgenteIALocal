@@ -10,6 +10,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{ED9CAEBE-2C7
 		src\README.en.md = src\README.en.md
 		src\README.es.md = src\README.es.md
 		src\README.md = src\README.md
+		src\Readme.UX.md = src\Readme.UX.md
 		src\Reglas.md = src\Reglas.md
 	EndProjectSection
 EndProject
