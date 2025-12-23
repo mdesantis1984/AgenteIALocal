@@ -3,6 +3,21 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes">
 
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Dark.xaml" />
+        <ResourceDictionary Source="/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Defaults.xaml" />
+        <ResourceDictionary Source="/MaterialDesignColors;component/Themes/Recommended/Primary/MaterialDesignColor.Grey.xaml" />
+        <ResourceDictionary Source="/MaterialDesignColors;component/Themes/Recommended/Accent/MaterialDesignColor.DeepPurple.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+
+      <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FF1E1E22" />
+      <SolidColorBrush x:Key="HeaderHighEmphasisBrush" Color="#FFFFFFFF" />
+      <SolidColorBrush x:Key="HeaderMediumEmphasisBrush" Color="#CCFFFFFF" />
+    </ResourceDictionary>
+  </UserControl.Resources>
+
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
@@ -13,11 +28,6 @@
 
     <!-- HEADER (Items 1–6) -->
     <Grid Grid.Row="0" Margin="16,12,16,12" Background="{StaticResource HeaderBackgroundBrush}">
-      <Grid.Resources>
-        <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FF1E1E22" />
-        <SolidColorBrush x:Key="HeaderHighEmphasisBrush" Color="#FFFFFFFF" />
-        <SolidColorBrush x:Key="HeaderMediumEmphasisBrush" Color="#CCFFFFFF" />
-      </Grid.Resources>
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
@@ -157,15 +167,14 @@
                  Style="{StaticResource MaterialDesignBody1TextBlock}" />
                     <StackPanel Grid.Column="1"
                   Orientation="Horizontal"
-                  VerticalAlignment="Center"
-                  Spacing="4">
+                  VerticalAlignment="Center">
                         <Button Width="32" Height="32" Style="{StaticResource MaterialDesignToolButton}">
                             <md:PackIcon Kind="ContentSave" Width="20" Height="20" />
                         </Button>
-                        <Button Width="32" Height="32" Style="{StaticResource MaterialDesignToolButton}">
+                        <Button Width="32" Height="32" Margin="4,0,0,0" Style="{StaticResource MaterialDesignToolButton}">
                             <md:PackIcon Kind="DeleteSweepOutline" Width="20" Height="20" />
                         </Button>
-                        <Button Width="32" Height="32" Style="{StaticResource MaterialDesignToolButton}">
+                        <Button Width="32" Height="32" Margin="4,0,0,0" Style="{StaticResource MaterialDesignToolButton}">
                             <md:PackIcon Kind="EraserVariant" Width="20" Height="20" />
                         </Button>
                     </StackPanel>
@@ -182,15 +191,44 @@
         </Expander>
 
         <!-- MAIN CONTENT (Request / Response / Log) -->
-    <TabControl Grid.Row="2" Margin="16">
+    <TabControl Grid.Row="2"
+                Margin="16"
+                Style="{StaticResource MaterialDesignTabControl}"
+                md:ColorZoneAssist.Mode="PrimaryDark">
       <TabItem Header="Request">
-        <TextBox x:Name="RequestJsonText" AcceptsReturn="True" />
+        <Grid Margin="12">
+          <TextBox x:Name="RequestJsonText"
+                   AcceptsReturn="True"
+                   Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                   TextWrapping="Wrap"
+                   VerticalScrollBarVisibility="Auto"
+                   Padding="12"
+                   MinHeight="180" />
+        </Grid>
       </TabItem>
       <TabItem Header="Response">
-        <TextBox x:Name="ResponseJsonText" AcceptsReturn="True" IsReadOnly="True" />
+        <Grid Margin="12">
+          <TextBox x:Name="ResponseJsonText"
+                   AcceptsReturn="True"
+                   IsReadOnly="True"
+                   Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                   TextWrapping="Wrap"
+                   VerticalScrollBarVisibility="Auto"
+                   Padding="12"
+                   MinHeight="180" />
+        </Grid>
       </TabItem>
       <TabItem Header="Log">
-        <TextBox x:Name="LogText" AcceptsReturn="True" IsReadOnly="True" />
+        <Grid Margin="12">
+          <TextBox x:Name="LogText"
+                   AcceptsReturn="True"
+                   IsReadOnly="True"
+                   Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                   TextWrapping="Wrap"
+                   VerticalScrollBarVisibility="Auto"
+                   Padding="12"
+                   MinHeight="180" />
+        </Grid>
       </TabItem>
     </TabControl>
 
