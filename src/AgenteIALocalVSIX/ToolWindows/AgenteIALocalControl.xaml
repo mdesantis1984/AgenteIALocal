@@ -8,6 +8,7 @@
     <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FF1E1E22" />
     <SolidColorBrush x:Key="HeaderHighEmphasisBrush" Color="#FFFFFFFF" />
     <SolidColorBrush x:Key="HeaderMediumEmphasisBrush" Color="#FF424242" />
+    <SolidColorBrush x:Key="HeaderCyanHoverBrush" Color="#00BCD4" />
     <Style x:Key="Text.Headline" TargetType="TextBlock">
       <Setter Property="FontSize" Value="22" />
       <Setter Property="FontWeight" Value="SemiBold" />
@@ -84,6 +85,74 @@
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="Padding" Value="10,4,10,4" />
     </Style>
+    <Style x:Key="HelpPackIconZoomStyle" TargetType="{x:Type md:PackIcon}">
+      <Setter Property="Width" Value="16" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+      <Setter Property="RenderTransform">
+        <Setter.Value>
+          <ScaleTransform ScaleX="1" ScaleY="1" />
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+          <DataTrigger.EnterActions>
+            <BeginStoryboard HandoffBehavior="SnapshotAndReplace">
+              <Storyboard>
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.15" Duration="0:0:0.10" />
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.15" Duration="0:0:0.10" />
+              </Storyboard>
+            </BeginStoryboard>
+          </DataTrigger.EnterActions>
+          <DataTrigger.ExitActions>
+            <BeginStoryboard HandoffBehavior="SnapshotAndReplace">
+              <Storyboard>
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.10" />
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.10" />
+              </Storyboard>
+            </BeginStoryboard>
+          </DataTrigger.ExitActions>
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="HelpIconButtonStyle" TargetType="Button" BasedOn="{StaticResource IconButtonChromeStyle}">
+      <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True">
+          <Setter Property="Foreground" Value="{StaticResource HeaderCyanHoverBrush}" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="IconHoverZoomPackIconStyle" TargetType="{x:Type md:PackIcon}">
+      <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+      <Setter Property="RenderTransform">
+        <Setter.Value>
+          <ScaleTransform ScaleX="1" ScaleY="1" />
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+          <DataTrigger.EnterActions>
+            <BeginStoryboard HandoffBehavior="SnapshotAndReplace">
+              <Storyboard>
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.12" Duration="0:0:0.10" />
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.12" Duration="0:0:0.10" />
+              </Storyboard>
+            </BeginStoryboard>
+          </DataTrigger.EnterActions>
+          <DataTrigger.ExitActions>
+            <BeginStoryboard HandoffBehavior="SnapshotAndReplace">
+              <Storyboard>
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.10" />
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.10" />
+              </Storyboard>
+            </BeginStoryboard>
+          </DataTrigger.ExitActions>
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
   </UserControl.Resources>
 
   <Grid>
@@ -125,9 +194,12 @@
               </Grid.ColumnDefinitions>
 
               <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="Solution: "
-                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
-                           Style="{StaticResource Text.Body}" />
+                <md:PackIcon Kind="FolderOutline"
+                             Width="16"
+                             Height="16"
+                             Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                             Margin="0,0,6,0"
+                             ToolTip="Solution" />
                 <TextBlock x:Name="SolutionNameText"
                            Text="0"
                            Foreground="{StaticResource HeaderHighEmphasisBrush}"
@@ -135,9 +207,12 @@
               </StackPanel>
 
               <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="Projects: "
-                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
-                           Style="{StaticResource Text.Body}" />
+                <md:PackIcon Kind="FileTreeOutline"
+                             Width="16"
+                             Height="16"
+                             Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                             Margin="0,0,6,0"
+                             ToolTip="Projects" />
                 <TextBlock x:Name="ProjectCountText"
                            Text="0"
                            Foreground="{StaticResource HeaderHighEmphasisBrush}"
@@ -145,15 +220,12 @@
               </StackPanel>
 
               <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="State: "
-                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
-                           Style="{StaticResource Text.Body}" />
                 <md:PackIcon x:Name="StateIcon"
                              Kind="{Binding StateIconKind}"
                              Width="20"
                              Height="20"
                              Foreground="{Binding StateColor}"
-                             Margin="4,0,0,0" />
+                             Margin="0,0,0,0" />
                 <TextBlock x:Name="StateLabelText"
                            Text="{Binding StateLabel}"
                            Margin="6,0,0,0"
@@ -162,9 +234,12 @@
               </StackPanel>
 
               <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="Config: "
-                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
-                           Style="{StaticResource Text.Body}" />
+                <md:PackIcon Kind="CogOutline"
+                             Width="16"
+                             Height="16"
+                             Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                             Margin="0,0,6,0"
+                             ToolTip="Config" />
                 <TextBlock Text="{Binding ConfigLabel, FallbackValue=Not Config}"
                            Foreground="{StaticResource HeaderHighEmphasisBrush}"
                            Style="{StaticResource Text.Body}" />
@@ -183,18 +258,18 @@
                 <md:PackIcon Kind="Cog"
                              Width="16"
                              Height="16"
+                             Style="{StaticResource IconHoverZoomPackIconStyle}"
                              Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
               </Button>
               <Button Width="32"
                       Height="32"
                       Margin="8,0,0,0"
-                      Style="{StaticResource IconButtonChromeStyle}"
+                      Style="{StaticResource HelpIconButtonStyle}"
                       Background="Transparent"
                       BorderBrush="Transparent"
                       BorderThickness="0">
                 <md:PackIcon Kind="HelpCircleOutline"
-                             Width="16"
-                             Height="16"
+                             Style="{StaticResource HelpPackIconZoomStyle}"
                              Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
               </Button>
             </StackPanel>
@@ -237,6 +312,7 @@
             <md:PackIcon Kind="Plus"
                          Width="16"
                          Height="16"
+                         Style="{StaticResource IconHoverZoomPackIconStyle}"
                          Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
           </Button>
         </StackPanel>
@@ -253,6 +329,7 @@
             <md:PackIcon Kind="TrashCanOutline"
                          Width="16"
                          Height="16"
+                         Style="{StaticResource IconHoverZoomPackIconStyle}"
                          Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
           </Button>
         </StackPanel>
@@ -440,14 +517,14 @@
           <Style TargetType="Button" BasedOn="{StaticResource IconButtonChromeStyle}">
             <Setter Property="Content">
               <Setter.Value>
-                <md:PackIcon Kind="Send" Width="16" Height="16" Foreground="LimeGreen" />
+                <md:PackIcon Kind="Send" Width="16" Height="16" Style="{StaticResource IconHoverZoomPackIconStyle}" Foreground="LimeGreen" />
               </Setter.Value>
             </Setter>
             <Style.Triggers>
               <DataTrigger Binding="{Binding StateLabel}" Value="Running">
                 <Setter Property="Content">
                   <Setter.Value>
-                    <md:PackIcon Kind="Stop" Width="16" Height="16" Foreground="IndianRed" />
+                    <md:PackIcon Kind="Stop" Width="16" Height="16" Style="{StaticResource IconHoverZoomPackIconStyle}" Foreground="IndianRed" />
                   </Setter.Value>
                 </Setter>
               </DataTrigger>
