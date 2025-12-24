@@ -56,6 +56,7 @@
     <Compile Include="Chats\ChatStore.cs" />
     <Compile Include="Commands\OpenAgenteIALocalCommand.cs" />
     <Compile Include="Commands\VsctConsistencyValidator.cs" />
+    <Compile Include="Commons\VsixExtensions.cs" />
     <Compile Include="Contracts\CopilotRequest.cs" />
     <Compile Include="Contracts\CopilotResponse.cs" />
     <Compile Include="Execution\MockCopilotExecutor.cs" />
@@ -113,11 +114,19 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.VisualStudio.ExtensionEngineContract">
+      <HintPath>C:\Program Files\Microsoft Visual Studio\18\Professional\Common7\IDE\PrivateAssemblies\Microsoft.VisualStudio.ExtensionEngineContract.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.VisualStudio.ExtensionManager">
+      <HintPath>C:\Program Files\Microsoft Visual Studio\18\Professional\Common7\IDE\PrivateAssemblies\Microsoft.VisualStudio.ExtensionManager.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Design" />
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
     <Reference Include="WindowsBase" />
     <Reference Include="System.Xaml" />
     <Reference Include="WindowsFormsIntegration" />

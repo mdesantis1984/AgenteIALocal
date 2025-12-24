@@ -102,94 +102,103 @@
               BorderThickness="0,0,0,1">
         <Grid VerticalAlignment="Center">
           <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="32" />
+            <RowDefinition Height="32" />
           </Grid.RowDefinitions>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
 
-          <!-- Counters + State block -->
-          <Grid Grid.Row="1"
-                Grid.Column="0"
-                Grid.ColumnSpan="2"
-                Margin="0,4,24,0"
-                VerticalAlignment="Center">
+          <!-- Counters + State + Config block -->
+          <Grid Grid.Row="1" VerticalAlignment="Center">
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="Auto" />
-              <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
-              <TextBlock Text="Solutions: "
-                         Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                         Style="{StaticResource Text.Body}" />
-              <TextBlock x:Name="SolutionNameText"
-                         Text="0"
-                         Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                         Style="{StaticResource Text.Body}" />
-              <TextBlock Text="  " />
-              <TextBlock Text="Projects: "
-                         Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                         Style="{StaticResource Text.Body}" />
-              <TextBlock x:Name="ProjectCountText"
-                         Text="0"
-                         Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                         Style="{StaticResource Text.Body}" />
-            </StackPanel>
+            <Grid Grid.Column="0" VerticalAlignment="Center">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="2"
-                        Orientation="Horizontal"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Center"
-                        Margin="8,0,0,0">
-              <md:PackIcon x:Name="StateIcon"
-                           Kind="{Binding StateIconKind}"
-                           Width="20"
-                           Height="20"
-                           Foreground="{Binding StateColor}" />
-              <TextBlock x:Name="StateLabelText"
-                         Text="{Binding StateLabel}"
-                         Margin="6,0,0,0"
-                         Foreground="{Binding StateColor}"
-                         Style="{StaticResource Text.Body}" />
+              <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="Solution: "
+                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                           Style="{StaticResource Text.Body}" />
+                <TextBlock x:Name="SolutionNameText"
+                           Text="0"
+                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                           Style="{StaticResource Text.Body}" />
+              </StackPanel>
+
+              <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="Projects: "
+                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                           Style="{StaticResource Text.Body}" />
+                <TextBlock x:Name="ProjectCountText"
+                           Text="0"
+                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                           Style="{StaticResource Text.Body}" />
+              </StackPanel>
+
+              <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="State: "
+                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                           Style="{StaticResource Text.Body}" />
+                <md:PackIcon x:Name="StateIcon"
+                             Kind="{Binding StateIconKind}"
+                             Width="20"
+                             Height="20"
+                             Foreground="{Binding StateColor}"
+                             Margin="4,0,0,0" />
+                <TextBlock x:Name="StateLabelText"
+                           Text="{Binding StateLabel}"
+                           Margin="6,0,0,0"
+                           Foreground="{Binding StateColor}"
+                           Style="{StaticResource Text.Body}" />
+              </StackPanel>
+
+              <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="Config: "
+                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                           Style="{StaticResource Text.Body}" />
+                <TextBlock Text="{Binding ConfigLabel, FallbackValue=Not Config}"
+                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                           Style="{StaticResource Text.Body}" />
+              </StackPanel>
+            </Grid>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+              <Button x:Name="SettingsButton"
+                      Width="32"
+                      Height="32"
+                      Style="{StaticResource IconButtonChromeStyle}"
+                      Background="Transparent"
+                      BorderBrush="Transparent"
+                      BorderThickness="0"
+                      Click="SettingsButton_Click">
+                <md:PackIcon Kind="Cog"
+                             Width="16"
+                             Height="16"
+                             Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+              </Button>
+              <Button Width="32"
+                      Height="32"
+                      Margin="8,0,0,0"
+                      Style="{StaticResource IconButtonChromeStyle}"
+                      Background="Transparent"
+                      BorderBrush="Transparent"
+                      BorderThickness="0">
+                <md:PackIcon Kind="HelpCircleOutline"
+                             Width="16"
+                             Height="16"
+                             Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+              </Button>
             </StackPanel>
           </Grid>
-
-          <!-- Actions block -->
-          <StackPanel Grid.Row="1"
-                      Grid.Column="2"
-                      Orientation="Horizontal"
-                      VerticalAlignment="Center">
-            <Button x:Name="SettingsButton"
-                    Width="32"
-                    Height="32"
-                    Style="{StaticResource IconButtonChromeStyle}"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
-                    BorderThickness="0"
-                    Click="SettingsButton_Click">
-              <md:PackIcon Kind="Cog"
-                           Width="16"
-                           Height="16"
-                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-            </Button>
-            <Button Width="32"
-                    Height="32"
-                    Margin="8,0,0,0"
-                    Style="{StaticResource IconButtonChromeStyle}"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
-                    BorderThickness="0">
-              <md:PackIcon Kind="HelpCircleOutline"
-                           Width="16"
-                           Height="16"
-                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-            </Button>
-          </StackPanel>
         </Grid>
       </Border>
     </Grid>

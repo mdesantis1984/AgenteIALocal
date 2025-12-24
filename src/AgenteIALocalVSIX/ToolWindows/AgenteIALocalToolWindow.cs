@@ -1,11 +1,12 @@
+using AgenteIALocal.Core.Settings;
+using AgenteIALocalVSIX.Commons;
+using AgenteIALocalVSIX.Settings;
+using Microsoft.VisualStudio;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 using System;
 using System.Runtime.InteropServices;
-using Microsoft.VisualStudio.Shell;
 using System.Windows.Controls;
-using Microsoft.VisualStudio;
-using Microsoft.VisualStudio.Shell.Interop;
-using AgenteIALocal.Core.Settings;
-using AgenteIALocalVSIX.Settings;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -14,7 +15,8 @@ namespace AgenteIALocalVSIX.ToolWindows
     {
         public AgenteIALocalToolWindow() : base(null)
         {
-            this.Caption = "Agente IA Local";
+            var version = typeof(AgenteIALocalVSIXPackage).GetVsixVersionString();
+            this.Caption = $"Chat de Agente IA Local {version}";
             this.Content = new AgenteIALocalControl();
         }
 

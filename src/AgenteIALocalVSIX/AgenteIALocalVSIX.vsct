@@ -18,7 +18,7 @@
 					type="Button">
 				<Parent guid="guidAgenteIALocalCmdSet" id="MyMenuGroup" />
 				<Strings>
-					<ButtonText>Agente IA Local</ButtonText>
+					<ButtonText>Chat de Agente IA Local</ButtonText>
 				</Strings>
 			</Button>
 		</Buttons>
