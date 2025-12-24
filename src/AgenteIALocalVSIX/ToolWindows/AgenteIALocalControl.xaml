@@ -33,9 +33,9 @@
     </Grid.RowDefinitions>
 
     <!-- HEADER SECTION -->
-    <Grid x:Name="HeaderContainer" Grid.Row="0" MinHeight="88">
-      <Border Margin="16,8,16,0"
-              Padding="20,12"
+    <Grid x:Name="HeaderContainer" Grid.Row="0" Height="64">
+      <Border Margin="12,0,12,0"
+              Padding="16,0,16,0"
               Background="{StaticResource HeaderBackgroundBrush}"
               BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
               BorderThickness="0,0,0,1">
@@ -54,14 +54,14 @@
                      Style="{StaticResource Text.Headline}" />
 
           <!-- Counters + State block -->
-          <Grid Grid.Column="1" Margin="32,0,32,0" VerticalAlignment="Center">
+          <Grid Grid.Column="1" Margin="24,0,24,0" VerticalAlignment="Center">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
               <TextBlock Text="Solutions: "
                          Foreground="{StaticResource HeaderMediumEmphasisBrush}"
                          Style="{StaticResource Text.Body}" />
@@ -83,7 +83,7 @@
                         Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
-                        Margin="12,0,0,0">
+                        Margin="8,0,0,0">
               <md:PackIcon x:Name="StateIcon"
                            Kind="{Binding StateIconKind}"
                            Width="20"
@@ -102,21 +102,27 @@
                       Orientation="Horizontal"
                       VerticalAlignment="Center">
             <Button x:Name="SettingsButton"
-                    Width="36"
-                    Height="36"
+                    Width="32"
+                    Height="32"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    BorderThickness="0"
                     Click="SettingsButton_Click">
               <md:PackIcon Kind="Cog"
-                           Width="20"
-                           Height="20"
-                           Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+                           Width="16"
+                           Height="16"
+                           Foreground="{StaticResource HeaderMediumEmphasisBrush}" />
             </Button>
-            <Button Width="36"
-                    Height="36"
-                    Margin="8,0,0,0">
+            <Button Width="32"
+                    Height="32"
+                    Margin="8,0,0,0"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    BorderThickness="0">
               <md:PackIcon Kind="HelpCircleOutline"
-                           Width="20"
-                           Height="20"
-                           Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+                           Width="16"
+                           Height="16"
+                           Foreground="{StaticResource HeaderMediumEmphasisBrush}" />
             </Button>
           </StackPanel>
         </Grid>
@@ -130,10 +136,11 @@
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
         <RowDefinition Height="Auto" />
+        <RowDefinition Height="0" />
       </Grid.RowDefinitions>
 
       <!-- CHAT TOOLBAR (Items 7–9) -->
-      <Grid x:Name="ChatToolbarGrid" Grid.Row="0" Margin="16,0,16,8">
+      <Grid x:Name="ChatToolbarGrid" Grid.Row="0" Height="48" Margin="12,0,12,8">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="Auto" />
@@ -143,40 +150,46 @@
           <ComboBox x:Name="ChatComboBox"
                     Width="260"
                     Height="32"
-                    Padding="12,4,12,4"
+                    Padding="8,4,8,4"
                     SelectionChanged="ChatComboBox_SelectionChanged" />
           <Button x:Name="NewChatButton"
-                  Width="36"
-                  Height="36"
+                  Width="32"
+                  Height="32"
                   Margin="8,0,0,0"
+                  Background="Transparent"
+                  BorderBrush="Transparent"
+                  BorderThickness="0"
                   Click="NewChatButton_Click">
             <md:PackIcon Kind="Plus"
-                         Width="20"
-                         Height="20" />
+                         Width="16"
+                         Height="16"
+                         Foreground="{StaticResource HeaderMediumEmphasisBrush}" />
           </Button>
         </StackPanel>
 
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
           <Button x:Name="DeleteChatButton"
-                  Width="36"
-                  Height="36"
+                  Width="32"
+                  Height="32"
+                  Background="Transparent"
+                  BorderBrush="Transparent"
+                  BorderThickness="0"
                   Click="DeleteChatButton_Click">
             <md:PackIcon Kind="TrashCanOutline"
-                         Width="20"
-                         Height="20" />
+                         Width="16"
+                         Height="16"
+                         Foreground="{StaticResource HeaderMediumEmphasisBrush}" />
           </Button>
-          <Button x:Name="RunButton" Content="Run" Margin="8,0,0,0" Click="RunButton_Click" IsEnabled="{Binding RunButtonEnabled}" />
-          <Button x:Name="ClearButton" Content="Clear" Margin="8,0,0,0" Click="ClearButton_Click" IsEnabled="{Binding ClearButtonEnabled}" />
         </StackPanel>
       </Grid>
 
       <!-- CHANGES ACCORDION (Items 10–13) -->
       <Expander Grid.Row="1"
-                Margin="16,0,16,8"
+                Margin="12,0,12,8"
                 BorderThickness="1">
         <Expander.Header>
           <Grid x:Name="ChangesAccordionHeaderGrid"
-                Height="40"
+                Height="36"
                 VerticalAlignment="Center">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto" />
@@ -188,32 +201,42 @@
 
             <md:PackIcon Grid.Column="0"
                          Kind="ChevronDown"
-                         Width="16"
-                         Height="16"
+                         Width="14"
+                         Height="14"
                          VerticalAlignment="Center" />
 
             <TextBlock Grid.Column="2"
                        Text="Changes (N)"
                        VerticalAlignment="Center"
+                       Foreground="{StaticResource HeaderHighEmphasisBrush}"
                        Style="{StaticResource Text.Subtitle}" />
 
             <StackPanel Grid.Column="4"
                         Orientation="Horizontal"
                         VerticalAlignment="Center">
-              <Button Width="32" Height="32">
-                <md:PackIcon Kind="ContentSave" Width="16" Height="16" />
+              <Button Width="28" Height="28"
+                      Background="Transparent"
+                      BorderBrush="Transparent"
+                      BorderThickness="0">
+                <md:PackIcon Kind="ContentSave" Width="14" Height="14" Foreground="{StaticResource HeaderMediumEmphasisBrush}" />
               </Button>
-              <Button Width="32" Height="32" Margin="8,0,0,0">
-                <md:PackIcon Kind="DeleteSweepOutline" Width="16" Height="16" />
+              <Button Width="28" Height="28" Margin="8,0,0,0"
+                      Background="Transparent"
+                      BorderBrush="Transparent"
+                      BorderThickness="0">
+                <md:PackIcon Kind="DeleteSweepOutline" Width="14" Height="14" Foreground="{StaticResource HeaderMediumEmphasisBrush}" />
               </Button>
-              <Button Width="32" Height="32" Margin="8,0,0,0">
-                <md:PackIcon Kind="EraserVariant" Width="16" Height="16" />
+              <Button Width="28" Height="28" Margin="8,0,0,0"
+                      Background="Transparent"
+                      BorderBrush="Transparent"
+                      BorderThickness="0">
+                <md:PackIcon Kind="EraserVariant" Width="14" Height="14" Foreground="{StaticResource HeaderMediumEmphasisBrush}" />
               </Button>
             </StackPanel>
           </Grid>
         </Expander.Header>
 
-        <ItemsControl Margin="16">
+        <ItemsControl Margin="12">
           <ItemsControl.Items>
             <TextBlock Text="src/App.xaml" Style="{StaticResource Text.Body}" />
             <TextBlock Text="src/Services/Runner.cs" Style="{StaticResource Text.Body}" />
@@ -222,54 +245,85 @@
         </ItemsControl>
       </Expander>
 
-      <!-- MAIN CONTENT (Request / Response / Log) -->
-      <TabControl Grid.Row="2"
-                  Margin="16"
-                  Padding="0"
-                  md:ColorZoneAssist.Mode="PrimaryDark">
-        <TabItem Header="Request"
-                 MinHeight="40"
-                 Padding="16,10"
-                 VerticalContentAlignment="Center">
-          <Grid x:Name="RequestTabContentGrid" Margin="16">
-            <TextBox x:Name="RequestJsonText"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     VerticalScrollBarVisibility="Auto"
-                     Padding="16"
-                     MinHeight="180" />
-          </Grid>
-        </TabItem>
-        <TabItem Header="Response"
-                 MinHeight="40"
-                 Padding="16,10"
-                 VerticalContentAlignment="Center">
-          <Grid x:Name="ResponseTabContentGrid" Margin="16">
-            <TextBox x:Name="ResponseJsonText"
-                     AcceptsReturn="True"
-                     IsReadOnly="True"
-                     TextWrapping="Wrap"
-                     VerticalScrollBarVisibility="Auto"
-                     Padding="16"
-                     MinHeight="180" />
-          </Grid>
-        </TabItem>
-        <TabItem Header="Log"
-                 MinHeight="40"
-                 Padding="16,10"
-                 VerticalContentAlignment="Center">
-          <Grid x:Name="LogTabContentGrid" Margin="16">
-            <TextBox x:Name="LogText"
-                     AcceptsReturn="True"
-                     IsReadOnly="True"
-                     TextWrapping="Wrap"
-                     VerticalScrollBarVisibility="Auto"
-                     Padding="16"
-                     MinHeight="180" />
-          </Grid>
-        </TabItem>
-      </TabControl>
+      <!-- CHAT SURFACE (single conversation history) -->
+      <Border Grid.Row="2" Margin="12" Padding="12" BorderThickness="0">
+        <TextBox x:Name="ResponseJsonText"
+                 AcceptsReturn="True"
+                 IsReadOnly="True"
+                 TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto"
+                 Padding="8"
+                 BorderThickness="1"
+                 VerticalAlignment="Stretch"
+                 HorizontalAlignment="Stretch" />
+      </Border>
 
+      <!-- PROMPT AREA (Items 14–19) -->
+      <Grid x:Name="PromptAreaGrid" Grid.Row="3" Margin="12,8,12,0">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" MinHeight="40" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="8" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="8" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="8" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="8" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <TextBox x:Name="PromptTextBox"
+                 Grid.Row="0"
+                 Grid.Column="0"
+                 Grid.ColumnSpan="9"
+                 Height="32"
+                 Padding="8,4,8,4"
+                 Margin="0,0,0,8"
+                 VerticalContentAlignment="Center"
+                 VerticalAlignment="Center"
+                 AcceptsReturn="True" />
+
+        <ComboBox Grid.Row="1"
+                  Grid.Column="0"
+                  Width="120"
+                  Height="32"
+                  VerticalAlignment="Center" />
+
+        <ComboBox Grid.Row="1"
+                  Grid.Column="2"
+                  Width="160"
+                  Height="32"
+                  VerticalAlignment="Center" />
+
+        <ComboBox Grid.Row="1"
+                  Grid.Column="4"
+                  Width="120"
+                  Height="32"
+                  VerticalAlignment="Center" />
+
+        <Button Grid.Row="1"
+                Grid.Column="8"
+                Height="32"
+                VerticalAlignment="Center"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
+                Click="RunButton_Click">
+          <md:PackIcon Kind="Send"
+                       Width="16"
+                       Height="16"
+                       Foreground="{StaticResource HeaderMediumEmphasisBrush}" />
+        </Button>
+      </Grid>
+
+      <!-- HIDDEN LOG OUTPUT (kept for functionality) -->
+      <TextBox x:Name="LogText"
+               Grid.Row="4"
+               Visibility="Collapsed" />
     </Grid>
 
     <!-- FOOTER SECTION -->

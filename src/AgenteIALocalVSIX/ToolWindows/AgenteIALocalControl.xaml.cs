@@ -228,7 +228,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 if (activeChat == null)
                 {
-                    RequestJsonText.Text = string.Empty;
+                    PromptTextBox.Text = string.Empty;
                     ResponseJsonText.Text = string.Empty;
                     return;
                 }
@@ -241,7 +241,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
 
                 ResponseJsonText.Text = sb.ToString();
-                RequestJsonText.Text = string.Empty;
+                PromptTextBox.Text = string.Empty;
             }
             catch
             {
@@ -475,7 +475,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             // Prepare initial request but do not execute
             var req = BuildRequest(solutionName, projectCount);
-            RequestJsonText.Text = SerializeToJson(req);
+            PromptTextBox.Text = SerializeToJson(req);
             ResponseJsonText.Text = string.Empty;
             // Do not clear LogText here; keep file-backed content
         }
@@ -582,7 +582,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 AgentComposition.EnsureComposition();
 
                 // NEW: treat user input as plain text prompt; build CopilotRequest internally
-                var userInput = RequestJsonText.Text ?? string.Empty;
+                var userInput = PromptTextBox.Text ?? string.Empty;
 
                 var req = new CopilotRequest
                 {
@@ -678,7 +678,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         private void ClearButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            RequestJsonText.Text = string.Empty;
+            PromptTextBox.Text = string.Empty;
             ResponseJsonText.Text = string.Empty;
 
             // Clear the persistent log file and refresh view
