@@ -246,16 +246,17 @@
       </Expander>
 
       <!-- CHAT SURFACE (single conversation history) -->
-      <Border Grid.Row="2" Margin="12" Padding="12" BorderThickness="0">
+      <Border Grid.Row="2" Margin="0,8,0,8" Padding="12" BorderThickness="1" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" CornerRadius="4">
         <TextBox x:Name="ResponseJsonText"
                  AcceptsReturn="True"
                  IsReadOnly="True"
                  TextWrapping="Wrap"
                  VerticalScrollBarVisibility="Auto"
-                 Padding="8"
-                 BorderThickness="1"
-                 VerticalAlignment="Stretch"
-                 HorizontalAlignment="Stretch" />
+                 HorizontalScrollBarVisibility="Disabled"
+                 Padding="16,12,16,12"
+                 Background="{StaticResource HeaderBackgroundBrush}"
+                 BorderThickness="0"
+                 Foreground="{StaticResource HeaderHighEmphasisBrush}" />
       </Border>
 
       <!-- PROMPT AREA (Items 14–19) -->

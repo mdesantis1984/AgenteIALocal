@@ -13,6 +13,7 @@ using System.Windows.Media;
 using MaterialDesignThemes.Wpf;
 using AgenteIALocalVSIX.Chats;
 using System.Collections.Generic;
+using System.Windows.Documents;
 using System.Linq;
 using System.Windows;
 
@@ -822,5 +823,60 @@ namespace AgenteIALocalVSIX.ToolWindows
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
+        // Helper to build a FlowDocument from raw chat text (prepares future rich rendering)
+        private static FlowDocument BuildChatDocument(string raw)
+        {
+            var doc = new FlowDocument();
+            if (string.IsNullOrEmpty(raw)) return doc;
+
+            string[] lines = raw.Replace("\r\n", "\n").Split('\n');
+            bool inFence = false;
+            var codeLines = new List<string>();
+            foreach (var line in lines)
+            {
+                if (line.StartsWith("```"))
+                {
+                    if (!inFence)
+                    {
+                        inFence = true;
+                        codeLines.Clear();
+                    }
+                    else
+                    {
+                        // close fence
+                        inFence = false;
+                        var codeText = string.Join("\n", codeLines);
+                        var section = new Section();
+                        var para = new Paragraph(new Run(codeText)) { FontFamily = new FontFamily("Consolas") };
+                        section.Blocks.Add(para);
+                        doc.Blocks.Add(section);
+                        codeLines.Clear();
+                    }
+                    continue;
+                }
+
+                if (inFence)
+                {
+                    codeLines.Add(line);
+                }
+                else
+                {
+                    var para = new Paragraph(new Run(line));
+                    doc.Blocks.Add(para);
+                }
+            }
+
+            // If file ends while inside fence, emit collected as code block
+            if (inFence && codeLines.Count > 0)
+            {
+                var codeText = string.Join("\n", codeLines);
+                var section = new Section();
+                var para = new Paragraph(new Run(codeText)) { FontFamily = new FontFamily("Consolas") };
+                section.Blocks.Add(para);
+                doc.Blocks.Add(section);
+            }
+
+            return doc;
+        }
     }
 }
