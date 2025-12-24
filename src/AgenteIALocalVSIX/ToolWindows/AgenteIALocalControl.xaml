@@ -422,16 +422,30 @@
               Grid.RowSpan="2"
               Margin="12,0,0,0"
               VerticalAlignment="Center"
-              Style="{StaticResource IconButtonChromeStyle}"
               Background="Transparent"
               BorderBrush="Transparent"
               BorderThickness="0"
-              Click="RunButton_Click">
-        <md:PackIcon Kind="Send"
-                     Width="16"
-                     Height="16"
-                     Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-      </Button>
+              IsEnabled="{Binding RunButtonEnabled}"
+               Click="RunButton_Click">
+        <Button.Style>
+          <Style TargetType="Button" BasedOn="{StaticResource IconButtonChromeStyle}">
+            <Setter Property="Content">
+              <Setter.Value>
+                <md:PackIcon Kind="Send" Width="16" Height="16" Foreground="LimeGreen" />
+              </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding StateLabel}" Value="Running">
+                <Setter Property="Content">
+                  <Setter.Value>
+                    <md:PackIcon Kind="Stop" Width="16" Height="16" Foreground="IndianRed" />
+                  </Setter.Value>
+                </Setter>
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </Button.Style>
+       </Button>
     </Grid>
 
     <!-- SETTINGS PANEL (hidden overlay) -->
