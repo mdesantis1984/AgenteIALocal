@@ -77,6 +77,13 @@
         </Trigger>
       </Style.Triggers>
     </Style>
+    <Style x:Key="PromptComboBoxStyle" TargetType="ComboBox">
+      <Setter Property="Background" Value="{StaticResource HeaderBackgroundBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource HeaderMediumEmphasisBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="10,4,10,4" />
+    </Style>
   </UserControl.Resources>
 
   <Grid>
@@ -192,8 +199,7 @@
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
-        <RowDefinition Height="*" />
-        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" MinHeight="0" />
         <RowDefinition Height="0" />
       </Grid.RowDefinitions>
 
@@ -322,77 +328,111 @@
                  Foreground="{StaticResource HeaderHighEmphasisBrush}" />
       </Border>
 
-      <!-- PROMPT AREA (Items 14–19) -->
-      <Grid x:Name="PromptAreaGrid" Grid.Row="3" Margin="12,8,12,0">
-        <Grid.RowDefinitions>
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="Auto" MinHeight="40" />
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="8" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="8" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="8" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="8" />
-          <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-
-        <TextBox x:Name="PromptTextBox"
-                 Grid.Row="0"
-                 Grid.Column="0"
-                 Grid.ColumnSpan="9"
-                 Height="32"
-                 Padding="8,4,8,4"
-                 Margin="0,0,0,8"
-                 VerticalContentAlignment="Center"
-                 VerticalAlignment="Center"
-                 AcceptsReturn="True" />
-
-        <ComboBox Grid.Row="1"
-                  Grid.Column="0"
-                  Width="120"
-                  Height="32"
-                  VerticalAlignment="Center" />
-
-        <ComboBox Grid.Row="1"
-                  Grid.Column="2"
-                  Width="160"
-                  Height="32"
-                  VerticalAlignment="Center" />
-
-        <ComboBox Grid.Row="1"
-                  Grid.Column="4"
-                  Width="120"
-                  Height="32"
-                  VerticalAlignment="Center" />
-
-        <Button Grid.Row="1"
-                Grid.Column="8"
-                Height="32"
-                VerticalAlignment="Center"
-                Style="{StaticResource IconButtonChromeStyle}"
-                Background="Transparent"
-                BorderBrush="Transparent"
-                BorderThickness="0"
-                Click="RunButton_Click">
-          <md:PackIcon Kind="Send"
-                       Width="16"
-                       Height="16"
-                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-        </Button>
-      </Grid>
-
       <!-- HIDDEN LOG OUTPUT (kept for functionality) -->
       <TextBox x:Name="LogText"
-               Grid.Row="4"
+               Grid.Row="3"
                Visibility="Collapsed" />
     </Grid>
 
-    <!-- FOOTER SECTION -->
-    <Grid x:Name="FooterContainer" Grid.Row="2" />
+    <!-- PROMPT AREA (fixed bottom panel) -->
+    <Grid x:Name="PromptAreaGrid" Grid.Row="2" Margin="12,8,12,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <Grid Grid.Column="0" x:Name="PromptAndCombosGrid">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,8">
+          <TextBox x:Name="PromptTextBox"
+                   Height="128"
+                   MinHeight="128"
+                   Padding="12,10,12,10"
+                   VerticalContentAlignment="Center"
+                   VerticalAlignment="Center"
+                   AcceptsReturn="True"
+                   TextWrapping="Wrap"
+                   VerticalScrollBarVisibility="Auto"
+                   HorizontalScrollBarVisibility="Disabled"
+                   Background="{StaticResource HeaderBackgroundBrush}"
+                   Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                   BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
+                   BorderThickness="1"
+                   TextAlignment="Left" />
+          <TextBlock Text="Escribe tu consulta aquí, puedes presionar # para hacer referencia a un archivo de la solucion / proyecto"
+                     Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                     IsHitTestVisible="False"
+                     Margin="16,14,16,0"
+                     VerticalAlignment="Top"
+                     TextWrapping="Wrap">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding Text, ElementName=PromptTextBox}" Value="">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding Text, ElementName=PromptTextBox}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="0,0,0,8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="12" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="12" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+
+          <ComboBox Grid.Row="0"
+                    Grid.Column="0"
+                    Width="120"
+                    Height="32"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource PromptComboBoxStyle}" />
+
+          <ComboBox Grid.Row="0"
+                    Grid.Column="2"
+                    Width="160"
+                    Height="32"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource PromptComboBoxStyle}" />
+
+          <ComboBox Grid.Row="0"
+                    Grid.Column="4"
+                    Width="120"
+                    Height="32"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource PromptComboBoxStyle}" />
+        </Grid>
+      </Grid>
+
+      <Button Grid.Column="1"
+              Grid.Row="0"
+              Grid.RowSpan="2"
+              Margin="12,0,0,0"
+              VerticalAlignment="Center"
+              Style="{StaticResource IconButtonChromeStyle}"
+              Background="Transparent"
+              BorderBrush="Transparent"
+              BorderThickness="0"
+              Click="RunButton_Click">
+        <md:PackIcon Kind="Send"
+                     Width="16"
+                     Height="16"
+                     Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+      </Button>
+    </Grid>
 
     <!-- SETTINGS PANEL (hidden overlay) -->
     <Border x:Name="SettingsPanel"
@@ -406,8 +446,8 @@
             BorderThickness="1"
             Visibility="Collapsed"
             Panel.ZIndex="1">
-      <StackPanel>
-        <TextBlock Text="Settings (active server)" Style="{StaticResource Text.Subtitle}" Margin="0,0,0,8" />
+       <StackPanel>
+         <TextBlock Text="Settings (active server)" Style="{StaticResource Text.Subtitle}" Margin="0,0,0,8" />
 
         <TextBlock Text="Active Server ID:" Style="{StaticResource Text.Body}" />
         <TextBox x:Name="ActiveServerIdTextBox" Margin="0,4,0,8" />
