@@ -241,7 +241,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     sb.AppendLine($"[{m.Timestamp}] {m.Sender}: {m.Content}");
                 }
 
-                ResponseJsonText.Text = sb.ToString();
+                ResponseJsonText.Text = ChatRenderPreprocessor.Preprocess(sb.ToString());
                 PromptTextBox.Text = string.Empty;
             }
             catch
@@ -645,7 +645,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 // Update UI on UI thread
                 this.Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    ResponseJsonText.Text = display;
+                    ResponseJsonText.Text = ChatRenderPreprocessor.Preprocess(display);
                     UpdateUiState(ExecutionState.Completed);
                     Log("Execution completed successfully.");
 
@@ -670,7 +670,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 UpdateUiState(ExecutionState.Error);
                 Log("Execution failed: " + ex.Message);
                 Trace.TraceError("[AgenteIALocalControl] Execution failed: " + ex);
-                ResponseJsonText.Text = "{ \"error\": \"Execution failed\" }";
+                ResponseJsonText.Text = ChatRenderPreprocessor.Preprocess("{ \"error\": \"Execution failed\" }");
 
                 // Attempt to refresh log view even on error
                 try { RefreshLogFromFile(); } catch { }

@@ -82,6 +82,7 @@
       <DependentUpon>AgenteIALocalControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="ToolWindows\AgenteIALocalToolWindow.cs" />
+    <Compile Include="ToolWindows\ChatRenderPreprocessor.cs" />
     <Compile Include="ToolWindows\RelayCommand.cs" />
   </ItemGroup>
   <!-- XAML -->
