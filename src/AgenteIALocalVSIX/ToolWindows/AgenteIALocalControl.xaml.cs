@@ -1,21 +1,22 @@
-using System.Windows.Controls;
+using AgenteIALocalVSIX.Chats;
 using AgenteIALocalVSIX.Contracts;
 using AgenteIALocalVSIX.Execution;
-using System.Threading.Tasks;
-using System;
+using MaterialDesignThemes.Wpf;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
-using System.ComponentModel;
-using System.Windows.Media;
-using MaterialDesignThemes.Wpf;
-using AgenteIALocalVSIX.Chats;
-using System.Collections.Generic;
-using System.Windows.Documents;
-using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -68,8 +69,61 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         private CancellationTokenSource logRefreshCts;
 
+        private static bool _mahAppsResolveHooked;
+
+        private static void EnsureMahAppsIconPacksLoaded()
+        {
+            try
+            {
+                // Already loaded?
+                if (AppDomain.CurrentDomain.GetAssemblies()
+                    .Any(a => string.Equals(a.GetName().Name, "MahApps.Metro.IconPacks.Material", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return;
+                }
+
+                var dir = Path.GetDirectoryName(typeof(AgenteIALocalControl).Assembly.Location);
+                if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
+                    return;
+
+                 void LoadIfExists(string path)
+                {
+                    if (File.Exists(path))
+                        Assembly.LoadFrom(path);
+                }
+
+                // Load core first, then material
+                LoadIfExists(Path.Combine(dir, "MahApps.Metro.IconPacks.Core.dll"));
+                LoadIfExists(Path.Combine(dir, "MahApps.Metro.IconPacks.Material.dll"));
+
+                if (!_mahAppsResolveHooked)
+                {
+                    _mahAppsResolveHooked = true;
+                    AppDomain.CurrentDomain.AssemblyResolve += (_, e) =>
+                    {
+                        try
+                        {
+                            var name = new AssemblyName(e.Name).Name + ".dll";
+                            var candidate = Path.Combine(dir, name);
+                            return File.Exists(candidate) ? Assembly.LoadFrom(candidate) : null;
+                        }
+                        catch
+                        {
+                            return null;
+                        }
+                    };
+                }
+            }
+            catch
+            {
+                // Must never break the toolwindow; avoid throwing here.
+            }
+        }
+
+
         public AgenteIALocalControl()
         {
+            EnsureMahAppsIconPacksLoaded();
             InitializeComponent();
 
             // Set DataContext for XAML bindings
@@ -278,7 +332,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             try
             {
-                var res = System.Windows.MessageBox.Show("You are creating a new chat. Are you sure?", "Confirm", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
+                var res = System.Windows.MessageBox.Show("You are creating a new chat. Are you sure? Yes / No", "Confirm", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
                 if (res != System.Windows.MessageBoxResult.Yes) return;
 
                 var s = ChatStore.CreateNew();
@@ -298,7 +352,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             try
             {
                 if (activeChat == null) return;
-                var res = System.Windows.MessageBox.Show("Are you sure you want to delete this chat?", "Confirm", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+                var res = System.Windows.MessageBox.Show("Are you sure you want to delete this chat? Yes / No", "Confirm", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
                 if (res != System.Windows.MessageBoxResult.Yes) return;
 
                 ChatStore.Delete(activeChat.Id);

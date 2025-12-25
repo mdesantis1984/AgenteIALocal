@@ -1,0 +1,50 @@
+{
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "dllInputPaths",
+      "type": "promptString",
+      "description": "Ruta(s) a DLL(s) o carpeta(s) (separa múltiples con ;)",
+      "default": "${workspaceFolder}"
+    }
+  ],
+  "tasks": [
+    {
+      "label": "Export DLL icons to Markdown (pick path)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Export-DllIcons.ps1",
+        "-InputPath",
+        "${input:dllInputPaths}",
+        "-OutputPath",
+        "${workspaceFolder}\\out"
+      ],
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Export DLL icons to Markdown (pick path, recurse)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Export-DllIcons.ps1",
+        "-InputPath",
+        "${input:dllInputPaths}",
+        "-OutputPath",
+        "${workspaceFolder}\\out",
+        "-Recurse"
+      ],
+      "problemMatcher": [],
+      "group": "build"
+    }
+  ]
+}

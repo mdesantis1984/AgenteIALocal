@@ -1,8 +1,9 @@
 <UserControl x:Class="AgenteIALocalVSIX.ToolWindows.AgenteIALocalControl"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
-             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+              xmlns:iconPacks="clr-namespace:MahApps.Metro.IconPacks;assembly=MahApps.Metro.IconPacks.Material">
 
   <UserControl.Resources>
     <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FF1E1E22" />
@@ -153,7 +154,149 @@
         </DataTrigger>
       </Style.Triggers>
     </Style>
-  </UserControl.Resources>
+    <Style x:Key="IconHoverZoomPackIconMaterialStyle" TargetType="{x:Type iconPacks:PackIconMaterial}">
+      <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+      <Setter Property="RenderTransform">
+        <Setter.Value>
+          <ScaleTransform ScaleX="1" ScaleY="1" />
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+          <DataTrigger.EnterActions>
+            <BeginStoryboard HandoffBehavior="SnapshotAndReplace">
+              <Storyboard>
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.12" Duration="0:0:0.10" />
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.12" Duration="0:0:0.10" />
+              </Storyboard>
+            </BeginStoryboard>
+          </DataTrigger.EnterActions>
+          <DataTrigger.ExitActions>
+            <BeginStoryboard HandoffBehavior="SnapshotAndReplace">
+              <Storyboard>
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.10" />
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.10" />
+              </Storyboard>
+            </BeginStoryboard>
+          </DataTrigger.ExitActions>
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- Reusable dark flat ComboBox -->
+    <SolidColorBrush x:Key="UxComboBg" Color="#FF1E1E1E"/>
+    <SolidColorBrush x:Key="UxComboBorder" Color="#FF2A2A2A"/>
+    <SolidColorBrush x:Key="UxComboFg" Color="#FFDDDDDD"/>
+    <SolidColorBrush x:Key="UxComboFgMuted" Color="#FFAAAAAA"/>
+    <SolidColorBrush x:Key="UxComboHover" Color="#FF232323"/>
+
+    <Style x:Key="DarkFlatComboBoxStyle" TargetType="ComboBox">
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
+      <Setter Property="Foreground" Value="{StaticResource UxComboFg}"/>
+      <Setter Property="Background" Value="{StaticResource UxComboBg}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource UxComboBorder}"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="8,5"/>
+      <Setter Property="MinHeight" Value="36"/>
+      <Setter Property="Focusable" Value="True"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+      <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+      <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBox">
+            <Grid>
+              <Border x:Name="Bd"
+                      Background="{TemplateBinding Background}"
+                      BorderBrush="{TemplateBinding BorderBrush}"
+                      BorderThickness="{TemplateBinding BorderThickness}"
+                      CornerRadius="6"
+                      ClipToBounds="True">
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="32"/>
+                  </Grid.ColumnDefinitions>
+
+                  <ContentPresenter Margin="{TemplateBinding Padding}"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Left"
+                                    Content="{TemplateBinding SelectionBoxItem}"
+                                    ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                    ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"/>
+
+                  <ToggleButton Grid.Column="1"
+                                Focusable="False"
+                                OverridesDefaultStyle="True"
+                                IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                Background="Transparent"
+                                BorderThickness="0">
+                    <ToggleButton.Template>
+                      <ControlTemplate TargetType="ToggleButton">
+                        <Border Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                SnapsToDevicePixels="True">
+                          <Path Data="M 0 0 L 4 4 L 8 0 Z"
+                                Width="10" Height="6"
+                                Stretch="Fill"
+                                Fill="{TemplateBinding Foreground}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
+                        </Border>
+                      </ControlTemplate>
+                    </ToggleButton.Template>
+                  </ToggleButton>
+                </Grid>
+              </Border>
+
+              <Popup IsOpen="{TemplateBinding IsDropDownOpen}"
+                     Placement="Bottom"
+                     AllowsTransparency="True"
+                     Focusable="False"
+                     PopupAnimation="Fade">
+                <Border Background="{StaticResource UxComboBg}"
+                        BorderBrush="{StaticResource UxComboBorder}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        ClipToBounds="True">
+                  <ScrollViewer Margin="0" SnapsToDevicePixels="True">
+                    <ItemsPresenter />
+                  </ScrollViewer>
+                </Border>
+              </Popup>
+            </Grid>
+
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource UxComboHover}"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{StaticResource UxComboFgMuted}"/>
+                <Setter TargetName="Bd" Property="Opacity" Value="0.65"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="ChatToolbarIconChipStyle" TargetType="Border">
+      <Setter Property="Width" Value="44"/>
+      <Setter Property="Height" Value="36"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Background" Value="{StaticResource UxComboBg}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource UxComboBorder}"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True">
+          <Setter Property="Background" Value="{StaticResource UxComboHover}"/>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+   </UserControl.Resources>
 
   <Grid>
     <Grid.RowDefinitions>
@@ -290,49 +433,74 @@
       <!-- CHAT TOOLBAR (Items 7–9) -->
       <Grid x:Name="ChatToolbarGrid" Grid.Row="0" Height="48" Margin="12,0,12,8">
         <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-          <ComboBox x:Name="ChatComboBox"
-                    Width="260"
-                    Height="32"
-                    Padding="8,4,8,4"
-                    SelectionChanged="ChatComboBox_SelectionChanged" />
-          <Button x:Name="NewChatButton"
-                  Width="32"
-                  Height="32"
-                  Margin="8,0,0,0"
-                  Style="{StaticResource IconButtonChromeStyle}"
-                  Background="Transparent"
-                  BorderBrush="Transparent"
-                  BorderThickness="0"
-                  Click="NewChatButton_Click">
-            <md:PackIcon Kind="Plus"
-                         Width="16"
-                         Height="16"
-                         Style="{StaticResource IconHoverZoomPackIconStyle}"
-                         Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-          </Button>
-        </StackPanel>
+        <Border Grid.Column="0"
+                Height="36"
+                VerticalAlignment="Center"
+                Margin="8,0,0,8" >
+          <md:PackIcon Kind="ChatBubbleOutline"
+                       Width="18"
+                       Height="18"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center"
+                       Foreground="#D0D0D0"
+                       Style="{StaticResource IconHoverZoomPackIconStyle}" />
+        </Border>
 
-        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-          <Button x:Name="DeleteChatButton"
-                  Width="32"
-                  Height="32"
-                  Style="{StaticResource IconButtonChromeStyle}"
-                  Background="Transparent"
-                  BorderBrush="Transparent"
-                  BorderThickness="0"
-                  Click="DeleteChatButton_Click">
-            <md:PackIcon Kind="TrashCanOutline"
-                         Width="16"
-                         Height="16"
-                         Style="{StaticResource IconHoverZoomPackIconStyle}"
-                         Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-          </Button>
-        </StackPanel>
+        <ComboBox x:Name="ChatComboBox"
+                  Grid.Column="1"
+                  Height="36"
+                  VerticalAlignment="Center"
+                  HorizontalAlignment="Stretch"
+                  Style="{StaticResource DarkFlatComboBoxStyle}"
+                  SelectionChanged="ChatComboBox_SelectionChanged" />
+
+        <Button x:Name="NewChatButton"
+                Grid.Column="2"
+                Width="32"
+                Height="36"
+                Margin="12,0,0,0"
+                VerticalAlignment="Center"
+                Style="{StaticResource IconButtonChromeStyle}"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
+                Foreground="LimeGreen"
+                Click="NewChatButton_Click">
+          <md:PackIcon Kind="ChatAddOutline"
+                        Width="18"
+                        Height="18"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                        Style="{StaticResource IconHoverZoomPackIconStyle}" />
+        </Button>
+
+        <Button x:Name="DeleteChatButton"
+                Grid.Column="3"
+                Width="32"
+                Height="36"
+                Margin="8,0,0,0"
+                VerticalAlignment="Center"
+                Style="{StaticResource IconButtonChromeStyle}"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
+                Foreground="IndianRed"
+                Click="DeleteChatButton_Click">
+          <md:PackIcon Kind="ChatDeleteOutline"
+                        Width="18"
+                        Height="18"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                        Style="{StaticResource IconHoverZoomPackIconStyle}" />
+        </Button>
       </Grid>
 
       <!-- CHANGES ACCORDION (Items 10–13) -->
