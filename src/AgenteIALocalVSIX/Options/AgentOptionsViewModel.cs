@@ -27,7 +27,7 @@ namespace AgenteIALocalVSIX.Options
 
                 try
                 {
-                    AgentComposition.Logger?.Info("Options: Provider changed " + old + " -> " + provider);
+                    AgentComposition.Logger?.Invoke("Options: Provider changed " + old + " -> " + provider);
                 }
                 catch { }
             }

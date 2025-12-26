@@ -34,7 +34,7 @@ namespace AgenteIALocalVSIX
     [ProvideAutoLoad(UIContextGuids80.SolutionExists, PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideToolWindow(typeof(ToolWindows.AgenteIALocalToolWindow))]
-    [ProvideOptionPage(typeof(Options.AgenteOptionsPage), "Agente IA Local", "General", 0, 0, true)]
+    [ProvideOptionPage(typeof(Options.AgenteOptionsPage), "Chat de Agente IA Local", "General", 0, 0, true)]
     public sealed class AgenteIALocalVSIXPackage : AsyncPackage
     {
         /// <summary>

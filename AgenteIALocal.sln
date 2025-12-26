@@ -10,6 +10,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{ED9CAEBE-2C7
 		src\README.en.md = src\README.en.md
 		src\README.es.md = src\README.es.md
 		src\README.md = src\README.md
+		src\Readme.UX.md = src\Readme.UX.md
 		src\Reglas.md = src\Reglas.md
 	EndProjectSection
 EndProject
@@ -24,6 +25,11 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgenteIALocal.UI", "src\AgenteIALocal.UI\AgenteIALocal.UI.csproj", "{31844BBD-CF2D-133F-9FCF-57B22964920E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgenteIALocalVSIX", "src\AgenteIALocalVSIX\AgenteIALocalVSIX.csproj", "{215F26C1-312F-407E-A713-FA4C4E7D755A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Pruebas", "Pruebas", "{AED0369B-F7DF-4EF4-88D6-0D2DEF95A966}"
+	ProjectSection(SolutionItems) = preProject
+		src\Pruebas\lmstudio-test.http = src\Pruebas\lmstudio-test.http
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -66,6 +72,7 @@ Global
 		{25353395-9DC8-2DE2-A616-00019CAEBEE5} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
 		{31844BBD-CF2D-133F-9FCF-57B22964920E} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
 		{215F26C1-312F-407E-A713-FA4C4E7D755A} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
+		{AED0369B-F7DF-4EF4-88D6-0D2DEF95A966} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0AC6B85A-033F-465F-813E-E4296842506A}

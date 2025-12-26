@@ -37,7 +37,7 @@ namespace AgenteIALocalVSIX.Options
             {
                 try
                 {
-                    AgentComposition.Logger?.Info("OptionsPage: CreateChild/Child getter");
+                    AgentComposition.Logger?.Invoke("OptionsPage: CreateChild/Child getter");
                     ActivityLogHelper.TryLog(this.Site, "AgenteIALocal: OptionsPage CreateChild");
                 }
                 catch { }
@@ -55,7 +55,7 @@ namespace AgenteIALocalVSIX.Options
                 {
                     try
                     {
-                        AgentComposition.Logger?.Error("OptionsPage: CreateChild failed", ex);
+                        AgentComposition.Logger?.Invoke("OptionsPage: CreateChild failed: " + ex.Message);
                     }
                     catch { }
 
@@ -72,7 +72,7 @@ namespace AgenteIALocalVSIX.Options
 
             try
             {
-                AgentComposition.Logger?.Info("OptionsPage: OnActivate");
+                AgentComposition.Logger?.Invoke("OptionsPage: OnActivate");
                 ActivityLogHelper.TryLog(this.Site, "AgenteIALocal: OptionsPage OnActivate");
             }
             catch { }
@@ -83,7 +83,7 @@ namespace AgenteIALocalVSIX.Options
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Logger?.Error("OptionsPage: OnActivate LoadSettings failed", ex); } catch { }
+                try { AgentComposition.Logger?.Invoke("OptionsPage: OnActivate LoadSettings failed: " + ex.Message); } catch { }
                 try { ActivityLogHelper.TryLogError(this.Site, "AgenteIALocal: OptionsPage OnActivate LoadSettings failed", ex); } catch { }
             }
 
@@ -93,7 +93,7 @@ namespace AgenteIALocalVSIX.Options
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Logger?.Error("OptionsPage: OnActivate Focus failed", ex); } catch { }
+                try { AgentComposition.Logger?.Invoke("OptionsPage: OnActivate Focus failed: " + ex.Message); } catch { }
                 try { ActivityLogHelper.TryLogError(this.Site, "AgenteIALocal: OptionsPage OnActivate Focus failed", ex); } catch { }
             }
         }
@@ -104,7 +104,7 @@ namespace AgenteIALocalVSIX.Options
 
             try
             {
-                AgentComposition.Logger?.Info("OptionsPage: OnApply");
+                AgentComposition.Logger?.Invoke("OptionsPage: OnApply");
                 ActivityLogHelper.TryLog(this.Site, "AgenteIALocal: OptionsPage OnApply");
             }
             catch { }
@@ -115,7 +115,7 @@ namespace AgenteIALocalVSIX.Options
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Logger?.Error("OptionsPage: OnApply SaveSettings failed", ex); } catch { }
+                try { AgentComposition.Logger?.Invoke("OptionsPage: OnApply SaveSettings failed: " + ex.Message); } catch { }
                 try { ActivityLogHelper.TryLogError(this.Site, "AgenteIALocal: OptionsPage OnApply SaveSettings failed", ex); } catch { }
             }
         }

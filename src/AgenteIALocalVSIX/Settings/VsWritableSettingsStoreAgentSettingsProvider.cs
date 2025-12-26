@@ -37,9 +37,10 @@ namespace AgenteIALocalVSIX.Settings
             }
         }
 
-        public AgentSettings Load()
+        // Implement interface with fully-qualified types to avoid ambiguous AgentSettings symbol collisions
+        public AgenteIALocal.Core.Settings.AgentSettings Load()
         {
-            var s = new AgentSettings();
+            var s = new AgenteIALocal.Core.Settings.AgentSettings();
 
             // Provider
             if (store.PropertyExists(CollectionPath, ProviderKey))
@@ -65,7 +66,7 @@ namespace AgenteIALocalVSIX.Settings
             return s;
         }
 
-        public void Save(AgentSettings settings)
+        public void Save(AgenteIALocal.Core.Settings.AgentSettings settings)
         {
             if (settings == null) return;
 

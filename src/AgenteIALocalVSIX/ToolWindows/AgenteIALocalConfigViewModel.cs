@@ -47,7 +47,8 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         public void Load()
         {
-            var settings = settingsProvider?.Load() ?? new AgentSettings();
+            var loaded = settingsProvider?.Load();
+            var settings = loaded ?? new AgenteIALocal.Core.Settings.AgentSettings();
 
             var lm = settings.LmStudio ?? new LmStudioSettings();
             LmStudio.BaseUrl = lm.BaseUrl ?? string.Empty;
@@ -65,7 +66,8 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             if (settingsProvider == null) return;
 
-            var settings = settingsProvider.Load() ?? new AgentSettings();
+            var loaded = settingsProvider.Load();
+            var settings = loaded ?? new AgenteIALocal.Core.Settings.AgentSettings();
 
             settings.LmStudio = new LmStudioSettings
             {
