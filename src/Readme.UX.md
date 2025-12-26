@@ -1,96 +1,167 @@
-# UX/UI Specification — Agente IA Local
+# UX/UI — Agente IA Local (ToolWindow)
 
-## Overview
+> Documento UX canónico. Describe la experiencia visual y comportamientos observables **verificados en XAML/code-behind**.
 
-This document defines the exact UX/UI behavior and layout for the Agente IA Local ToolWindow. The content must match the provided mockups exactly.
+## 🎯 Objetivo UX
 
-## Visual References
+- Integración nativa Visual Studio (VSIX clásico) con una ToolWindow orientada a flujos de chat/agente.
+- Experiencia dark/flat consistente, con feedback inmediato de estado y acciones claras.
 
-- Main ToolWindow Mock: `/src/Resource/Images/Mock_prompt.fw.png`
+## 🧱 Layout (zonas)
 
-  ![](/src/Resource/Images/Mock_prompt.fw.png)
+### 1) Header
 
-- LLM Configuration Mock: `/src/Resource/Images/Mock_Config.fw.png`
+- Ubicación: `Grid.Row=0` (`HeaderContainer`, `Height=64`).
+- Contenido (verificable):
+  - Contador de solución: icono `md:PackIcon Kind="FolderOutline"` + `TextBlock x:Name="SolutionNameText"`.
+  - Contador de proyectos: icono `md:PackIcon Kind="FileTreeOutline"` + `TextBlock x:Name="ProjectCountText"`.
+  - Indicador de estado: `md:PackIcon x:Name="StateIcon"` (binding a `StateIconKind` / `StateColor`) + `TextBlock x:Name="StateLabelText"` (binding a `StateLabel` / `StateColor`).
+  - Bloque de configuración: icono `md:PackIcon Kind="CogOutline"` + `TextBlock Text={Binding ConfigLabel, FallbackValue=Not Config}`.
+  - Acciones a la derecha:
+    - `Button x:Name="SettingsButton"` con `Click="SettingsButton_Click"`.
+    - Botón de ayuda con icono `HelpCircleOutline` (⚠️ sin `Click` verificable en el XAML actual).
+- Tokens visuales:
+  - Fondo del header: `HeaderBackgroundBrush` (`#FF1E1E22`).
+  - Línea inferior: `BorderThickness="0,0,0,1"` con `HeaderMediumEmphasisBrush` (`#FF424242`).
 
-  ![](/src/Resource/Images/Mock_Config.fw.png)
+### 2) Chat toolbar
 
-## Main ToolWindow Layout
+- Ubicación: `BodyContainer` `Row=0` (`ChatToolbarGrid`, `Height=48`, `Margin="12,0,12,8"`).
+- Controles (verificables):
+  - Icono izquierdo principal: `md:PackIcon Kind="ChatBubbleOutline"` (Foreground `#D0D0D0`).
+  - Selector de chat: `ComboBox x:Name="ChatComboBox"` con estilo `DarkFlatComboBoxStyle` y handler `SelectionChanged="ChatComboBox_SelectionChanged"`.
+  - Crear chat: `Button x:Name="NewChatButton"` con icono `ChatAddOutline`, `Foreground="LimeGreen"`, `Click="NewChatButton_Click"`.
+  - Borrar chat: `Button x:Name="DeleteChatButton"` con icono `ChatDeleteOutline`, `Foreground="IndianRed"`, `Click="DeleteChatButton_Click"`.
+- Comportamiento (verificable en code-behind):
+  - Crear y borrar chat muestran confirmación por `MessageBox`.
+  - El selector `ChatComboBox` carga el chat activo al cambiar.
 
-(Structure must match mockups exactly. Use the sections and items below to define behavior and placement.)
+### 3) Chat surface (single conversation history)
 
-## Header Section (Items 1–6)
+- Ubicación: `BodyContainer` `Row=1`.
+- Contenedor (verificable):
+  - `Border` con `Background="{StaticResource Brush.LayoutBg}"` (`#282828`), `CornerRadius=4`, `Padding=12`, `BorderThickness=0`.
+- Área de salida (verificable):
+  - `TextBox x:Name="ResponseJsonText"`:
+    - `IsReadOnly="True"`
+    - `TextWrapping="Wrap"`
+    - `VerticalScrollBarVisibility="Auto"`
+    - `Padding="16,12,16,12"`
+    - Fondo `HeaderBackgroundBrush` (`#FF1E1E22`)
+    - Sin borde (`BorderThickness=0`)
+- Regla visual: el contenedor no dibuja borde exterior; la separación visual se logra por padding y contraste de fondos.
 
-1. Title of the ToolWindow exactly as shown in the mock image.
-2. Indicate if Visual Studio has one solution loaded in Solution Explorer. If none, display 0.
-3. Indicate how many projects are loaded in Solution Explorer. If none, display 0.
-4. Execution State indicator with the following possible values: Idle, Running, Completed, Error. Each state must have its own color and iconography.
-5. Detect if at least one local LLM is fully configured. If no model is configured, disable all icons and controls except items 6 and 14.
-6. Configuration icon and Help/Support icon. Configuration opens a modal to configure the local LLM selected in item 18. Help/Support opens a modal with a disclaimer and a link to GitHub documentation and license.
+### 4) Changes accordion
 
-## Chat Area (Items 7–9)
+- Ubicación: `BodyContainer` `Row=2`.
+- Contenedor (verificable):
+  - `Expander` con `Background="{StaticResource Brush.ChangesBg}"` (`#2E2E2E`), `BorderThickness=1`, `CornerRadius=4`.
+- Header (verificable):
+  - Chevron: `md:PackIcon Kind="ChevronDown"` rota 180° al expandir (DataTrigger sobre `IsExpanded`).
+  - Título: `TextBlock Text={Binding ModifiedFilesCount, StringFormat=Changes ({0})}`.
+  - Zona derecha (acciones) renderizada desde `Expander.Tag` (no forma parte del toggle).
+- Acciones (verificables):
+  - Apply: `Click="ApplyChanges_Click"` con icono `ContentSave` y color `#FF3FB950`.
+  - Revert: `Click="RevertChanges_Click"` con icono `DeleteSweepOutline` y color `#FFD29922`.
+  - Clear: `Click="ClearChanges_Click"` con icono `EraserVariant` y color `#FFF85149`.
+  - Los iconos usan estilos de zoom (`IconHoverZoomPackIconStrongStyle`).
+- Contenido (verificable):
+  - Lista: `ItemsControl ItemsSource={Binding ModifiedFiles}` renderiza `TextBlock` por item.
+- 🧪 Estado: mock/experimental (verificable en code-behind):
+  - `ModifiedFiles` se inicializa con valores de ejemplo.
+  - Apply/Revert muestran `MessageBox` y no aplican cambios reales.
+  - Clear vacía la lista en memoria.
 
-7. Dropdown listing chat history, always showing the last active chat. Selecting a chat loads the full conversation. Chats must be persistent (decision pending: SQLite or JSON).
-8. Icon to add a new chat. Opens a confirmation modal: 'You are creating a new chat. Are you sure? Yes / No'.
-9. Icon to delete the current chat. Opens a warning modal: 'Are you sure you want to delete this chat? Yes / No'.
+### 5) Footer (Request) — área de prompt
 
-## Changes Accordion (Items 10–13)
+- Ubicación: `BodyContainer` `Row=3` (`PromptAreaGrid`).
+- Contenedor (verificable):
+  - `Border` con `Background="{StaticResource Brush.FooterBg}"` (`#383838`), `BorderThickness=1`, `CornerRadius=4`.
+- Prompt (verificable):
+  - `TextBox x:Name="PromptTextBox"`:
+    - `Height=128`, `AcceptsReturn=True`, `TextWrapping=Wrap`
+    - `VerticalScrollBarVisibility=Auto`, `HorizontalScrollBarVisibility=Disabled`
+    - `KeyDown="PromptTextBox_KeyDown"`
+    - Fondo transparente, texto `HeaderHighEmphasisBrush`
+- Placeholder (verificable):
+  - `TextBlock` overlay con `Opacity="0.55"` y visibilidad controlada por DataTriggers cuando `PromptTextBox.Text` está vacío o null.
+  - Texto literal actual: “Escribe tu consulta aquí, puedes presionar # para hacer referencia a un archivo de la solucion / proyecto”.
 
-10. Accordion displaying modified project files. Header shows total number of modified files. Clicking the arrow collapses or expands the list.
-11. Text button to persist all changes shown in the accordion. Label 'Mantener' with representative icon. Confirmation modal required.
-12. Opposite action of item 11. Confirmation modal required.
-13. Clears the list of modified files. Represented by '...' icon. Confirmation modal required.
+- Teclado (verificable en code-behind):
+  - Enter envía si `RunButtonEnabled == true`.
+  - Shift+Enter inserta nueva línea (no dispara envío).
 
-## Prompt Input Area (Items 14–19)
+### 6) Footer Row 1 — combos bar with separator + Send
 
-14. Placeholder text that disappears on focus or typing and reappears when empty.
-15. Text input area where the user writes the prompt to the selected local LLM.
-16. Dropdown with icon and text indicating the role to use: Agent or Chat.
-17. Model selector populated based on the configured local LLM. Models retrieved via endpoint /v1/models.
-18. Dropdown always showing two standard LLM options: LM Studio and JAN. Additional models may be added later via configuration.
-19. Execute button to send the prompt to the selected local LLM.
+- Contenedor (verificable):
+  - `Border` superior como separador (`BorderThickness="0,1,0,0"`) dentro del bloque de footer.
+- Combos (verificables):
+  - `TypeActivitie`:
+    - Items: `Agente`, `Chat Bot`.
+    - `SelectedIndex=1` en XAML.
+    - Template local basado en `DarkFlatComboBoxStyle` con fondo/borde transparentes y `CornerRadius=6`.
+    - ItemTemplate con iconos `md:PackIcon`: por defecto `RobotOutline`, y para `Agente` cambia a `Flash` (color `#FF3FB950`).
+  - `ModelOfLLM`:
+    - Items: `GPT 5`.
+    - ItemTemplate con `md:PackIcon Kind="Brain"` (color base `#FFCC8A00`, cambia a `#FF3FB950` si el item es `GPT 5`).
+  - `ServerLLM`:
+    - Items: `LM Studio`, `JAN`.
+    - ItemTemplate con icono por defecto `Database` (color `#FF58A6FF`) y para `JAN` cambia a `Server` (color `#FF9E7AFF`).
+- Comportamiento visual de combos (verificable):
+  - Hover sin highlight de fondo en items (triggers con `Background="Transparent"`), y selección con `Background="#FFC27A00"`.
+- Botón Send (verificable):
+  - `Button` a la derecha con `Click="RunButton_Click"` y `IsEnabled={Binding RunButtonEnabled}`.
+  - Icono por defecto: `md:PackIcon Kind="Send"` (LimeGreen).
+  - Si `StateLabel == "Running"`: cambia a `md:PackIcon Kind="Stop"` (IndianRed) por DataTrigger.
+  - Hover/zoom del botón controlado por storyboard (escala 1 → 1.12).
 
-## Execution States
+### 7) Log output (hidden)
 
-- Execution State indicator with the following possible values: Idle, Running, Completed, Error. Each state must have its own color and iconography.
+- `TextBox x:Name="LogText"` existe en la UI con `Visibility="Collapsed"`.
+- Se actualiza periódicamente desde archivo (verificable en code-behind):
+  - Refresco aproximado cada 2 segundos (`Task.Delay(2000, ct)`).
+  - Lectura del archivo: `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log`.
+- Se usa como buffer de diagnóstico durante ejecución (prepending de mensajes en `Log(...)`).
 
-## Modals and Confirmations
+## 🎛️ Estados visuales
 
-- Add new chat confirmation modal: 'You are creating a new chat. Are you sure? Yes / No'.
-- Delete chat warning modal: 'Are you sure you want to delete this chat? Yes / No'.
-- Persist all changes confirmation modal (triggered by 'Mantener').
-- Opposite action confirmation modal (triggered by opposite of item 11).
-- Clear modified files confirmation modal (triggered by '...' icon).
-- Help/Support modal: disclaimer and a link to GitHub documentation and license.
+- `ExecutionState` controla icono + color + label (verificable en `UpdateStateProperties`):
+  - `Idle` → `PauseCircleOutline` (Gray) / label `Idle`.
+  - `Running` → `ProgressClock` (DodgerBlue) / label `Running`.
+  - `Completed` → `CheckCircleOutline` (LimeGreen) / label `Completed`.
+  - `Error` → `AlertCircleOutline` (IndianRed) / label `Error`.
+- Enablement (verificable en `UpdateUiState`):
+  - Si no hay LLM configurado (`IsLlmConfigured == false`): `RunButtonEnabled=false` y el prompt pasa a modo solo lectura (`IsPromptReadOnly=true`).
+  - Durante `Running`: `RunButtonEnabled=false`.
 
-## Configuration Modal (LLM Local)
+## 🧩 Reglas de estilo (pixel-perfect)
 
-- Configuration icon opens a modal to configure the local LLM selected in item 18.
-- Model selector populated based on the configured local LLM. Models retrieved via endpoint /v1/models.
-- Dropdown always showing two standard LLM options: LM Studio and JAN. Additional models may be added later via configuration.
+- Paleta base dark/flat (verificable en recursos XAML):
+  - Layout: `Brush.LayoutBg` = `#282828`
+  - Footer: `Brush.FooterBg` = `#383838`
+  - Changes: `Brush.ChangesBg` = `#2E2E2E`
+  - Header: `HeaderBackgroundBrush` = `#FF1E1E22`
+- Bordes y separadores:
+  - Uso de `HeaderMediumEmphasisBrush` (`#FF424242`) como color de línea de separación (ej. header y separador del footer).
+- Iconografía:
+  - `md:PackIcon` con colores semánticos (ej. LimeGreen/IndianRed) y estilos de zoom (`IconHoverZoomPackIconStyle` / `IconHoverZoomPackIconStrongStyle`).
+- Combos tipo toolbar:
+  - Templates locales basados en `DarkFlatComboBoxStyle` para control de fondo transparente, hover y selección.
 
-## Persistence Considerations
+## ✅ Checklist de validación visual (Experimental Instance)
 
-- Chats must be persistent (decision pending: SQLite or JSON).
+- Abrir ToolWindow desde `Tools → Agente IA Local` y verificar:
+  - El header mantiene altura 64 y muestra contadores + estado.
+  - El chat toolbar muestra `ChatComboBox` y los botones New/Delete con colores correctos.
+  - El chat surface muestra el área `ResponseJsonText` con scroll vertical y sin borde exterior.
+  - El expander de cambios rota el chevron al expandir/colapsar y el contador usa `Changes (N)`.
+  - Los botones Apply/Revert/Clear muestran iconos con zoom y colores semánticos.
+  - El footer conserva el separador superior antes de la barra de combos.
+  - El botón Send cambia a Stop cuando el estado está en `Running`.
+  - Enter envía y Shift+Enter inserta nueva línea.
 
-## Color Scheme and Iconography
+## ⚠️ Elementos no verificables (pendientes de inspección en XAML completo)
 
-- Color scheme must match Mock_prompt.fw.png exactly.
-- Iconography must use contrasting colors as shown in the mock.
-- Exact layout fidelity is required.
-- Microsoft Blend may be used if needed.
-
-## Supported Local LLM Providers
-
-- The project currently focuses on exactly two primary local LLM providers: LM Studio and JAN.
-- Additional providers may be added later but are out of scope for Sprint 5.
-
-## Confirmation of Exact Fidelity
-
-I confirm that `src/Readme.UX.md` was created and updated to exactly reflect the text, structure, and items provided in the task. No items were omitted, renamed, or interpreted. The images and sections are included as specified.
-
-## Out of Scope (Sprint 5)
-
-- Streaming responses
-- Multi-agent orchestration
-- Prompt engineering logic
-- Backend changes
+- Comportamiento del botón Help (no hay `Click` verificable en el XAML actual).
+- Layout exacto de `SettingsPanel` (referenciado en code-behind, no localizado en el XAML actual).
+- Botón Clear asociado a `ClearButton_Click` (handler existe; control no localizado en el XAML actual).
