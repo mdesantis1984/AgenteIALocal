@@ -1,24 +1,23 @@
 # Agente IA Local
 
-## Agente IA Local
-Extensión clásica de Visual Studio (VSIX) que integra un agente de IA local para trabajar sobre el contexto real del IDE (solución, proyectos y documentos). El objetivo es ofrecer una experiencia unificada y controlada para análisis y generación de código con modelos locales.
+Extensión **VSIX clásica** para Visual Studio que integra un agente de IA local dentro del IDE.
 
 ## Estado actual
-- Extensión VSIX clásica operativa e instalable
-- ToolWindow funcional
-- UX/UI estabilizado (chat, cambios, footer)
-- Sprint activo: 009.7 – Documentación integral
+- VSIX instalable
+- ToolWindow operativa
+- Documentación actualizada (funcional, UX y arquitectura)
+- Rama activa de documentación: `sprint-009.7-docs-full`
 
-## Documentación del proyecto
-- [README.es.md](README.es.md) – Documentación funcional completa (ES)
-- [README.en.md](README.en.md) – Functional documentation (EN)
-- [Readme.UX.md](Readme.UX.md) – UX/UI actual
-- [README.architecture.es.md](README.architecture.es.md) – Arquitectura (ES)
-- [README.architecture.en.md](README.architecture.en.md) – Architecture (EN)
+## Documentación (canónica)
+- 📘 Funcional (ES): [`src/README.es.md`](src/README.es.md)
+- 📘 Functional (EN): [`src/README.en.md`](src/README.en.md)
+- 🎨 UX/UI (ES): [`src/Readme.UX.md`](src/Readme.UX.md)
+- 🧱 Arquitectura (ES): [`src/README.architecture.es.md`](src/README.architecture.es.md)
+- 🧱 Architecture (EN): [`src/README.architecture.en.md`](src/README.architecture.en.md)
+
+## Cómo abrir la ToolWindow (rápido)
+1. Instalar la extensión (VSIX) en Visual Studio.
+2. Abrir: `Tools → Agente IA Local`.
 
 ## Reglas de trabajo
-- Seguir las directrices de `src/Reglas.md`
-- No modificar archivos restringidos (`*.vsix`, `*.vsct`, `*.vsixmanifest`, `*.csproj`, `*.sln`)
-- Mantener ramas y commits según flujo indicado por el Arquitecto
-- Comunicación breve y técnica; validar dudas con el humano
-- Documentar cada iteración sin mezclar idiomas ni reabrir decisiones cerradas
+- Ver `src/Reglas.md` (flujo, commits, restricciones de archivos VSIX críticos).
