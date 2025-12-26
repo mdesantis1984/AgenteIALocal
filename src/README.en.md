@@ -1,246 +1,213 @@
-# Agente IA Local for Visual Studio
+# Agente IA Local (classic VSIX)
 
-Agente IA Local is a classic Visual Studio extension (VSIX, classic format) that provides a ToolWindow and a set of commands to experiment with AI agent flows over the IDE context (solution, projects, documents). The project's objective is to validate a decoupled architecture between UI, orchestration, and AI providers, facilitating testing, traceability and deployment as an extension installed in Visual Studio's Experimental Instance.
+A **classic VSIX** extension for Visual Studio that integrates a local AI agent inside the IDE. The goal is to enable a **prompt → execution → result** flow from a ToolWindow, using the basic available context (solution/projects) and local configuration (Options + `settings.json`).
 
----
+> Canonical functional document (EN). For detailed UX and architecture decisions, see the links at the end.
 
-## 1. Introduction
+## What it is
 
-This extension offers an entry point inside Visual Studio (menu `Tools → Agente IA Local`) and a ToolWindow that allows generating prompts, running the agent (mock or real) and viewing responses. It is designed as an evolutionary prototype (MVP → hardening) to facilitate later integration with LLM providers.
+**Agente IA Local** adds an entry point inside Visual Studio (menu `Tools`) that opens a ToolWindow (`AgenteIALocalToolWindow`) with a WPF UI (`AgenteIALocalControl`). From there the user can:
 
-The technical approach is explicitly "classic VSIX" to maintain compatibility and control over packaging, command registration (VSCT) and ToolWindows.
+- Create/select/delete chats (persisted locally)
+- Write a prompt and execute it
+- View the rendered output in a conversation area
+- Manage a list of changes (currently simulated)
+- View execution logs
+- Adjust configuration from Options and from an inline panel
 
----
+**What problem it solves**
+- Run a local agent inside Visual Studio with persistent configuration and reproducible traces on disk.
 
-## 2. Working methodology
+**What it does NOT try to solve**
+- It does not implement (in the current state of the code) streaming, multi-agent, or real application of changes to the workspace.
+- It does not replace UX documentation or architecture documentation: this file describes **how to use what exists today**.
 
-We work following agile practices (Scrum) with short iterations and concrete deliverables. Some adopted working rules:
+**Why classic VSIX (not SDK-style)**
+- The host process is based on `AsyncPackage`, VSCT and a classic ToolWindow to integrate with Visual Studio’s lifecycle and command system.
 
-- Scrum per iteration: short sprints with clear objectives per branch.
-- Atomic commits: every functional or fix change must map to a small commit with a meaningful message.
-- Definition of Done includes: buildable code, minimal tests (when applicable), associated documentation and updated prompts/artifacts.
-- Documentation as part of the DoD: prompts in `.md` format (see "Use of prompts") are formal artifacts and must be versioned in the task branch.
-- Branches per iteration and per task: e.g. `iter-002/task-01-options-access`.
+## Current product state
 
----
+✅ **VSIX / Package load**
+- Package: `AgenteIALocalVSIXPackage`.
+- Autoload: `ProvideAutoLoad(UIContextGuids80.NoSolution)` and `ProvideAutoLoad(UIContextGuids80.SolutionExists)`.
+- ToolWindow registration: `ProvideToolWindow(typeof(AgenteIALocalToolWindow))`.
 
-## 3. Roles
+✅ **ToolWindow and execution**
+- ToolWindow: `ToolWindows/AgenteIALocalToolWindow.cs`.
+- Main UI: `ToolWindows/AgenteIALocalControl.xaml` + `AgenteIALocalControl.xaml.cs`.
+- Execution state handling: `ExecutionState` enum (Idle/Running/Completed/Error) and bindable properties (`StateIconKind`, `StateColor`, `StateLabel`).
 
-Clear roles are defined in the workflow:
+⚠️ **LLM backend**
+- There is composition with an alternative:
+  - Default: `MockCopilotExecutor` via `AgentComposition.MockAgentService`.
+  - Real backend (LM Studio only in the current VSIX composition): `AgentComposition.TryComposeRealBackend()` creates `LmStudioClient` + `Application.AgentService` and exposes a synchronous adapter.
+- JAN in Infrastructure is implemented as a simulation: `AgenteIALocal.Infrastructure/Agents/JanServerClient.cs` returns a simulated response.
 
-- Human (developer/maintainer): makes final decisions, reviews and approves changes, runs tests in the Experimental Instance and performs merges to main branches.
-- AI (ChatGPT): acts as architect and planner. It is used to analyze problems, generate technical prompts and propose fixes and work plans. It does not edit the repository code directly; its output is validated by a human.
-- Copilot (VS/editor assistant): the only automated agent authorized to apply changes in the workspace (requested, targeted edits). It is used to perform the minimal changes approved by the human and follow exact implementation instructions.
+✅ **Active sprint**
+- Active sprint: **009.7** (documentation consolidation). This sprint does not add features; it consolidates documentation.
 
-This separation ensures responsibility and traceability between proposal (AI), execution (Copilot) and verification/approval (human).
+## Requirements and compatibility (VS / .NET / classic VSIX limitations)
 
----
+- Visual Studio: designed to run in an experimental instance (debug) and as an installable VSIX.
+- VSIX target: defined by the `.csproj` files of each project in the solution.
+- Typical classic VSIX limitations (in this repo):
+  - Manual composition (no DI container in the VSIX host).
+  - UI must be fail-safe: UI exceptions are caught/ignored to avoid breaking the ToolWindow.
 
-## 4. Iterations (chronological)
+## How to install and run (real steps)
 
-Below is a summary of the main iterations and milestones achieved to date.
+1) Open the solution in Visual Studio.
+2) Set the VSIX project as startup (standard extension debugging).
+3) Run with **Start Experimental Instance**.
+4) In the experimental instance: menu `Tools → Agente IA Local`.
 
-### Iteration: post-mvp-readme-and-hardening
+Code evidence:
+- Command: `Commands/OpenAgenteIALocalCommand.cs`.
+- ToolWindow opening: use of `IVsUIShell.FindToolWindow(...).Show()`.
 
-- Real initial problems:
-  - Mismatch between GUIDs in VSCT and the `Package` preventing correct wiring of menus/commands.
-  - Initial logging insufficient for runtime diagnosis.
-  - Fragile behavior in the ToolWindow when the backend (`AgentService`) was not composed.
+## How to use it (real user flow)
 
-- Fixes applied:
-  - Fixed VSCT ↔ Package wiring: aligned GUIDs and CommandId in VSCT and code.
-  - Hardened the `AsyncPackage` `InitializeAsync` with explicit logging and error handling without rethrowing (fail-safe).
-  - Consistent command registration using `OleMenuCommandService` following the functional example pattern (MenuCommand/Instance/InitializeAsync pattern).
-  - Improvements in the ToolWindow: WPF controls adjusted for legibility (using SystemColors) and safe UX flow handling when `AgentService` is null.
-  - File logging enabled and extended (initialization traces, command registration and button execution).
+### 1) Open the ToolWindow
+- Action: `Tools → Agente IA Local`.
+- Result: `AgenteIALocalToolWindow` is created/activated and `AgenteIALocalControl` is loaded.
 
-- Result:
-  - ToolWindow operable from the `Tools` menu (opening verified in Experimental Instance).
-  - Menu and command correctly registered and executable.
-  - Verifiable logs in `%LOCALAPPDATA%\\AgenteIALocal\\logs\\AgenteIALocal.log`.
+### 2) View status and availability
+- The UI shows “Solution/Projects” counters (default `0` until updated by the host process).
+- The execution state is shown with icon/color and text (`Idle`, `Running`, `Completed`, `Error`).
 
-- Commits and applied order:
-  - Minimal changes grouped by objective: (1) logging/package init, (2) command registration, (3) VSCT fix, (4) ToolWindow UX hardening.
-
-### Iteration: iter-002 (start)
-
-- Branch created: `iter-002/task-01-options-access`.
-- Sprint objective:
-  - Expose and persist options from `Tools → Options` (Options Page) and allow `AgentService` to read configuration at initialization.
-  - Improve documentation and add prompts as artifacts.
-- Current state:
-  - Options Page functional and persistent (configuration saved/reusable).
-  - Documentation and prompt work in progress (README and `.md` prompts updated as part of DoD).
-
----
-
-## 5. Architecture (high level)
-
-Reference: see `README.architecture` (dedicated file in the repository) for diagrams and details.
-
-Minimal summary:
-
-- `AgenteIALocal.Core` — contracts, DTOs and interfaces (layer neutrality).
-- `AgenteIALocal.Application` — orchestration of flows and business logic (implementations without direct UI dependency).
-- `AgenteIALocal.Infrastructure` — concrete adapters (HTTP clients, resolvers, specific integrations).
-- `AgenteIALocal.UI` — reusable WPF controls.
-- `AgenteIALocalVSIX` — classic VSIX host: `AsyncPackage`, commands, ToolWindow, VSCT and packaging.
-
-The architecture promotes injection/composition of `AgentService` by the Package so the UI only consumes the interface and does not depend on concrete implementations.
-
----
-
-## 6. Use of prompts
-
-`.md` prompts are used as formal artifacts in the development process. Reasons and practices:
-
-- Why: they allow reproducibly defining the instructions given to the AI (ChatGPT) for design, diagnosis and change generation.
-- What they contain: task description, workspace context, steps to execute, constraints and acceptance criteria.
-- How they integrate into the flow: each relevant task/issue includes one or more versioned prompts in the task branch; prompts are part of DoD and attached to the PR as evidence of decision and execution.
-
-Examples of use:
-- Diagnosis of VSCT ↔ Package wiring.
-- Hardening plan for `InitializeAsync` of the Package.
-- UX guide for error handling in the ToolWindow.
-
----
-
-## 7. Current project status
-
-Honest and verifiable summary at the time of this document:
-
-What works
-- Build: `msbuild` of the solution and the VSIX project build successfully (VSIX target .NET Framework 4.7.2).
-- VSIX: package buildable and installable in Experimental Instance.
-- Menu and command: `Tools → Agente IA Local` appears and the command is properly registered (command execution flow verified).
-- ToolWindow: opens and displays controls; UX improved for legibility and error handling.
-- Options Page: persistent configurations available and reachable from `Tools → Options`.
-- Logging: traces written to file at `%LOCALAPPDATA%\\AgenteIALocal\\logs\\AgenteIALocal.log` with entries for initialization, command registration and action execution.
-- Backend in code: `Core`, `Application` and `Infrastructure` projects present (structure and mocks for flow validation).
-
-What is in progress
-- Final integration of LLM providers (real `AgentService` composition with LM Studio or JanServer depending on configuration).
-- Further hardening on threading and VSTHRD patterns to remove residual warnings.
-- Integration tests on the VSIX flow in Experimental Instance (partial automation on the roadmap).
-
-What is NOT done yet
-- Final validated support for a production LLM provider (adapters exist, but end-to-end validation and credential security are pending).
-- Formal release packaging (signing, versioning for marketplace) — pending Release and QA process.
-
----
-
-### Sprint 2 — UI / UX, Observability and Diagnostics
-
-Scope of the sprint
-
-- ToolWindow UX and navigation improvements.
-- Direct access to Options from the UI (existing Options Page reachable from the ToolWindow).
-- Clear status messaging for the user: "configured", "incomplete", and "backend not available".
-
-Observability
-
-- Implementation of a "Log" tab with the following capabilities:
-  - Full log view in a read-only TextBox.
-  - "Copy" button to copy the full log content to clipboard.
-  - "Delete" button to remove the log file from disk and clear the view.
-  - Visible file path and size (KB/MB).
-
-Backend status (diagnosis)
-
-- Confirmed diagnosis during Experimental Instance testing:
-  - The `AgenteIALocal.Infrastructure` assembly was not loaded at VSIX runtime.
-  - As a consequence, backend composition failed and `AgentService` remained `null`.
-
-Decisions and outstanding scope
-
-- Backend composition and VSIX packaging adjustments are moved to Sprint 3 as technical debt.
-- The new "Config" tab remains experimental / partially implemented and will be validated in Sprint 3.
-
-Outcome
-
-- Sprint 2 closed with UI/UX improvements and an actionable diagnostics outcome. Backend stabilization is planned for Sprint 3.
-
-Related documentation
-
-- `src/README.es.md`
-- `src/README.architecture.md`
-
-## Documentation and traceability
-
-- Each relevant task includes `.md` prompts and minimal changes applied via Copilot; commits reference the branch and task.
-- This README is the base document at `src/README.es.md` and must be updated on every significant iteration.
-
----
-
-If operational details are missing (e.g., build scripts, installation instructions by Visual Studio version, or additional architecture diagrams), those artifacts should be added via specific PRs and referenced from `README.architecture` or the `docs/` folder.
-
-Thanks: this README reflects the current status and recent decisions (hardening, wiring and logging) at the time of the last update.
-
----
-
-### Sprint 2.5 — UX Foundations (Closed)
-
-Objective
-
-- Primary: Consolidate Visual Studio–oriented UX foundations for the ToolWindow and the agent experience, ensuring clear states and navigation/observability components ready for the next iteration.
-
-Checklist (status)
-
-- [DONE] Definition of UX principles for VSIX (non-blocking, IDE-integrated)
-- [DONE] Base layout design for the ToolWindow (zones: input, context, actions, output)
-- [DONE] Experience states defined (Idle, Running, Success, Error)
-- [DONE] Visual conventions of Visual Studio applied (iconography, spacing, focus)
-- [DONE] Validation of real flows (file reading, agent execution in mock mode)
-
-Notes
-
-- This section is added as the formal closure of Sprint 2.5 — UX Foundations. Previous content has not been removed or rewritten; this documents the closed state and the minimal deliverables verified. Backend integration and final packaging tests remain planned for Sprint 3 as technical debt.
-
----
-
-### Sprint 4 — Closed (tag: sprint-004-closed)
-
-- Status: CLOSED
-- Tag: `sprint-004-closed`
-- Branch reference: `sprint-004-backend-lmstudio`
-
-Checklist:
-- [DONE] Mock executor validated and expanded for backend integration tests
-- [DONE] Basic LM Studio adapter prototypes merged into feature branch
-- [DONE] Package-level logging and diagnostics improved for backend flows
-- [Deprecated/Outdated (kept for history)] Note: Some implementation details remain experimental and will be revisited in Sprint 5 if necessary.
-
----
-
-### Sprint 5 — In progress (UX) — branch: sprint-005-ux
-
-- Status: IN PROGRESS
-- Branch: `sprint-005-ux`
-- Focus areas:
-  - ToolWindow UX polish and layout adjustments
-  - Clear runtime states: Idle / Running / Success / Error
-  - Scrollable output area for long responses
-  - Copy response capability in the UI
-  - Visible errors (no silent failures) and explicit logging
-
-Immediate checklist:
-- [ ] Implement scrollable response area in ToolWindow output
-- [ ] Add "Copy response" button and clipboard behavior
-- [ ] Ensure state labels update correctly for all flows
-- [ ] Surface errors visibly and log them (no silent catches)
-- [ ] Update UI styles to match Visual Studio theme conventions
-
-Notes:
-- Do not remove or alter prior sprint entries. If parts become outdated they are marked as Deprecated/Outdated and kept for history.
-
----
-
-### Sprint 007 — MaterialDesign foundation (documentation)
-
-- Status: closed with no code commits; the iteration focused solely on validation and reporting.
-- Validations: `App.xaml` already contained a single merge of `MaterialDesignTheme.Dark` and `MaterialDesignTheme.Defaults` plus the Blue primary / Lime accent palettes, so no edits were required; the prohibition of running scripts (Python/PowerShell) was enforced and no external commands were executed.
-- Rejections: adding `MaterialDesignTheme.Fonts.xaml` or any extra dictionaries was rejected because it would have introduced redundant resources and risked baseline drift.
-- Explicit decisions: `md:PackIcon` controls and the use of `md:ColorZoneAssist.Mode` remain as-is until an approved equivalent replacement exists.
-- Exit condition: documentation updated, MaterialDesign dependencies audited, and Sprint 008 (UX pixel-perfect) officially unblocked with zero visual/runtime impact.
+### 3) Work with chats
+- Chat selector: `ChatComboBox`.
+- Create chat: `NewChatButton_Click` (with confirmation).
+- Delete chat: `DeleteChatButton_Click` (with confirmation).
+
+Persistence:
+- The UI uses `ChatStore.LoadAll()`, `ChatStore.CreateNew()`, `ChatStore.Delete()` (namespace `AgenteIALocalVSIX.Chats`).
+
+### 4) Execute a prompt
+- The user types into `PromptTextBox`.
+- Execute with the button (send icon) or with Enter (Enter sends, Shift+Enter keeps a newline): `PromptTextBox_KeyDown`.
+
+Real execution:
+- `RunButton_Click` builds a `CopilotRequest` using:
+  - `Action`: user text
+  - `SolutionName` and `ProjectCount`: UI values
+- Then it executes in background:
+  - If `AgentComposition.AgentService != null`: `AgentService.Execute(req)`
+  - Otherwise: alternative `MockCopilotExecutor.Execute(req)`
+
+### 5) Review results and “changes”
+- The response is shown in `ResponseJsonText` (read-only) with pre-processing `ChatRenderPreprocessor.Preprocess(...)`.
+- Changes section:
+  - The `ModifiedFiles` list is initialized with mock values.
+  - Apply/Revert/Clear buttons show confirmations and, in the case of Clear, empty the list.
+
+## Current UX/UI (summary + link)
+
+- The ToolWindow includes:
+  - Header with counters (solution/projects), status and configuration/help access.
+  - Chat toolbar (history + actions).
+  - Main conversation area.
+  - “Changes accordion” with actions.
+  - Bottom bar with mode/model/server combos and the run button.
+
+📎 Full UX specification: [Readme.UX.md](../Readme.UX.md)
+
+## Configuration (Tools > Options + settings.json + inline if present)
+
+### 1) Tools → Options
+- Page: `Options/AgenteOptionsPage.cs`.
+- Persistence: `ShellSettingsManager` + `WritableSettingsStore` in the `AgenteIALocal` collection.
+- Fields (per code): `BaseUrl`, `Model`, `ApiKeyValue`.
+
+> Note: some Options Page attributes and descriptions are in English in the code, but the behavior is as described above.
+
+### 2) `settings.json` (per-user file)
+- Store: `AgentSettingsStore` (`src/AgenteIALocalVSIX/AgentSettingsStore.cs`).
+- Location: `%LOCALAPPDATA%\AgenteIALocal\settings.json`.
+- Schema: `version: v1`, `servers[]`, `globalSettings`, `taskProfiles`, `activeServerId`.
+- Key behavior:
+  - If the file does not exist, it is created with a default server `lmstudio-local`.
+  - `Save` preserves unknown fields using `_raw` (`JObject`).
+
+### 3) Inline configuration (ToolWindow)
+- In `AgenteIALocalControl.xaml.cs`:
+  - `AgentSettingsStore.Load()` is loaded and the inline panel is populated (`PopulateSettingsPanel`).
+  - Changes are persisted with `SaveSettingsButton_Click` → `AgentSettingsStore.Save(settings)`.
+
+## Supported LLM providers (LM Studio, JAN) and how they are selected
+
+### LM Studio (supported for real execution)
+- HTTP client: `AgenteIALocal.Infrastructure/Agents/LmStudioClient.cs`.
+- Base endpoint: `LmStudioEndpointResolver` (Infrastructure).
+- Default endpoint used by the VSIX composition: `ChatCompletionsPath = "/v1/chat/completions"`.
+
+Selection at runtime:
+- `AgentComposition.TryComposeRealBackend()` reads `settings.json`.
+- It only activates the real backend if `srv.Provider == "lmstudio"` and `BaseUrl` has a value.
+
+### JAN (current state)
+- `JanServerClient` exists but is currently a **simulated implementation** (it does not perform real HTTP), returning a fixed string.
+- In the ToolWindow there is UI that shows “JAN” as an option in a ComboBox, but that selection is not connected to real composition in `AgentComposition`.
+
+## Observability and logging (where to see logs, what is recorded)
+
+### File log
+- Location: `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log`.
+- The Package registers a simple logger on initialization: `AgenteIALocalVSIXPackage.InitializeAsync`.
+- The ToolWindow also writes to that file (when `AgentComposition.Logger` is not available, it uses a local alternative).
+
+### Visual Studio ActivityLog
+- Helper: `Logging/ActivityLogHelper.cs`.
+- Use: the command logs events and errors to the ActivityLog when possible.
+
+### What is recorded (minimum verifiable)
+- Package initialization events.
+- Command registration/execution.
+- ToolWindow opening.
+- Run click and state transitions.
+
+## Solution structure (real projects and responsibility)
+
+- `AgenteIALocalVSIX`
+  - VSIX host (Package, commands, ToolWindow, Options, settings.json and logging).
+- `AgenteIALocal.Core`
+  - Provider models and settings (e.g. `AgentProviderType`, `LmStudioSettings`, `JanServerSettings`).
+- `AgenteIALocal.Application`
+  - Agent services and logging contracts (e.g. `Application.Agents.AgentService`, `IAgentLogger`).
+- `AgenteIALocal.Infrastructure`
+  - Provider clients (e.g. `LmStudioClient`, `JanServerClient` and endpoint resolvers).
+- `AgenteIALocal.UI`
+  - Reusable UI components (if applicable; the main ToolWindow lives in the VSIX).
+- `AgenteIALocal.Tests`
+  - Tests (if present; not described here).
+
+## Troubleshooting (common errors and what to check)
+
+### The command appears but clicking it does not open the ToolWindow
+- Check the ActivityLog and `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log`.
+- Confirm that the Package loaded (autoload) and that `OpenAgenteIALocalCommand.InitializeAsync` registered the command.
+
+### Run disabled / incomplete configuration
+- Check `%LOCALAPPDATA%\AgenteIALocal\settings.json`:
+  - `activeServerId` must point to an existing server.
+  - The active server must have non-empty `baseUrl` and `model` for the UI to enable Run.
+
+### Empty response or HTTP error with LM Studio
+- Verify `BaseUrl` and that the `/v1/chat/completions` endpoint exists.
+- Review errors reported by `LmStudioClient`:
+  - “Endpoint not configured”
+  - “Non-JSON response from LM Studio”
+  - WebException errors with body, if applicable.
+
+### “JAN” is selected in the UI but the real provider does not change
+- Current behavior: server selection in the UI is not connected to `AgentComposition`.
+- With `settings.json`, the real backend is only composed when the provider is `lmstudio`.
+
+## Related documentation (links)
+
+- [README.en.md](../README.en.md)
+- [Readme.UX.md](../Readme.UX.md)
+- [README.architecture.es.md](../README.architecture.es.md)
+- [README.architecture.en.md](../README.architecture.en.md)
 
 
