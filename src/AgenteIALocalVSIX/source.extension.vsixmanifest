@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="AgenteIALocalVSIX.5110f6f2-6bef-4be1-a90a-e017c2971e99" Version="1.0.45" Language="en-US" Publisher="Marco Alejandro De Santis" />
+        <Identity Id="AgenteIALocalVSIX.5110f6f2-6bef-4be1-a90a-e017c2971e99" Version="1.0.46" Language="en-US" Publisher="Marco Alejandro De Santis" />
         <DisplayName>AgenteIALocalVSIX</DisplayName>
-        <Description xml:space="preserve">version 1.0.45</Description>
+        <Description xml:space="preserve">version 1.0.46</Description>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0 )">

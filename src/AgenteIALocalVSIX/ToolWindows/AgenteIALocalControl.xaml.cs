@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace AgenteIALocalVSIX.ToolWindows
@@ -195,7 +196,18 @@ namespace AgenteIALocalVSIX.ToolWindows
             OnPropertyChanged(nameof(ModifiedFilesCount));
         }
 
-        public int ModifiedFilesCount => ModifiedFiles?.Count ?? 0;
+        public int ModifiedFilesCount
+        {
+            get
+            {
+                if (ModifiedFiles == null)
+                {
+                    return 0;
+                }
+
+                return ModifiedFiles.Count;
+            }
+        }
 
         private void ApplyChanges_Click(object sender, RoutedEventArgs e)
         {
@@ -377,11 +389,22 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
+        private T GetElement<T>(string name) where T : class
+        {
+            return this.FindName(name) as T;
+        }
+
         private void PopulateSettingsPanel(AgentSettings settings)
         {
             if (settings == null) return;
 
-            ActiveServerIdTextBox.Text = settings.ActiveServerId ?? string.Empty;
+            var activeIdTb = GetElement<TextBox>("ActiveServerIdTextBox");
+            var baseUrlTb = GetElement<TextBox>("ServerBaseUrlTextBox");
+            var modelTb = GetElement<TextBox>("ServerModelTextBox");
+            var apiKeyTb = GetElement<TextBox>("ServerApiKeyTextBox");
+
+            if (activeIdTb != null)
+                activeIdTb.Text = settings.ActiveServerId ?? string.Empty;
 
             // find active server details
             if (!string.IsNullOrEmpty(settings.ActiveServerId) && settings.Servers != null)
@@ -389,18 +412,18 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var srv = settings.Servers.Find(s => s.Id == settings.ActiveServerId);
                 if (srv != null)
                 {
-                    ServerBaseUrlTextBox.Text = srv.BaseUrl ?? string.Empty;
-                    ServerModelTextBox.Text = srv.Model ?? string.Empty;
-                    ServerApiKeyTextBox.Text = srv.ApiKey ?? string.Empty;
+                    if (baseUrlTb != null) baseUrlTb.Text = srv.BaseUrl ?? string.Empty;
+                    if (modelTb != null) modelTb.Text = srv.Model ?? string.Empty;
+                    if (apiKeyTb != null) apiKeyTb.Text = srv.ApiKey ?? string.Empty;
                 }
             }
             else if (settings.Servers != null && settings.Servers.Count > 0)
             {
                 var srv = settings.Servers[0];
-                ServerBaseUrlTextBox.Text = srv.BaseUrl ?? string.Empty;
-                ServerModelTextBox.Text = srv.Model ?? string.Empty;
-                ServerApiKeyTextBox.Text = srv.ApiKey ?? string.Empty;
-                ActiveServerIdTextBox.Text = srv.Id ?? string.Empty;
+                if (baseUrlTb != null) baseUrlTb.Text = srv.BaseUrl ?? string.Empty;
+                if (modelTb != null) modelTb.Text = srv.Model ?? string.Empty;
+                if (apiKeyTb != null) apiKeyTb.Text = srv.ApiKey ?? string.Empty;
+                if (activeIdTb != null) activeIdTb.Text = srv.Id ?? string.Empty;
             }
         }
 
@@ -429,12 +452,20 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         private void SettingsButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            SettingsPanel.Visibility = SettingsPanel.Visibility == System.Windows.Visibility.Visible ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+            var panel = GetElement<FrameworkElement>("SettingsPanel");
+            if (panel != null)
+            {
+                panel.Visibility = panel.Visibility == System.Windows.Visibility.Visible ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+            }
         }
 
         private void CloseSettingsButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            SettingsPanel.Visibility = System.Windows.Visibility.Collapsed;
+            var panel = GetElement<FrameworkElement>("SettingsPanel");
+            if (panel != null)
+            {
+                panel.Visibility = System.Windows.Visibility.Collapsed;
+            }
         }
 
         private void SaveSettingsButton_Click(object sender, System.Windows.RoutedEventArgs e)
@@ -444,8 +475,13 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var settings = AgentSettingsStore.Load();
                 if (settings == null) settings = new AgentSettings();
 
+                var activeIdTb = GetElement<TextBox>("ActiveServerIdTextBox");
+                var baseUrlTb = GetElement<TextBox>("ServerBaseUrlTextBox");
+                var modelTb = GetElement<TextBox>("ServerModelTextBox");
+                var apiKeyTb = GetElement<TextBox>("ServerApiKeyTextBox");
+
                 // update active server id
-                settings.ActiveServerId = ActiveServerIdTextBox.Text ?? string.Empty;
+                settings.ActiveServerId = activeIdTb != null ? activeIdTb.Text : string.Empty;
 
                 // ensure server exists or update existing
                 if (settings.Servers == null) settings.Servers = new System.Collections.Generic.List<ServerConfig>();
@@ -457,9 +493,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                     settings.Servers.Add(srv);
                 }
 
-                srv.BaseUrl = ServerBaseUrlTextBox.Text ?? string.Empty;
-                srv.Model = ServerModelTextBox.Text ?? string.Empty;
-                srv.ApiKey = ServerApiKeyTextBox.Text ?? string.Empty;
+                srv.BaseUrl = baseUrlTb != null ? baseUrlTb.Text : string.Empty;
+                srv.Model = modelTb != null ? modelTb.Text : string.Empty;
+                srv.ApiKey = apiKeyTb != null ? apiKeyTb.Text : string.Empty;
 
                 AgentSettingsStore.Save(settings);
 
@@ -479,7 +515,10 @@ namespace AgenteIALocalVSIX.ToolWindows
         private void StartLogRefreshLoop()
         {
             // Cancel any previous
-            logRefreshCts?.Cancel();
+            if (logRefreshCts != null)
+            {
+                logRefreshCts.Cancel();
+            }
             logRefreshCts = new CancellationTokenSource();
             var ct = logRefreshCts.Token;
 
@@ -517,7 +556,10 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             try
             {
-                logRefreshCts?.Cancel();
+                if (logRefreshCts != null)
+                {
+                    logRefreshCts.Cancel();
+                }
                 logRefreshCts = null;
             }
             catch { }
@@ -794,7 +836,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch
             {
-                // never throw from logger
+                // never throw
             }
         }
 
@@ -931,6 +973,35 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
 
             return doc;
+        }
+
+        private void VerboseLog_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // TODO: connect to verbose log view if available.
+                RefreshLogFromFile();
+            }
+            catch
+            {
+                // never throw from UI
+            }
+        }
+
+        private void PromptTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                if (e.Key != Key.Enter) return;
+                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
+                if (!RunButtonEnabled) return;
+                e.Handled = true;
+                RunButton_Click(sender, new RoutedEventArgs());
+            }
+            catch
+            {
+                // never throw from UI
+            }
         }
     }
 }

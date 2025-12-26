@@ -3,13 +3,17 @@
               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
               xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
               xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-              xmlns:iconPacks="clr-namespace:MahApps.Metro.IconPacks;assembly=MahApps.Metro.IconPacks.Material">
+              xmlns:iconPacks="clr-namespace:MahApps.Metro.IconPacks;assembly=MahApps.Metro.IconPacks.Material"
+              xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
   <UserControl.Resources>
     <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FF1E1E22" />
     <SolidColorBrush x:Key="HeaderHighEmphasisBrush" Color="#FFFFFFFF" />
     <SolidColorBrush x:Key="HeaderMediumEmphasisBrush" Color="#FF424242" />
     <SolidColorBrush x:Key="HeaderCyanHoverBrush" Color="#00BCD4" />
+    <SolidColorBrush x:Key="Brush.LayoutBg" Color="#282828" />
+    <SolidColorBrush x:Key="Brush.ChangesBg" Color="#2E2E2E" />
+    <SolidColorBrush x:Key="Brush.FooterBg" Color="#383838" />
     <Style x:Key="Text.Headline" TargetType="TextBlock">
       <Setter Property="FontSize" Value="22" />
       <Setter Property="FontWeight" Value="SemiBold" />
@@ -154,6 +158,30 @@
         </DataTrigger>
       </Style.Triggers>
     </Style>
+
+    <Style x:Key="IconHoverZoomPackIconStrongStyle" TargetType="{x:Type md:PackIcon}" BasedOn="{StaticResource IconHoverZoomPackIconStyle}">
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+          <DataTrigger.EnterActions>
+            <BeginStoryboard HandoffBehavior="SnapshotAndReplace">
+              <Storyboard>
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.28" Duration="0:0:0.10" />
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.28" Duration="0:0:0.10" />
+              </Storyboard>
+            </BeginStoryboard>
+          </DataTrigger.EnterActions>
+          <DataTrigger.ExitActions>
+            <BeginStoryboard HandoffBehavior="SnapshotAndReplace">
+              <Storyboard>
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.10" />
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.10" />
+              </Storyboard>
+            </BeginStoryboard>
+          </DataTrigger.ExitActions>
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+
     <Style x:Key="IconHoverZoomPackIconMaterialStyle" TargetType="{x:Type iconPacks:PackIconMaterial}">
       <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
       <Setter Property="RenderTransform">
@@ -425,8 +453,9 @@
     <Grid x:Name="BodyContainer" Grid.Row="1">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
-        <RowDefinition Height="Auto" />
         <RowDefinition Height="*" MinHeight="0" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
         <RowDefinition Height="0" />
       </Grid.RowDefinitions>
 
@@ -442,7 +471,7 @@
         <Border Grid.Column="0"
                 Height="36"
                 VerticalAlignment="Center"
-                Margin="8,0,0,8" >
+                Margin="0,0,12,0" >
           <md:PackIcon Kind="ChatBubbleOutline"
                        Width="18"
                        Height="18"
@@ -503,73 +532,8 @@
         </Button>
       </Grid>
 
-      <!-- CHANGES ACCORDION (Items 10–13) -->
-      <Expander Grid.Row="1"
-                Margin="12,0,12,8"
-                BorderThickness="1">
-        <Expander.Header>
-          <Grid x:Name="ChangesAccordionHeaderGrid"
-                Height="36"
-                VerticalAlignment="Center">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="Auto" />
-              <ColumnDefinition Width="12" />
-              <ColumnDefinition Width="Auto" />
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <md:PackIcon Grid.Column="0"
-                         Kind="ChevronDown"
-                         Width="14"
-                         Height="14"
-                         VerticalAlignment="Center" />
-
-            <TextBlock Grid.Column="2"
-                       Text="Changes (N)"
-                       VerticalAlignment="Center"
-                       Foreground="{StaticResource HeaderHighEmphasisBrush}"
-                       Style="{StaticResource Text.Subtitle}" />
-
-            <StackPanel Grid.Column="4"
-                        Orientation="Horizontal"
-                        VerticalAlignment="Center">
-              <Button Width="28" Height="28"
-                      Style="{StaticResource IconButtonChromeStyle}"
-                      Background="Transparent"
-                      BorderBrush="Transparent"
-                      BorderThickness="0">
-                <md:PackIcon Kind="ContentSave" Width="14" Height="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-              </Button>
-              <Button Width="28" Height="28" Margin="8,0,0,0"
-                      Style="{StaticResource IconButtonChromeStyle}"
-                      Background="Transparent"
-                      BorderBrush="Transparent"
-                      BorderThickness="0">
-                <md:PackIcon Kind="DeleteSweepOutline" Width="14" Height="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-              </Button>
-              <Button Width="28" Height="28" Margin="8,0,0,0"
-                      Style="{StaticResource IconButtonChromeStyle}"
-                      Background="Transparent"
-                      BorderBrush="Transparent"
-                      BorderThickness="0">
-                <md:PackIcon Kind="EraserVariant" Width="14" Height="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-              </Button>
-            </StackPanel>
-          </Grid>
-        </Expander.Header>
-
-        <ItemsControl Margin="12">
-          <ItemsControl.Items>
-            <TextBlock Text="src/App.xaml" Style="{StaticResource Text.Body}" />
-            <TextBlock Text="src/Services/Runner.cs" Style="{StaticResource Text.Body}" />
-            <TextBlock Text="tests/RunnerTests.cs" Style="{StaticResource Text.Body}" />
-          </ItemsControl.Items>
-        </ItemsControl>
-      </Expander>
-
       <!-- CHAT SURFACE (single conversation history) -->
-      <Border Grid.Row="2" Margin="0,8,0,8" Padding="12" BorderThickness="1" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" CornerRadius="4">
+      <Border Grid.Row="1" Margin="0,8,0,8" Padding="12" BorderThickness="0" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" CornerRadius="4" Background="{StaticResource Brush.LayoutBg}">
         <TextBox x:Name="ResponseJsonText"
                  AcceptsReturn="True"
                  IsReadOnly="True"
@@ -582,159 +546,854 @@
                  Foreground="{StaticResource HeaderHighEmphasisBrush}" />
       </Border>
 
-      <!-- HIDDEN LOG OUTPUT (kept for functionality) -->
-      <TextBox x:Name="LogText"
-               Grid.Row="3"
-               Visibility="Collapsed" />
-    </Grid>
-
-    <!-- PROMPT AREA (fixed bottom panel) -->
-    <Grid x:Name="PromptAreaGrid" Grid.Row="2" Margin="12,8,12,0">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="Auto" />
-      </Grid.ColumnDefinitions>
-
-      <Grid Grid.Column="0" x:Name="PromptAndCombosGrid">
-        <Grid.RowDefinitions>
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-
-        <Grid Grid.Row="0" Margin="0,0,0,8">
-          <TextBox x:Name="PromptTextBox"
-                   Height="128"
-                   MinHeight="128"
-                   Padding="12,10,12,10"
-                   VerticalContentAlignment="Center"
-                   VerticalAlignment="Center"
-                   AcceptsReturn="True"
-                   TextWrapping="Wrap"
-                   VerticalScrollBarVisibility="Auto"
-                   HorizontalScrollBarVisibility="Disabled"
-                   Background="{StaticResource HeaderBackgroundBrush}"
-                   Foreground="{StaticResource HeaderHighEmphasisBrush}"
-                   BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
-                   BorderThickness="1"
-                   TextAlignment="Left" />
-          <TextBlock Text="Escribe tu consulta aquí, puedes presionar # para hacer referencia a un archivo de la solucion / proyecto"
-                     Foreground="{StaticResource HeaderMediumEmphasisBrush}"
-                     IsHitTestVisible="False"
-                     Margin="16,14,16,0"
-                     VerticalAlignment="Top"
-                     TextWrapping="Wrap">
-            <TextBlock.Style>
-              <Style TargetType="TextBlock">
-                <Setter Property="Visibility" Value="Collapsed" />
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding Text, ElementName=PromptTextBox}" Value="">
-                    <Setter Property="Visibility" Value="Visible" />
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding Text, ElementName=PromptTextBox}" Value="{x:Null}">
-                    <Setter Property="Visibility" Value="Visible" />
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </TextBlock.Style>
-          </TextBlock>
-        </Grid>
-
-        <Grid Grid.Row="1" Margin="0,0,0,8">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="12" />
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="12" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
-
-          <ComboBox Grid.Row="0"
-                    Grid.Column="0"
-                    Width="120"
-                    Height="32"
-                    VerticalAlignment="Center"
-                    Style="{StaticResource PromptComboBoxStyle}" />
-
-          <ComboBox Grid.Row="0"
-                    Grid.Column="2"
-                    Width="160"
-                    Height="32"
-                    VerticalAlignment="Center"
-                    Style="{StaticResource PromptComboBoxStyle}" />
-
-          <ComboBox Grid.Row="0"
-                    Grid.Column="4"
-                    Width="120"
-                    Height="32"
-                    VerticalAlignment="Center"
-                    Style="{StaticResource PromptComboBoxStyle}" />
-        </Grid>
-      </Grid>
-
-      <Button Grid.Column="1"
-              Grid.Row="0"
-              Grid.RowSpan="2"
-              Margin="12,0,0,0"
-              VerticalAlignment="Center"
-              Background="Transparent"
-              BorderBrush="Transparent"
-              BorderThickness="0"
-              IsEnabled="{Binding RunButtonEnabled}"
-               Click="RunButton_Click">
-        <Button.Style>
-          <Style TargetType="Button" BasedOn="{StaticResource IconButtonChromeStyle}">
-            <Setter Property="Content">
+      <!-- CHANGES ACCORDION (Items 10–13) -->
+      <Expander Grid.Row="2"
+                Margin="12,0,12,8"
+                BorderThickness="1"
+                BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
+                Background="{StaticResource Brush.ChangesBg}"
+                IsExpanded="{Binding IsChangesExpanded, Mode=TwoWay}">
+        <Expander.Style>
+          <Style TargetType="{x:Type Expander}">
+            <Setter Property="Template">
               <Setter.Value>
-                <md:PackIcon Kind="Send" Width="16" Height="16" Style="{StaticResource IconHoverZoomPackIconStyle}" Foreground="LimeGreen" />
+                <ControlTemplate TargetType="{x:Type Expander}">
+                  <Border BorderThickness="{TemplateBinding BorderThickness}"
+                          BorderBrush="{TemplateBinding BorderBrush}"
+                          Background="{TemplateBinding Background}"
+                          CornerRadius="4"
+                          SnapsToDevicePixels="True">
+                    <Grid>
+                      <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                      </Grid.RowDefinitions>
+
+                      <!-- HEADER: Toggle SOLO en la zona izquierda -->
+                      <Grid Grid.Row="0" Height="36">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="Auto"/>
+                          <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Zona izquierda clickable -->
+                        <ToggleButton Grid.Column="0"
+                                      IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      Padding="0"
+                                      Focusable="False"
+                                      FocusVisualStyle="{x:Null}">
+                          <ToggleButton.Template>
+                            <ControlTemplate TargetType="{x:Type ToggleButton}">
+                              <!-- No triggers: never paint accent -->
+                              <Border Background="Transparent"
+                                      BorderThickness="0"
+                                      Padding="0"
+                                      SnapsToDevicePixels="True">
+                                <ContentPresenter/>
+                              </Border>
+                            </ControlTemplate>
+                          </ToggleButton.Template>
+                          <ContentPresenter ContentSource="Header"/>
+                        </ToggleButton>
+
+                        <!-- Zona derecha (botones) NO clickable -->
+                        <ContentPresenter Grid.Column="1"
+                                          Content="{TemplateBinding Tag}"
+                                          HorizontalAlignment="Right"
+                                          VerticalAlignment="Center"/>
+                      </Grid>
+
+                      <!-- CONTENT con background distinto + separador -->
+                      <Border x:Name="ContentHost"
+                              Grid.Row="1"
+                              Background="{StaticResource Brush.LayoutBg}"
+                              BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
+                              BorderThickness="0,1,0,0"
+                              Visibility="Collapsed">
+                        <ContentPresenter ContentSource="Content"/>
+                      </Border>
+                    </Grid>
+                  </Border>
+
+                  <ControlTemplate.Triggers>
+                    <Trigger Property="IsExpanded" Value="True">
+                      <Setter TargetName="ContentHost" Property="Visibility" Value="Visible"/>
+                    </Trigger>
+                  </ControlTemplate.Triggers>
+                </ControlTemplate>
               </Setter.Value>
             </Setter>
-            <Style.Triggers>
-              <DataTrigger Binding="{Binding StateLabel}" Value="Running">
-                <Setter Property="Content">
-                  <Setter.Value>
-                    <md:PackIcon Kind="Stop" Width="16" Height="16" Style="{StaticResource IconHoverZoomPackIconStyle}" Foreground="IndianRed" />
-                  </Setter.Value>
-                </Setter>
-              </DataTrigger>
-            </Style.Triggers>
           </Style>
-        </Button.Style>
-       </Button>
+        </Expander.Style>
+
+        <Expander.Tag>
+          <StackPanel Orientation="Horizontal"
+                      VerticalAlignment="Center">
+            <Button Width="28" Height="28"
+                    Style="{StaticResource IconButtonChromeStyle}"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    BorderThickness="0"
+                    Foreground="#FF3FB950"
+                    Click="ApplyChanges_Click">
+              <md:PackIcon Kind="ContentSave" Width="14" Height="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Style="{StaticResource IconHoverZoomPackIconStrongStyle}" />
+            </Button>
+            <Button Width="28" Height="28" Margin="8,0,0,0"
+                    Style="{StaticResource IconButtonChromeStyle}"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    BorderThickness="0"
+                    Foreground="#FFD29922"
+                    Click="RevertChanges_Click">
+              <md:PackIcon Kind="DeleteSweepOutline" Width="14" Height="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Style="{StaticResource IconHoverZoomPackIconStrongStyle}" />
+            </Button>
+            <Button Width="28" Height="28" Margin="8,0,0,0"
+                    Style="{StaticResource IconButtonChromeStyle}"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    BorderThickness="0"
+                    Foreground="#FFF85149"
+                    Click="ClearChanges_Click">
+              <md:PackIcon Kind="EraserVariant" Width="14" Height="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Style="{StaticResource IconHoverZoomPackIconStrongStyle}" />
+            </Button>
+          </StackPanel>
+        </Expander.Tag>
+
+        <Expander.Header>
+          <Grid x:Name="ChangesAccordionHeaderGrid"
+                Height="36"
+                VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="12" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <md:PackIcon Grid.Column="0"
+                         Kind="ChevronDown"
+                         Width="14"
+                         Height="14"
+                         VerticalAlignment="Center"
+                         Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                         Margin="6,0,0,0">
+              <md:PackIcon.RenderTransform>
+                <RotateTransform Angle="0" CenterX="7" CenterY="7"/>
+              </md:PackIcon.RenderTransform>
+              <md:PackIcon.Style>
+                <Style TargetType="{x:Type md:PackIcon}">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsExpanded, RelativeSource={RelativeSource AncestorType=Expander}}" Value="True">
+                      <Setter Property="RenderTransform">
+                        <Setter.Value>
+                          <RotateTransform Angle="180" CenterX="7" CenterY="7"/>
+                        </Setter.Value>
+                      </Setter>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </md:PackIcon.Style>
+            </md:PackIcon>
+
+            <TextBlock Grid.Column="2"
+                       Text="{Binding ModifiedFilesCount, StringFormat=Changes ({0})}"
+                       VerticalAlignment="Center"
+                       Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                       Style="{StaticResource Text.Subtitle}" />
+          </Grid>
+        </Expander.Header>
+
+        <Border Background="{StaticResource Brush.LayoutBg}"
+                BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="12">
+          <ItemsControl ItemsSource="{Binding ModifiedFiles}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding}"
+                           Style="{StaticResource Text.Body}"
+                           Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+      </Expander>
+
+      <!-- PROMPT AREA (fixed bottom panel) -->
+      <Grid x:Name="PromptAreaGrid" Grid.Row="3" Margin="12,8,12,0">
+        <Border Background="{StaticResource Brush.FooterBg}"
+                BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="0">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Row 0: prompt + run button -->
+            <Border Grid.Row="0" Padding="12">
+              <Grid>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid x:Name="PromptAndCombosGrid">
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                  </Grid.RowDefinitions>
+
+                  <Grid Grid.Row="0" Margin="0">
+                    <TextBox x:Name="PromptTextBox"
+                             Height="128"
+                             MinHeight="128"
+                             Padding="12,10,12,10"
+                             VerticalContentAlignment="Top"
+                             HorizontalContentAlignment="Left"
+                             VerticalAlignment="Stretch"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Disabled"
+                             Background="Transparent"
+                             Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                             BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
+                             BorderThickness="0"
+                             TextAlignment="Left"
+                             KeyDown="PromptTextBox_KeyDown" />
+                    <TextBlock Text="Escribe tu consulta aquí, puedes presionar # para hacer referencia a un archivo de la solucion / proyecto"
+                               Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                               Opacity="0.55"
+                               IsHitTestVisible="False"
+                               Margin="12,10,12,0"
+                               VerticalAlignment="Top"
+                               HorizontalAlignment="Left"
+                               TextWrapping="Wrap">
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                          <Setter Property="Visibility" Value="Collapsed" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding Text, ElementName=PromptTextBox}" Value="">
+                              <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Text, ElementName=PromptTextBox}" Value="{x:Null}">
+                              <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
+                  </Grid>
+                </Grid>
+              </Grid>
+             </Border>
+
+            <!-- Row 1: footer combos bar with separator -->
+            <Border Grid.Row="1"
+                    Background="Transparent"
+                    BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
+                    BorderThickness="0,1,0,0"
+                    Padding="12,10,12,10">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Grid Grid.Column="0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+
+                  <ComboBox Grid.Row="0"
+                            Name="TypeActivitie"
+                            Grid.Column="0"
+                            Width="Auto"
+                            MinWidth="120"
+                            Height="36"
+                            MinHeight="36"
+                            VerticalAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Background="Transparent"
+                            SelectedIndex="1">
+                    <ComboBox.Style>
+                      <Style TargetType="ComboBox" BasedOn="{StaticResource DarkFlatComboBoxStyle}">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderBrush" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Template">
+                          <Setter.Value>
+                            <ControlTemplate TargetType="ComboBox">
+                              <Grid>
+                                <Border x:Name="Root"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="6"
+                                        SnapsToDevicePixels="True">
+                                  <Grid>
+                                    <Grid.ColumnDefinitions>
+                                      <ColumnDefinition Width="*" />
+                                      <ColumnDefinition Width="32" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Left"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding ItemTemplate}" />
+
+                                    <ToggleButton Grid.Column="1"
+                                                  Focusable="False"
+                                                  OverridesDefaultStyle="True"
+                                                  IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                                  Background="Transparent"
+                                                  BorderThickness="0">
+                                      <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                          <Border Background="Transparent"
+                                                  BorderThickness="0"
+                                                  Padding="0"
+                                                  SnapsToDevicePixels="True">
+                                            <Path Data="M 0 0 L 4 4 L 8 0 Z"
+                                                  Width="10" Height="6"
+                                                  Stretch="Fill"
+                                                  Fill="{TemplateBinding Foreground}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                                          </Border>
+                                        </ControlTemplate>
+                                      </ToggleButton.Template>
+                                    </ToggleButton>
+                                  </Grid>
+                                </Border>
+
+                                <Popup IsOpen="{TemplateBinding IsDropDownOpen}"
+                                       Placement="Bottom"
+                                       AllowsTransparency="True"
+                                       Focusable="False"
+                                       PopupAnimation="Fade">
+                                  <Border Background="{StaticResource UxComboBg}"
+                                          BorderBrush="{StaticResource UxComboBorder}"
+                                          BorderThickness="1"
+                                          CornerRadius="6"
+                                          ClipToBounds="True">
+                                    <ScrollViewer Margin="0" SnapsToDevicePixels="True">
+                                      <ItemsPresenter />
+                                    </ScrollViewer>
+                                  </Border>
+                                </Popup>
+                              </Grid>
+
+                              <ControlTemplate.Triggers>
+                                <Trigger Property="IsEnabled" Value="False">
+                                  <Setter Property="Foreground" Value="{StaticResource UxComboFgMuted}" />
+                                  <Setter TargetName="Root" Property="Opacity" Value="0.65" />
+                                </Trigger>
+                              </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                          </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                          <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="Transparent" />
+                          </Trigger>
+                        </Style.Triggers>
+                      </Style>
+                    </ComboBox.Style>
+
+                    <ComboBox.ItemContainerStyle>
+                      <Style TargetType="ComboBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Padding" Value="8,6" />
+                        <Setter Property="Template">
+                          <Setter.Value>
+                            <ControlTemplate TargetType="ComboBoxItem">
+                              <Border x:Name="Bd"
+                                      Background="{TemplateBinding Background}"
+                                      BorderThickness="0"
+                                      Padding="{TemplateBinding Padding}"
+                                      SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                              </Border>
+                              <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                  <Setter TargetName="Bd" Property="Background" Value="Transparent" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                  <Setter TargetName="Bd" Property="Background" Value="#FFC27A00" />
+                                  <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                  <Setter Property="Foreground" Value="{StaticResource UxComboFgMuted}" />
+                                </Trigger>
+                              </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                          </Setter.Value>
+                        </Setter>
+                      </Style>
+                    </ComboBox.ItemContainerStyle>
+
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate>
+                        <Grid>
+                          <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                          </Grid.RowDefinitions>
+
+                          <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <md:PackIcon Width="16"
+                                         Height="16"
+                                         Margin="0,0,6,0">
+                              <md:PackIcon.Style>
+                                <Style TargetType="{x:Type md:PackIcon}">
+                                  <Setter Property="Kind" Value="RobotOutline" />
+                                  <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding}" Value="Agente">
+                                      <Setter Property="Kind" Value="Flash" />
+                                      <Setter Property="Foreground" Value="#FF3FB950" />
+                                    </DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </md:PackIcon.Style>
+                            </md:PackIcon>
+                            <TextBlock Text="{Binding}"
+                                       Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource Text.Body}" />
+                          </StackPanel>
+
+                          <TextBlock Grid.Row="1"
+                                     Text="Modo"
+                                     Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                                     Opacity="0.6"
+                                     FontSize="11"
+                                     VerticalAlignment="Center"
+                                     Visibility="Collapsed">
+                            <TextBlock.Style>
+                              <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding IsDropDownOpen, RelativeSource={RelativeSource AncestorType=ComboBox}}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </TextBlock.Style>
+                          </TextBlock>
+                        </Grid>
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+
+                    <ComboBox.Items>
+                      <sys:String>Agente</sys:String>
+                      <sys:String>Chat Bot</sys:String>
+                    </ComboBox.Items>
+                  </ComboBox>
+
+                  <ComboBox Grid.Row="0"
+                            Grid.Column="2"
+                            Width="Auto"
+                            MinWidth="120"
+                            Height="36"
+                            Name="ModelOfLLM"
+                            MinHeight="36"
+                            VerticalAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Background="Transparent"
+                            SelectedIndex="0">
+                    <ComboBox.Style>
+                      <Style TargetType="ComboBox" BasedOn="{StaticResource DarkFlatComboBoxStyle}">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderBrush" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Template">
+                          <Setter.Value>
+                            <ControlTemplate TargetType="ComboBox">
+                              <Grid>
+                                <Border x:Name="Root"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="6"
+                                        SnapsToDevicePixels="True">
+                                  <Grid>
+                                    <Grid.ColumnDefinitions>
+                                      <ColumnDefinition Width="*" />
+                                      <ColumnDefinition Width="32" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Left"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding ItemTemplate}" />
+
+                                    <ToggleButton Grid.Column="1"
+                                                  Focusable="False"
+                                                  OverridesDefaultStyle="True"
+                                                  IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                                  Background="Transparent"
+                                                  BorderThickness="0">
+                                      <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                          <Border Background="Transparent"
+                                                  BorderThickness="0"
+                                                  Padding="0"
+                                                  SnapsToDevicePixels="True">
+                                            <Path Data="M 0 0 L 4 4 L 8 0 Z"
+                                                  Width="10" Height="6"
+                                                  Stretch="Fill"
+                                                  Fill="{TemplateBinding Foreground}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                                          </Border>
+                                        </ControlTemplate>
+                                      </ToggleButton.Template>
+                                    </ToggleButton>
+                                  </Grid>
+                                </Border>
+
+                                <Popup IsOpen="{TemplateBinding IsDropDownOpen}"
+                                       Placement="Bottom"
+                                       AllowsTransparency="True"
+                                       Focusable="False"
+                                       PopupAnimation="Fade">
+                                  <Border Background="{StaticResource UxComboBg}"
+                                          BorderBrush="{StaticResource UxComboBorder}"
+                                          BorderThickness="1"
+                                          CornerRadius="6"
+                                          ClipToBounds="True"
+                                          MinWidth="180">
+                                    <ScrollViewer Margin="0" SnapsToDevicePixels="True">
+                                      <ItemsPresenter />
+                                    </ScrollViewer>
+                                  </Border>
+                                </Popup>
+                              </Grid>
+
+                              <ControlTemplate.Triggers>
+                                <Trigger Property="IsEnabled" Value="False">
+                                  <Setter Property="Foreground" Value="{StaticResource UxComboFgMuted}" />
+                                  <Setter TargetName="Root" Property="Opacity" Value="0.65" />
+                                </Trigger>
+                              </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                          </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                          <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="Transparent" />
+                          </Trigger>
+                        </Style.Triggers>
+                      </Style>
+                    </ComboBox.Style>
+
+                    <ComboBox.ItemContainerStyle>
+                      <Style TargetType="ComboBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Padding" Value="12,6" />
+                        <Setter Property="Template">
+                          <Setter.Value>
+                            <ControlTemplate TargetType="ComboBoxItem">
+                              <Border x:Name="Bd"
+                                      Background="{TemplateBinding Background}"
+                                      BorderThickness="0"
+                                      Padding="{TemplateBinding Padding}"
+                                      SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                              </Border>
+                              <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                  <Setter TargetName="Bd" Property="Background" Value="Transparent" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                  <Setter TargetName="Bd" Property="Background" Value="#FFC27A00" />
+                                  <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                  <Setter Property="Foreground" Value="{StaticResource UxComboFgMuted}" />
+                                </Trigger>
+                              </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                          </Setter.Value>
+                        </Setter>
+                      </Style>
+                    </ComboBox.ItemContainerStyle>
+
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                          <md:PackIcon Width="16"
+                                       Height="16"
+                                       Margin="0,0,6,0">
+                            <md:PackIcon.Style>
+                              <Style TargetType="{x:Type md:PackIcon}">
+                                <Setter Property="Kind" Value="Brain" />
+                                <Setter Property="Foreground" Value="#FFCC8A00" />
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding}" Value="GPT 5">
+                                    <Setter Property="Foreground" Value="#FF3FB950" />
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </md:PackIcon.Style>
+                          </md:PackIcon>
+                          <TextBlock Text="{Binding}"
+                                     Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                                     VerticalAlignment="Center"
+                                     Style="{StaticResource Text.Body}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+
+                    <ComboBox.Items>
+                      <sys:String>GPT 5</sys:String>
+                    </ComboBox.Items>
+                  </ComboBox>
+
+                  <ComboBox Grid.Row="0"
+                            Grid.Column="4"
+                            Width="Auto"
+                            MinWidth="120"
+                            Height="36"
+                            Name="ServerLLM"
+                            MinHeight="36"
+                            VerticalAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Background="Transparent"
+                            SelectedIndex="0">
+                    <ComboBox.Style>
+                      <Style TargetType="ComboBox" BasedOn="{StaticResource DarkFlatComboBoxStyle}">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderBrush" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Template">
+                          <Setter.Value>
+                            <ControlTemplate TargetType="ComboBox">
+                              <Grid>
+                                <Border x:Name="Root"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="6"
+                                        SnapsToDevicePixels="True">
+                                  <Grid>
+                                    <Grid.ColumnDefinitions>
+                                      <ColumnDefinition Width="*" />
+                                      <ColumnDefinition Width="32" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Left"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding ItemTemplate}" />
+
+                                    <ToggleButton Grid.Column="1"
+                                                  Focusable="False"
+                                                  OverridesDefaultStyle="True"
+                                                  IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                                  Background="Transparent"
+                                                  BorderThickness="0">
+                                      <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                          <Border Background="Transparent"
+                                                  BorderThickness="0"
+                                                  Padding="0"
+                                                  SnapsToDevicePixels="True">
+                                            <Path Data="M 0 0 L 4 4 L 8 0 Z"
+                                                  Width="10" Height="6"
+                                                  Stretch="Fill"
+                                                  Fill="{TemplateBinding Foreground}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                                          </Border>
+                                        </ControlTemplate>
+                                      </ToggleButton.Template>
+                                    </ToggleButton>
+                                  </Grid>
+                                </Border>
+
+                                <Popup IsOpen="{TemplateBinding IsDropDownOpen}"
+                                       Placement="Bottom"
+                                       AllowsTransparency="True"
+                                       Focusable="False"
+                                       PopupAnimation="Fade">
+                                  <Border Background="{StaticResource UxComboBg}"
+                                          BorderBrush="{StaticResource UxComboBorder}"
+                                          BorderThickness="1"
+                                          CornerRadius="6"
+                                          ClipToBounds="True"
+                                          MinWidth="180">
+                                    <ScrollViewer Margin="0" SnapsToDevicePixels="True">
+                                      <ItemsPresenter />
+                                    </ScrollViewer>
+                                  </Border>
+                                </Popup>
+                              </Grid>
+
+                              <ControlTemplate.Triggers>
+                                <Trigger Property="IsEnabled" Value="False">
+                                  <Setter Property="Foreground" Value="{StaticResource UxComboFgMuted}" />
+                                  <Setter TargetName="Root" Property="Opacity" Value="0.65" />
+                                </Trigger>
+                              </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                          </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                          <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="Transparent" />
+                          </Trigger>
+                        </Style.Triggers>
+                      </Style>
+                    </ComboBox.Style>
+
+                    <ComboBox.ItemContainerStyle>
+                      <Style TargetType="ComboBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Padding" Value="12,6" />
+                        <Setter Property="Template">
+                          <Setter.Value>
+                            <ControlTemplate TargetType="ComboBoxItem">
+                              <Border x:Name="Bd"
+                                      Background="{TemplateBinding Background}"
+                                      BorderThickness="0"
+                                      Padding="{TemplateBinding Padding}"
+                                      SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                              </Border>
+                              <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                  <Setter TargetName="Bd" Property="Background" Value="Transparent" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                  <Setter TargetName="Bd" Property="Background" Value="#FFC27A00" />
+                                  <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                  <Setter Property="Foreground" Value="{StaticResource UxComboFgMuted}" />
+                                </Trigger>
+                              </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                          </Setter.Value>
+                        </Setter>
+                      </Style>
+                    </ComboBox.ItemContainerStyle>
+
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                          <md:PackIcon Width="16"
+                                       Height="16"
+                                       Margin="0,0,6,0">
+                            <md:PackIcon.Style>
+                              <Style TargetType="{x:Type md:PackIcon}">
+                                <Setter Property="Kind" Value="Database" />
+                                <Setter Property="Foreground" Value="#FF58A6FF" />
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding}" Value="JAN">
+                                    <Setter Property="Kind" Value="Server" />
+                                    <Setter Property="Foreground" Value="#FF9E7AFF" />
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </md:PackIcon.Style>
+                          </md:PackIcon>
+                          <TextBlock Text="{Binding}"
+                                     Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                                     VerticalAlignment="Center"
+                                     Style="{StaticResource Text.Body}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+
+                    <ComboBox.Items>
+                      <sys:String>LM Studio</sys:String>
+                      <sys:String>JAN</sys:String>
+                    </ComboBox.Items>
+                  </ComboBox>
+                </Grid>
+
+                <Button Grid.Column="1"
+                        Margin="12,0,0,0"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Right"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        BorderThickness="0"
+                        IsEnabled="{Binding RunButtonEnabled}"
+                        Click="RunButton_Click">
+                  <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource IconButtonChromeStyle}">
+                      <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+                      <Setter Property="RenderTransform">
+                        <Setter.Value>
+                          <ScaleTransform ScaleX="1" ScaleY="1" />
+                        </Setter.Value>
+                      </Setter>
+                      <Setter Property="Content">
+                        <Setter.Value>
+                          <md:PackIcon Kind="Send" Width="16" Height="16" Style="{StaticResource IconHoverZoomPackIconStrongStyle}" Foreground="LimeGreen" />
+                        </Setter.Value>
+                      </Setter>
+                      <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                          <Trigger.EnterActions>
+                            <BeginStoryboard>
+                              <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.12" Duration="0:0:0.10" />
+                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.12" Duration="0:0:0.10" />
+                              </Storyboard>
+                            </BeginStoryboard>
+                          </Trigger.EnterActions>
+                          <Trigger.ExitActions>
+                            <BeginStoryboard>
+                              <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.10" />
+                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.10" />
+                              </Storyboard>
+                            </BeginStoryboard>
+                          </Trigger.ExitActions>
+                        </Trigger>
+                        <DataTrigger Binding="{Binding StateLabel}" Value="Running">
+                          <Setter Property="Content">
+                            <Setter.Value>
+                              <md:PackIcon Kind="Stop" Width="16" Height="16" Style="{StaticResource IconHoverZoomPackIconStrongStyle}" Foreground="IndianRed" />
+                            </Setter.Value>
+                          </Setter>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Button.Style>
+                  </Button>
+              </Grid>
+            </Border>
+          </Grid>
+        </Border>
+      </Grid>
+
+      <!-- HIDDEN LOG OUTPUT (kept for functionality) -->
+      <TextBox x:Name="LogText"
+               Grid.Row="4"
+               Visibility="Collapsed" />
     </Grid>
-
-    <!-- SETTINGS PANEL (hidden overlay) -->
-    <Border x:Name="SettingsPanel"
-            Grid.RowSpan="3"
-            HorizontalAlignment="Right"
-            Margin="16"
-            Padding="12"
-            Width="300"
-            Background="{DynamicResource {x:Static SystemColors.ControlLightBrushKey}}"
-            BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
-            BorderThickness="1"
-            Visibility="Collapsed"
-            Panel.ZIndex="1">
-       <StackPanel>
-         <TextBlock Text="Settings (active server)" Style="{StaticResource Text.Subtitle}" Margin="0,0,0,8" />
-
-        <TextBlock Text="Active Server ID:" Style="{StaticResource Text.Body}" />
-        <TextBox x:Name="ActiveServerIdTextBox" Margin="0,4,0,8" />
-
-        <TextBlock Text="Base URL:" Style="{StaticResource Text.Body}" />
-        <TextBox x:Name="ServerBaseUrlTextBox" Margin="0,4,0,8" />
-
-        <TextBlock Text="Model:" Style="{StaticResource Text.Body}" />
-        <TextBox x:Name="ServerModelTextBox" Margin="0,4,0,8" />
-
-        <TextBlock Text="API Key:" Style="{StaticResource Text.Body}" />
-        <TextBox x:Name="ServerApiKeyTextBox" Margin="0,4,0,8" />
-
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-          <Button x:Name="SaveSettingsButton" Content="Save" Width="80" Click="SaveSettingsButton_Click" />
-          <Button x:Name="CloseSettingsButton" Content="Close" Width="80" Margin="8,0,0,0" Click="CloseSettingsButton_Click" />
-        </StackPanel>
-      </StackPanel>
-    </Border>
-
   </Grid>
 </UserControl>
