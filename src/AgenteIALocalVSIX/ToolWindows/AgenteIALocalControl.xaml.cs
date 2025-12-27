@@ -567,14 +567,17 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         public void SetSolutionInfo(string solutionName, int projectCount)
         {
-            SolutionNameText.Text = solutionName;
-            ProjectCountText.Text = projectCount.ToString();
-
-            // Prepare initial request but do not execute
-            var req = BuildRequest(solutionName, projectCount);
-            PromptTextBox.Text = SerializeToJson(req);
-            ResponseJsonText.Text = string.Empty;
-            // Do not clear LogText here; keep file-backed content
+            try
+            {
+                // Minimal behavior: only update visible solution/project labels.
+                // Do not prepare or serialize any request, and do not modify prompt/response fields.
+                SolutionNameText.Text = solutionName ?? string.Empty;
+                ProjectCountText.Text = projectCount.ToString();
+            }
+            catch
+            {
+                // never throw from UI
+            }
         }
 
         private CopilotRequest BuildRequest(string solutionName, int projectCount)
