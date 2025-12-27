@@ -9,6 +9,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Threading;
@@ -36,16 +37,20 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         // New bindable properties for control enablement
         private bool runButtonEnabled;
-        public bool RunButtonEnabled { get { return runButtonEnabled; } private set { if (runButtonEnabled == value) return; runButtonEnabled = value; OnPropertyChanged(nameof(RunButtonEnabled)); } }
+        public bool RunButtonEnabled { get { return runButtonEnabled; } private set { if (runButtonEnabled == value) return; runButtonEnabled = value; RaisePropertyChanged(nameof(RunButtonEnabled)); } }
 
         private bool clearButtonEnabled;
-        public bool ClearButtonEnabled { get { return clearButtonEnabled; } private set { if (clearButtonEnabled == value) return; clearButtonEnabled = value; OnPropertyChanged(nameof(ClearButtonEnabled)); } }
+        public bool ClearButtonEnabled { get { return clearButtonEnabled; } private set { if (clearButtonEnabled == value) return; clearButtonEnabled = value; RaisePropertyChanged(nameof(ClearButtonEnabled)); } }
 
         private bool isPromptReadOnly;
-        public bool IsPromptReadOnly { get { return isPromptReadOnly; } private set { if (isPromptReadOnly == value) return; isPromptReadOnly = value; OnPropertyChanged(nameof(IsPromptReadOnly)); } }
+        public bool IsPromptReadOnly { get { return isPromptReadOnly; } private set { if (isPromptReadOnly == value) return; isPromptReadOnly = value; RaisePropertyChanged(nameof(IsPromptReadOnly)); } }
 
         private bool isLlmConfigured;
-        private bool IsLlmConfigured { get { return isLlmConfigured; } set { if (isLlmConfigured == value) return; isLlmConfigured = value; OnPropertyChanged(nameof(IsLlmConfigured)); } }
+        private bool IsLlmConfigured { get { return isLlmConfigured; } set { if (isLlmConfigured == value) return; isLlmConfigured = value; RaisePropertyChanged(nameof(IsLlmConfigured)); } }
+
+        // Config status label (bound in XAML)
+        private string configLabel = "Not Config";
+        public string ConfigLabel { get { return configLabel; } private set { if (configLabel == value) return; configLabel = value ?? "Not Config"; RaisePropertyChanged(nameof(ConfigLabel)); } }
 
         // Chat state
         private List<ChatSession> chats = new List<ChatSession>();
@@ -54,7 +59,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         // Mock modified files
         public List<string> ModifiedFiles { get; private set; } = new List<string> { "ProjectA/File1.cs", "ProjectB/Helper.cs", "Shared/Utils.cs" };
         private bool isChangesExpanded = false;
-        public bool IsChangesExpanded { get { return isChangesExpanded; } set { if (isChangesExpanded == value) return; isChangesExpanded = value; OnPropertyChanged(nameof(IsChangesExpanded)); } }
+        public bool IsChangesExpanded { get { return isChangesExpanded; } set { if (isChangesExpanded == value) return; isChangesExpanded = value; RaisePropertyChanged(nameof(IsChangesExpanded)); } }
 
         public ExecutionState CurrentExecutionState
         {
@@ -63,7 +68,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 if (currentExecutionState == value) return;
                 currentExecutionState = value;
-                OnPropertyChanged(nameof(CurrentExecutionState));
+                RaisePropertyChanged(nameof(CurrentExecutionState));
                 UpdateStateProperties(value);
             }
         }
@@ -141,11 +146,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                 AgentComposition.EnsureComposition();
                 if (AgentComposition.AgentService != null)
                 {
-                    Log("AgentService available at control construction.");
+                    AppendLog("AgentService available at control construction.");
                 }
                 else
                 {
-                    Log("AgentService is null at control construction.");
+                    AppendLog("AgentService is null at control construction.");
                 }
             }
             catch (Exception ex)
@@ -192,8 +197,15 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
 
             // Ensure mock modified files are available for binding
-            OnPropertyChanged(nameof(ModifiedFiles));
-            OnPropertyChanged(nameof(ModifiedFilesCount));
+            RaisePropertyChanged(nameof(ModifiedFiles));
+            RaisePropertyChanged(nameof(ModifiedFilesCount));
+
+            // Ensure header reflects current settings immediately
+            try
+            {
+                RefreshFromSettings();
+            }
+            catch { }
         }
 
         public int ModifiedFilesCount
@@ -249,8 +261,8 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (res != MessageBoxResult.Yes) return;
 
                 ModifiedFiles.Clear();
-                OnPropertyChanged(nameof(ModifiedFiles));
-                OnPropertyChanged(nameof(ModifiedFilesCount));
+                RaisePropertyChanged(nameof(ModifiedFiles));
+                RaisePropertyChanged(nameof(ModifiedFilesCount));
             }
             catch
             {
@@ -432,30 +444,67 @@ namespace AgenteIALocalVSIX.ToolWindows
             try
             {
                 bool configured = false;
-                if (settings != null && !string.IsNullOrEmpty(settings.ActiveServerId) && settings.Servers != null)
+                string activeId = null;
+                bool baseUrlPresent = false;
+                bool modelPresent = false;
+
+                if (settings != null)
                 {
-                    var srv = settings.Servers.Find(s => s.Id == settings.ActiveServerId);
-                    if (srv != null)
+                    activeId = settings.ActiveServerId;
+                    if (!string.IsNullOrEmpty(activeId) && settings.Servers != null)
                     {
-                        if (!string.IsNullOrEmpty(srv.BaseUrl) && !string.IsNullOrEmpty(srv.Model)) configured = true;
+                        var srv = settings.Servers.Find(s => s.Id == activeId);
+                        if (srv != null)
+                        {
+                            baseUrlPresent = !string.IsNullOrWhiteSpace(srv.BaseUrl);
+                            modelPresent = !string.IsNullOrWhiteSpace(srv.Model);
+                            if (baseUrlPresent && modelPresent) configured = true;
+                        }
                     }
                 }
 
                 IsLlmConfigured = configured;
+                ConfigLabel = configured ? "OK Config" : "Not Config";
+
+                try { AgentComposition.Logger?.Invoke($"ConfigStatus: computed configured={configured} activeServerId={activeId ?? "(none)"} baseUrlPresent={baseUrlPresent} modelPresent={modelPresent}"); } catch { }
             }
             catch
             {
                 // never throw from UI
                 IsLlmConfigured = false;
+                ConfigLabel = "Not Config";
+                try { AgentComposition.Logger?.Invoke("ConfigStatus: compute error, defaulted to Not Config"); } catch { }
             }
         }
 
         private void SettingsButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            var panel = GetElement<FrameworkElement>("SettingsPanel");
-            if (panel != null)
+            try
             {
-                panel.Visibility = panel.Visibility == System.Windows.Visibility.Visible ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+                AgentComposition.Logger?.Invoke("[AgenteIALocalControl] Settings button clicked (open modal).");
+
+                var settings = AgentSettingsStore.Load() ?? new AgentSettings();
+                var title = settings.ActiveServerId ?? string.Empty;
+
+                var owner = Window.GetWindow(this);
+                var win = new AgenteIALocalConfigWindow(title);
+                if (owner != null) win.Owner = owner;
+                win.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+
+                try
+                {
+                    AgentComposition.Logger?.Invoke($"[AgenteIALocalControl] Opening config modal with title '{win.Title}'");
+                    win.ShowDialog();
+                    AgentComposition.Logger?.Invoke("[AgenteIALocalControl] Config modal closed.");
+                }
+                catch (Exception ex)
+                {
+                    AgentComposition.Logger?.Invoke($"[AgenteIALocalControl] Error showing config modal: {ex.Message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                AgentComposition.Logger?.Invoke($"[AgenteIALocalControl] SettingsButton_Click failure: {ex.Message}");
             }
         }
 
@@ -504,7 +553,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 UpdateUiState(CurrentExecutionState);
 
                 // feedback
-                Log("Settings saved.");
+                AppendLog("Settings saved.");
             }
             catch
             {
@@ -580,76 +629,363 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        private CopilotRequest BuildRequest(string solutionName, int projectCount)
+        // Public helper to refresh UI from persisted settings (used by modal after save)
+        public void RefreshFromSettings()
         {
-            return new CopilotRequest
+            try
             {
-                RequestId = System.Guid.NewGuid().ToString(),
-                Action = "mock-execute",
-                Timestamp = System.DateTime.UtcNow.ToString("o"),
-                SolutionName = solutionName,
-                ProjectCount = projectCount
-            };
+                AgentComposition.Logger?.Invoke("[AgenteIALocalControl] RefreshFromSettings invoked.");
+                var settings = AgentSettingsStore.Load();
+                PopulateSettingsPanel(settings);
+                ComputeIsLlmConfigured(settings);
+                UpdateUiState(CurrentExecutionState);
+                try { AgentComposition.Logger?.Invoke($"ConfigStatus: RefreshFromSettings completed label={ConfigLabel} isConfigured={IsLlmConfigured}"); } catch { }
+
+                // Refresh models for active server asynchronously (fire-and-forget)
+                try { _ = RefreshModelsForActiveServerAsync("RefreshFromSettings"); } catch { }
+            }
+            catch (Exception ex)
+            {
+                try { AgentComposition.Logger?.Invoke($"[AgenteIALocalControl] RefreshFromSettings error: {ex.Message}"); } catch { }
+            }
         }
 
-        private string SerializeToJson<T>(T obj)
+        // Fetch models from baseUrl (same parsing logic as modal) and return list of ids
+        private async Task<List<string>> FetchModelsFromBaseUrlAsync(string baseUrl)
         {
-            return JsonConvert.SerializeObject(obj, Formatting.Indented);
+            var result = new List<string>();
+            try
+            {
+                if (string.IsNullOrWhiteSpace(baseUrl)) return result;
+                var url = baseUrl.TrimEnd('/') + "/v1/models";
+                AgentComposition.Logger?.Invoke($"ModelsFetch: GET {url}");
+                using (var client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(5);
+                    var resp = await client.GetAsync(url);
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        AgentComposition.Logger?.Invoke($"ModelsFetch: non-success status {resp.StatusCode}");
+                        return result;
+                    }
+                    var txt = await resp.Content.ReadAsStringAsync();
+                    if (string.IsNullOrWhiteSpace(txt)) return result;
+                    try
+                    {
+                        var root = Newtonsoft.Json.Linq.JToken.Parse(txt);
+                        var data = root["data"] as Newtonsoft.Json.Linq.JArray;
+                        if (data != null)
+                        {
+                            foreach (var item in data)
+                            {
+                                try { var id = item.Value<string>("id"); if (!string.IsNullOrEmpty(id)) result.Add(id); } catch { }
+                            }
+                            return result;
+                        }
+                        var models = root["models"] as Newtonsoft.Json.Linq.JArray;
+                        if (models != null)
+                        {
+                            foreach (var item in models)
+                            {
+                                try { var id = item.Value<string>("id") ?? item.ToString(); if (!string.IsNullOrEmpty(id)) result.Add(id); } catch { }
+                            }
+                            return result;
+                        }
+                        if (root is Newtonsoft.Json.Linq.JArray arr)
+                        {
+                            foreach (var item in arr) { var s = item.ToString(); if (!string.IsNullOrEmpty(s)) result.Add(s); }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AgentComposition.Logger?.Invoke($"ModelsFetch: parse error: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AgentComposition.Logger?.Invoke($"ModelsFetch: error: {ex.Message}");
+            }
+            return result;
         }
 
+        // Refresh the ModelOfLLM ComboBox based on Active Server settings and remote model list
+        public async Task RefreshModelsForActiveServerAsync(string reason)
+        {
+            try
+            {
+                var settings = AgentSettingsStore.Load();
+                if (settings == null) return;
+                var activeId = settings.ActiveServerId;
+                if (string.IsNullOrWhiteSpace(activeId) || settings.Servers == null)
+                {
+                    // clear UI
+                    this.Dispatcher.BeginInvoke(new Action(() => { ModelOfLLM.Items.Clear(); }));
+                    return;
+                }
+
+                var srv = settings.Servers.Find(s => s.Id == activeId);
+                if (srv == null)
+                {
+                    this.Dispatcher.BeginInvoke(new Action(() => { ModelOfLLM.Items.Clear(); }));
+                    return;
+                }
+
+                var baseUrl = srv.BaseUrl ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(baseUrl))
+                {
+                    this.Dispatcher.BeginInvoke(new Action(() => { ModelOfLLM.Items.Clear(); }));
+                    return;
+                }
+
+                AgentComposition.Logger?.Invoke($"ModelOfLLM: RefreshModelsForActiveServer reason={reason} baseUrl={baseUrl}");
+                var models = await FetchModelsFromBaseUrlAsync(baseUrl);
+                this.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        ModelOfLLM.Items.Clear();
+                        if (models != null && models.Count > 0)
+                        {
+                            foreach (var m in models) ModelOfLLM.Items.Add(m);
+                            // try select saved model
+                            var saved = srv.Model ?? string.Empty;
+                            if (!string.IsNullOrEmpty(saved) && ModelOfLLM.Items.Contains(saved))
+                            {
+                                ModelOfLLM.SelectedItem = saved;
+                            }
+                            else
+                            {
+                                ModelOfLLM.SelectedIndex = 0;
+                                // if saved model existed but not found, persist first as fallback
+                                if (!string.IsNullOrEmpty(saved))
+                                {
+                                    try
+                                    {
+                                        srv.Model = ModelOfLLM.SelectedItem as string ?? string.Empty;
+                                        AgentSettingsStore.Save(settings);
+                                        AgentComposition.RecomposeFromSettings("ModelOfLLM.AutoFallback");
+                                    }
+                                    catch { }
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+                }));
+            }
+            catch (Exception ex)
+            {
+                AgentComposition.Logger?.Invoke($"ModelOfLLM: Refresh error: {ex.Message}");
+            }
+        }
+
+        // Handler when user changes selection in ModelOfLLM - persist and recompose
+        private void ModelOfLLM_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                var sel = ModelOfLLM.SelectedItem as string;
+                if (string.IsNullOrEmpty(sel)) return;
+                AgentComposition.Logger?.Invoke($"ModelOfLLM: selection changed modelPresent=true modelIdLength={sel.Length}");
+
+                var settings = AgentSettingsStore.Load() ?? new AgentSettings();
+                if (settings.Servers == null) settings.Servers = new List<ServerConfig>();
+                var srv = settings.Servers.Find(s => s.Id == settings.ActiveServerId);
+                if (srv == null)
+                {
+                    // nothing to persist against
+                    return;
+                }
+
+                srv.Model = sel;
+                AgentSettingsStore.Save(settings);
+                try
+                {
+                    AgentComposition.RecomposeFromSettings("ModelOfLLM.SelectionChanged");
+                }
+                catch { }
+
+                // Refresh UI state
+                try
+                {
+                    ComputeIsLlmConfigured(settings);
+                    UpdateUiState(CurrentExecutionState);
+                }
+                catch { }
+            }
+            catch (Exception ex)
+            {
+                try { AgentComposition.Logger?.Invoke($"ModelOfLLM: selection handler error: {ex.Message}"); } catch { }
+            }
+        }
+        private void PromptTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                if (e.Key != Key.Enter) return;
+                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
+                if (!RunButtonEnabled) return;
+                e.Handled = true;
+                RunButton_Click(sender, new RoutedEventArgs());
+            }
+            catch
+            {
+                // never throw from UI
+            }
+        }
+
+        private async void RunButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (CurrentExecutionState == ExecutionState.Running) return;
+
+            AppendLog("Run clicked.");
+            UpdateUiState(ExecutionState.Running);
+            AppendLog("Execution started.");
+
+            try
+            {
+                AgentComposition.EnsureComposition();
+
+                var userInput = PromptTextBox.Text ?? string.Empty;
+
+                var req = new CopilotRequest
+                {
+                    RequestId = Guid.NewGuid().ToString(),
+                    Action = userInput,
+                    Timestamp = DateTime.UtcNow.ToString("o"),
+                    SolutionName = SolutionNameText.Text ?? string.Empty,
+                    ProjectCount = int.TryParse(ProjectCountText.Text, out var pc) ? pc : 0
+                };
+
+                var response = await Task.Run(() =>
+                {
+                    try
+                    {
+                        if (AgentComposition.AgentService != null)
+                        {
+                            return AgentComposition.AgentService.Execute(req);
+                        }
+                        else
+                        {
+                            AppendLog("AgentService not composed; using MockCopilotExecutor fallback.");
+                            return MockCopilotExecutor.Execute(req);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendLog("Execution exception in background task: " + ex.Message);
+                        throw;
+                    }
+                });
+
+                var display = string.Empty;
+                if (response == null)
+                {
+                    display = "(no response)";
+                }
+                else if (!string.IsNullOrEmpty(response.Output))
+                {
+                    display = response.Output;
+                }
+                else if (!string.IsNullOrEmpty(response.Error))
+                {
+                    display = "Error: " + response.Error;
+                }
+                else
+                {
+                    display = "(empty response)";
+                }
+
+                this.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    ResponseJsonText.Text = ChatRenderPreprocessor.Preprocess(display);
+                    UpdateUiState(ExecutionState.Completed);
+                    AppendLog("Execution completed successfully.");
+
+                    try
+                    {
+                        var content = ReadLogFile();
+                        if (string.IsNullOrEmpty(content)) LogText.Text = "(no logs)"; else LogText.Text = content;
+                    }
+                    catch { }
+                }));
+            }
+            catch (Exception ex)
+            {
+                UpdateUiState(ExecutionState.Error);
+                AppendLog("Execution failed: " + ex.Message);
+                Trace.TraceError("[AgenteIALocalControl] Execution failed: " + ex);
+                ResponseJsonText.Text = ChatRenderPreprocessor.Preprocess("{ \"error\": \"Execution failed\" }");
+
+                try { RefreshLogFromFile(); } catch { }
+            }
+        }
+
+        // Raise property changed helper to avoid name collisions
+        private void RaisePropertyChanged(string name)
+        {
+            try
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+            }
+            catch { }
+        }
+
+        // Map ExecutionState to UI properties (icon/color/label)
         private void UpdateStateProperties(ExecutionState newState)
         {
-            // Map states to icon kind, color and label according to UX spec
-            switch (newState)
+            try
             {
-                case ExecutionState.Idle:
-                    StateIconKind = PackIconKind.PauseCircleOutline;
-                    StateColor = Brushes.Gray;
-                    StateLabel = "Idle";
-                    break;
-                case ExecutionState.Running:
-                    StateIconKind = PackIconKind.ProgressClock;
-                    StateColor = Brushes.DodgerBlue;
-                    StateLabel = "Running";
-                    break;
-                case ExecutionState.Completed:
-                    StateIconKind = PackIconKind.CheckCircleOutline;
-                    StateColor = Brushes.LimeGreen;
-                    StateLabel = "Completed";
-                    break;
-                case ExecutionState.Error:
-                    StateIconKind = PackIconKind.AlertCircleOutline;
-                    StateColor = Brushes.IndianRed;
-                    StateLabel = "Error";
-                    break;
-                default:
-                    StateIconKind = PackIconKind.PauseCircleOutline;
-                    StateColor = Brushes.Gray;
-                    StateLabel = newState.ToString();
-                    break;
-            }
+                switch (newState)
+                {
+                    case ExecutionState.Idle:
+                        StateIconKind = PackIconKind.PauseCircleOutline;
+                        StateColor = Brushes.Gray;
+                        StateLabel = "Idle";
+                        break;
+                    case ExecutionState.Running:
+                        StateIconKind = PackIconKind.ProgressClock;
+                        StateColor = Brushes.DodgerBlue;
+                        StateLabel = "Running";
+                        break;
+                    case ExecutionState.Completed:
+                        StateIconKind = PackIconKind.CheckCircleOutline;
+                        StateColor = Brushes.LimeGreen;
+                        StateLabel = "Completed";
+                        break;
+                    case ExecutionState.Error:
+                        StateIconKind = PackIconKind.AlertCircleOutline;
+                        StateColor = Brushes.IndianRed;
+                        StateLabel = "Error";
+                        break;
+                    default:
+                        StateIconKind = PackIconKind.PauseCircleOutline;
+                        StateColor = Brushes.Gray;
+                        StateLabel = newState.ToString();
+                        break;
+                }
 
-            // Notify bindings for related properties
-            OnPropertyChanged(nameof(StateIconKind));
-            OnPropertyChanged(nameof(StateColor));
-            OnPropertyChanged(nameof(StateLabel));
+                RaisePropertyChanged(nameof(StateIconKind));
+                RaisePropertyChanged(nameof(StateColor));
+                RaisePropertyChanged(nameof(StateLabel));
+            }
+            catch { }
         }
 
+        // Update UI enablement based on current state and configuration
         private void UpdateUiState(ExecutionState newState)
         {
             CurrentExecutionState = newState;
 
-            // Apply enable/disable rules based on LLM configuration and state
             if (!IsLlmConfigured)
             {
-                // No LLM configured: disable interactive controls except settings/help, allow prompt read-only
                 RunButtonEnabled = false;
                 ClearButtonEnabled = false;
                 IsPromptReadOnly = true;
                 return;
             }
 
-            // LLM configured: apply state-specific rules
             switch (CurrentExecutionState)
             {
                 case ExecutionState.Running:
@@ -668,182 +1004,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        private async void RunButton_Click(object sender, System.Windows.RoutedEventArgs e)
-        {
-            if (CurrentExecutionState == ExecutionState.Running) return;
-
-            Log("Run clicked.");
-            UpdateUiState(ExecutionState.Running);
-            Log("Execution started.");
-
-            try
-            {
-                // Ensure composition is available before attempting execution
-                AgentComposition.EnsureComposition();
-
-                // NEW: treat user input as plain text prompt; build CopilotRequest internally
-                var userInput = PromptTextBox.Text ?? string.Empty;
-
-                var req = new CopilotRequest
-                {
-                    RequestId = System.Guid.NewGuid().ToString(),
-                    Action = userInput, // use user text as main prompt fragment
-                    Timestamp = System.DateTime.UtcNow.ToString("o"),
-                    SolutionName = SolutionNameText.Text ?? string.Empty,
-                    ProjectCount = int.TryParse(ProjectCountText.Text, out var pc) ? pc : 0
-                };
-
-                // Execute using composed AgentService if available; otherwise fall back to direct MockCopilotExecutor
-                var response = await Task.Run(() =>
-                {
-                    try
-                    {
-                        if (AgentComposition.AgentService != null)
-                        {
-                            return AgentComposition.AgentService.Execute(req);
-                        }
-                        else
-                        {
-                            Log("AgentService not composed; using MockCopilotExecutor fallback.");
-                            return MockCopilotExecutor.Execute(req);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log("Execution exception in background task: " + ex.Message);
-                        throw;
-                    }
-                });
-
-                // Display plain text output (or error) instead of serializing full DTO
-                var display = string.Empty;
-                try
-                {
-                    if (response == null)
-                    {
-                        display = "(no response)";
-                    }
-                    else if (!string.IsNullOrEmpty(response.Output))
-                    {
-                        display = response.Output;
-                    }
-                    else if (!string.IsNullOrEmpty(response.Error))
-                    {
-                        display = "Error: " + response.Error;
-                    }
-                    else
-                    {
-                        display = "(empty response)";
-                    }
-                }
-                catch
-                {
-                    display = "(unable to render response)";
-                }
-
-                // Update UI on UI thread
-                this.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    ResponseJsonText.Text = ChatRenderPreprocessor.Preprocess(display);
-                    UpdateUiState(ExecutionState.Completed);
-                    Log("Execution completed successfully.");
-
-                    // Refresh log tab to show newly appended entries (immediately)
-                    try
-                    {
-                        var content = ReadLogFile();
-                        if (string.IsNullOrEmpty(content))
-                        {
-                            LogText.Text = "(no logs)";
-                        }
-                        else
-                        {
-                            LogText.Text = content;
-                        }
-                    }
-                    catch { }
-                }));
-            }
-            catch (Exception ex)
-            {
-                UpdateUiState(ExecutionState.Error);
-                Log("Execution failed: " + ex.Message);
-                Trace.TraceError("[AgenteIALocalControl] Execution failed: " + ex);
-                ResponseJsonText.Text = ChatRenderPreprocessor.Preprocess("{ \"error\": \"Execution failed\" }");
-
-                // Attempt to refresh log view even on error
-                try { RefreshLogFromFile(); } catch { }
-            }
-        }
-
-        private void ClearButton_Click(object sender, System.Windows.RoutedEventArgs e)
-        {
-            PromptTextBox.Text = string.Empty;
-            ResponseJsonText.Text = string.Empty;
-
-            // Clear the persistent log file and refresh view
-            try
-            {
-                ClearLogFile();
-            }
-            catch
-            {
-                // ensure UI does not throw
-            }
-
-            RefreshLogFromFile();
-
-            UpdateUiState(ExecutionState.Idle);
-        }
-
-        private void RefreshLogFromFile()
-        {
-            try
-            {
-                var content = ReadLogFile();
-                // If file is empty, show placeholder
-                if (string.IsNullOrEmpty(content))
-                {
-                    LogText.Text = "(no logs)";
-                }
-                else
-                {
-                    LogText.Text = content;
-                }
-            }
-            catch
-            {
-                // never throw from UI refresh; show minimal info
-                LogText.Text = "(unable to read logs)";
-            }
-        }
-
-        private void Log(string message)
-        {
-            var ts = DateTime.UtcNow.ToString("o");
-            // Prepend to UI log view for immediate feedback
-            LogText.Text = ts + " - " + message + "\n" + LogText.Text;
-
-            // Write to persistent log via composition logger or direct file writer
-            try
-            {
-                if (AgentComposition.Logger != null)
-                {
-                    try { AgentComposition.Logger.Invoke("[AgenteIALocalControl] " + message); } catch { }
-                }
-                else
-                {
-                    // fallback
-                    AppendLogFileLine("[AgenteIALocalControl] " + message);
-                }
-            }
-            catch
-            {
-                // never throw
-            }
-        }
-
-        // Helper methods to access the persistent log file without depending on LogFile.cs being in project
+        // Logging file helpers
         private static string GetLogFilePath()
         {
             try
@@ -885,10 +1046,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var line = DateTime.UtcNow.ToString("o") + " - " + (message ?? string.Empty) + Environment.NewLine;
                 File.AppendAllText(path, line, Encoding.UTF8);
             }
-            catch
-            {
-                // never throw
-            }
+            catch { }
         }
 
         private static void ClearLogFile()
@@ -897,10 +1055,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 var path = GetLogFilePath();
                 var dir = Path.GetDirectoryName(path);
-                if (!Directory.Exists(dir))
-                {
-                    Directory.CreateDirectory(dir);
-                }
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
                 if (File.Exists(path))
                 {
@@ -911,99 +1066,69 @@ namespace AgenteIALocalVSIX.ToolWindows
                     using (var fs = new FileStream(path, FileMode.CreateNew)) { }
                 }
             }
-            catch
+            catch { }
+        }
+
+        // Append to UI log and persistent storage
+        private void AppendLog(string message)
+        {
+            var ts = DateTime.UtcNow.ToString("o");
+            try
             {
-                // never throw
+                LogText.Text = ts + " - " + message + "\n" + LogText.Text;
             }
-        }
+            catch { }
 
-        private void OnPropertyChanged(string name)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
-
-        // Helper to build a FlowDocument from raw chat text (prepares future rich rendering)
-        private static FlowDocument BuildChatDocument(string raw)
-        {
-            var doc = new FlowDocument();
-            if (string.IsNullOrEmpty(raw)) return doc;
-
-            string[] lines = raw.Replace("\r\n", "\n").Split('\n');
-            bool inFence = false;
-            var codeLines = new List<string>();
-            foreach (var line in lines)
+            try
             {
-                if (line.StartsWith("```"))
+                if (AgentComposition.Logger != null)
                 {
-                    if (!inFence)
-                    {
-                        inFence = true;
-                        codeLines.Clear();
-                    }
-                    else
-                    {
-                        // close fence
-                        inFence = false;
-                        var codeText = string.Join("\n", codeLines);
-                        var section = new Section();
-                        var para = new Paragraph(new Run(codeText)) { FontFamily = new FontFamily("Consolas") };
-                        section.Blocks.Add(para);
-                        doc.Blocks.Add(section);
-                        codeLines.Clear();
-                    }
-                    continue;
-                }
-
-                if (inFence)
-                {
-                    codeLines.Add(line);
+                    try { AgentComposition.Logger.Invoke("[AgenteIALocalControl] " + message); } catch { }
                 }
                 else
                 {
-                    var para = new Paragraph(new Run(line));
-                    doc.Blocks.Add(para);
+                    AppendLogFileLine("[AgenteIALocalControl] " + message);
                 }
             }
-
-            // If file ends while inside fence, emit collected as code block
-            if (inFence && codeLines.Count > 0)
-            {
-                var codeText = string.Join("\n", codeLines);
-                var section = new Section();
-                var para = new Paragraph(new Run(codeText)) { FontFamily = new FontFamily("Consolas") };
-                section.Blocks.Add(para);
-                doc.Blocks.Add(section);
-            }
-
-            return doc;
+            catch { }
         }
 
-        private void VerboseLog_Click(object sender, RoutedEventArgs e)
+        private void RefreshLogFromFile()
         {
             try
             {
-                // TODO: connect to verbose log view if available.
-                RefreshLogFromFile();
+                var content = ReadLogFile();
+                if (string.IsNullOrEmpty(content))
+                {
+                    LogText.Text = "(no logs)";
+                }
+                else
+                {
+                    LogText.Text = content;
+                }
             }
             catch
             {
-                // never throw from UI
+                try { LogText.Text = "(unable to read logs)"; } catch { }
             }
         }
+    }
 
-        private void PromptTextBox_KeyDown(object sender, KeyEventArgs e)
+    namespace AgenteIALocalVSIX.ToolWindows
+    {
+        public sealed class Truncate11Converter : System.Windows.Data.IValueConverter
         {
-            try
+            public object Convert(object value, System.Type targetType, object parameter, System.Globalization.CultureInfo culture)
             {
-                if (e.Key != Key.Enter) return;
-                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
-                if (!RunButtonEnabled) return;
-                e.Handled = true;
-                RunButton_Click(sender, new RoutedEventArgs());
+                var s = value as string;
+                if (string.IsNullOrEmpty(s)) return string.Empty;
+                if (s.Length <= 11) return s;
+                return s.Substring(0, 11) + "...";
             }
-            catch
+
+            public object ConvertBack(object value, System.Type targetType, object parameter, System.Globalization.CultureInfo culture)
             {
-                // never throw from UI
+                return value;
             }
         }
     }

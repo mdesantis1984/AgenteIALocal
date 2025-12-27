@@ -127,6 +127,87 @@ namespace AgenteIALocalVSIX
             }
         }
 
+        public static void RecomposeFromSettings(string reason)
+        {
+            try
+            {
+                LogInfo($"[AgentComposition] RecomposeFromSettings invoked. Reason: {reason}");
+
+                var vsixSettings = AgentSettingsStore.Load();
+                if (vsixSettings == null)
+                {
+                    LogInfo("[AgentComposition] No settings found during recompose; assigning mock.");
+                    AgentService = new MockAgentService();
+                    return;
+                }
+
+                var activeId = vsixSettings.ActiveServerId;
+                ServerConfig srv = null;
+                if (!string.IsNullOrEmpty(activeId) && vsixSettings.Servers != null)
+                {
+                    srv = vsixSettings.Servers.Find(s => string.Equals(s.Id, activeId, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (srv == null && vsixSettings.Servers != null && vsixSettings.Servers.Count > 0)
+                {
+                    srv = vsixSettings.Servers[0];
+                }
+
+                var provider = srv?.Provider ?? string.Empty;
+                var baseUrl = srv?.BaseUrl ?? string.Empty;
+                var model = srv?.Model ?? string.Empty;
+
+                LogInfo($"[AgentComposition] Recompose settings: ActiveServerId={srv?.Id}, Provider={provider}, BaseUrl={baseUrl}, Model={model}");
+
+                // Attempt composition similar to initial TryComposeRealBackend
+                try
+                {
+                    if (string.IsNullOrEmpty(srv?.Provider) || !srv.Provider.Equals("lmstudio", StringComparison.OrdinalIgnoreCase))
+                    {
+                        LogInfo("[AgentComposition] Provider not lmstudio; assigning mock AgentService.");
+                        AgentService = new MockAgentService();
+                        return;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(srv.BaseUrl))
+                    {
+                        LogInfo("[AgentComposition] LM Studio BaseUrl empty; assigning mock AgentService.");
+                        AgentService = new MockAgentService();
+                        return;
+                    }
+
+                    var lmSettings = new LmStudioSettings
+                    {
+                        BaseUrl = srv.BaseUrl ?? string.Empty,
+                        ApiKey = srv.ApiKey ?? string.Empty,
+                        Model = srv.Model ?? string.Empty,
+                        ChatCompletionsPath = "/v1/chat/completions"
+                    };
+
+                    var resolver = new LmStudioEndpointResolver(lmSettings);
+                    var client = new LmStudioClient(lmSettings, resolver);
+                    var appService = new AgenteIALocal.Application.Agents.AgentService(client);
+                    var adapter = new CoreAgentServiceAdapter(appService);
+
+                    AgentService = adapter;
+
+                    LogInfo("[AgentComposition] RecomposeFromSettings: Real LM Studio backend composed and active.");
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    LogError($"[AgentComposition] RecomposeFromSettings failed to compose real backend: {ex.Message}");
+                    AgentService = new MockAgentService();
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                try { LogError($"[AgentComposition] RecomposeFromSettings general failure: {ex.Message}"); } catch { }
+                try { AgentService = new MockAgentService(); } catch { }
+            }
+        }
+
         private static void LogInfo(string message)
         {
             if (Logger != null)
