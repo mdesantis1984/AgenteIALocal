@@ -7,6 +7,13 @@ using Newtonsoft.Json.Linq;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
+    /// <summary>
+    /// WARNING: Do not use ResponseNormalizer.Normalize() for Markdown rendering.
+    /// ResponseNormalizer performs unescaping and whitespace conversions that may degrade
+    /// original Markdown input (e.g. converting literal \n sequences). Markdown rendering
+    /// must use the raw response text. ResponseNormalizer is intended for JSON/plain-text
+    /// normalization and extraction only.
+    /// </summary>
     internal static class ResponseNormalizer
     {
         private static readonly object _logLock = new object();
