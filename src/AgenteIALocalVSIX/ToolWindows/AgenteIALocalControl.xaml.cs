@@ -308,7 +308,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (activeChat == null)
                 {
                     PromptTextBox.Text = string.Empty;
-                    ResponseJsonText.Text = string.Empty;
+                    ResponseJsonText.Document = CreatePlainDocument(string.Empty);
                     return;
                 }
 
@@ -319,7 +319,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     sb.AppendLine($"[{m.Timestamp}] {m.Sender}: {m.Content}");
                 }
 
-                ResponseJsonText.Text = ChatRenderPreprocessor.Preprocess(sb.ToString());
+                ResponseJsonText.Document = CreatePlainDocument(sb.ToString());
                 PromptTextBox.Text = string.Empty;
             }
             catch
@@ -899,27 +899,112 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                 this.Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    ResponseJsonText.Text = ChatRenderPreprocessor.Preprocess(display);
-                    UpdateUiState(ExecutionState.Completed);
-                    AppendLog("Execution completed successfully.");
-
                     try
                     {
-                        var content = ReadLogFile();
-                        if (string.IsNullOrEmpty(content)) LogText.Text = "(no logs)"; else LogText.Text = content;
+                        AppendLog("[VERBOSE] RenderResponse: start; len=" + (display?.Length ?? 0));
+                        var doc = RenderResponseToDocument(display);
+                        ResponseJsonText.Document = doc;
+                        AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
                     }
-                    catch { }
-                }));
+                    catch (Exception exRender)
+                    {
+                        AppendLog("[VERBOSE] RenderResponse failed: " + exRender.Message);
+                        ResponseJsonText.Document = CreatePlainDocument(display ?? string.Empty);
+                    }
+                      UpdateUiState(ExecutionState.Completed);
+                      AppendLog("Execution completed successfully.");
+
+                      try
+                      {
+                          var content = ReadLogFile();
+                          if (string.IsNullOrEmpty(content)) LogText.Text = "(no logs)"; else LogText.Text = content;
+                      }
+                      catch { }
+                  }));
             }
             catch (Exception ex)
             {
                 UpdateUiState(ExecutionState.Error);
                 AppendLog("Execution failed: " + ex.Message);
                 Trace.TraceError("[AgenteIALocalControl] Execution failed: " + ex);
-                ResponseJsonText.Text = ChatRenderPreprocessor.Preprocess("{ \"error\": \"Execution failed\" }");
+                ResponseJsonText.Document = RenderResponseToDocument("{ \"error\": \"Execution failed\" }");
 
                 try { RefreshLogFromFile(); } catch { }
             }
+        }
+
+        private System.Windows.Documents.FlowDocument RenderResponseToDocument(string raw)
+        {
+            if (raw == null) raw = string.Empty;
+            try
+            {
+                // Convert only escaped whitespace sequences for display
+                var hasEscapes = raw.Contains("\\r\\n") || raw.Contains("\\n") || raw.Contains("\\t");
+                var converted = raw;
+                if (hasEscapes)
+                {
+                    converted = converted.Replace("\\r\\n", "\r\n").Replace("\\n", "\n").Replace("\\t", "\t");
+                }
+
+                // Build FlowDocument preserving lines
+                var fd = new System.Windows.Documents.FlowDocument();
+                fd.PagePadding = new System.Windows.Thickness(0);
+                var p = new System.Windows.Documents.Paragraph();
+                p.Margin = new System.Windows.Thickness(0);
+
+                var lines = converted.Split(new[] { '\n' });
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    var line = lines[i] ?? string.Empty;
+                    // Keep any trailing CR removed by Split? lines contain '\r' if CRLF originally
+                    var run = new System.Windows.Documents.Run(line);
+                    p.Inlines.Add(run);
+                    if (i < lines.Length - 1)
+                    {
+                        p.Inlines.Add(new System.Windows.Documents.LineBreak());
+                    }
+                }
+
+                fd.Blocks.Clear();
+                fd.Blocks.Add(p);
+                return fd;
+            }
+            catch (Exception ex)
+            {
+                // fail-safe: return minimal document with raw text
+                try
+                {
+                    AppendLog("[VERBOSE] RenderResponseToDocument exception: " + ex.Message);
+                }
+                catch { }
+                var fallback = CreatePlainDocument(raw);
+                return fallback;
+            }
+        }
+
+        private static System.Windows.Documents.FlowDocument CreatePlainDocument(string text)
+        {
+            var fd = new System.Windows.Documents.FlowDocument();
+            try
+            {
+                fd.PagePadding = new System.Windows.Thickness(0);
+                var p = new System.Windows.Documents.Paragraph();
+                p.Margin = new System.Windows.Thickness(0);
+                p.Inlines.Add(new System.Windows.Documents.Run(text ?? string.Empty));
+                fd.Blocks.Clear();
+                fd.Blocks.Add(p);
+            }
+            catch
+            {
+                try
+                {
+                    fd.Blocks.Clear();
+                    fd.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run(text ?? string.Empty)));
+                }
+                catch { }
+            }
+
+            return fd;
         }
 
         // Raise property changed helper to avoid name collisions
@@ -1075,7 +1160,10 @@ namespace AgenteIALocalVSIX.ToolWindows
             var ts = DateTime.UtcNow.ToString("o");
             try
             {
-                LogText.Text = ts + " - " + message + "\n" + LogText.Text;
+                if (LogText != null)
+                {
+                    LogText.Text = ts + " - " + message + "\n" + LogText.Text;
+                }
             }
             catch { }
 
@@ -1111,6 +1199,18 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 try { LogText.Text = "(unable to read logs)"; } catch { }
             }
+        }
+
+        private void ServerLLM_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                if (!IsLoaded) return;
+                var cb = sender as ComboBox;
+                var selected = cb?.SelectedItem as string ?? cb?.SelectedItem?.ToString() ?? string.Empty;
+                AppendLog($"[VERBOSE] ServerLLM selection changed -> {selected}");
+            }
+            catch { }
         }
     }
 

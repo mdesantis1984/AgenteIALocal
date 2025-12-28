@@ -77,6 +77,7 @@
     <Compile Include="ToolWindows\AgenteIALocalToolWindow.cs" />
     <Compile Include="ToolWindows\ChatRenderPreprocessor.cs" />
     <Compile Include="ToolWindows\RelayCommand.cs" />
+    <Compile Include="ToolWindows\ResponseNormalizer.cs" />
   </ItemGroup>
   <!-- XAML -->
   <ItemGroup>
