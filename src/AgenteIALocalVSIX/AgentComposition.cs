@@ -235,7 +235,7 @@ namespace AgenteIALocalVSIX
             AgentHostResponse Execute(AgentHostRequest req);
         }
 
-        // Mock implementation that delegates to the existing MockCopilotExecutor.
+        // Mock implementation that delegates to the existing MockAgentExecutor.
         private class MockAgentService : IAgentService
         {
             public AgentHostResponse Execute(AgentHostRequest req)

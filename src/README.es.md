@@ -39,7 +39,7 @@ Extensión **VSIX clásica** para Visual Studio que integra un agente de IA loca
 
 ⚠️ **Backend LLM**
 - Existe composición con alternativa:
-  - Default: `MockCopilotExecutor` vía `AgentComposition.MockAgentService`.
+  - Default: `MockAgentExecutor` vía `AgentComposition.MockAgentService`.
   - Backend real (solo LM Studio en la composición VSIX actual): `AgentComposition.TryComposeRealBackend()` crea `LmStudioClient` + `Application.AgentService` y expone un adaptador síncrono.
 - JAN en Infrastructure está como implementación simulada: `AgenteIALocal.Infrastructure/Agents/JanServerClient.cs` devuelve respuesta simulada.
 
@@ -88,12 +88,12 @@ Persistencia:
 - Ejecuta con el botón (icono enviar) o con Enter (Enter envía, Shift+Enter mantiene salto): `PromptTextBox_KeyDown`.
 
 Ejecución real:
-- `RunButton_Click` arma un `CopilotRequest` usando:
+- `RunButton_Click` arma un `AgentHostRequest` usando:
   - `Action`: texto del usuario
   - `SolutionName` y `ProjectCount`: valores de UI
 - Luego ejecuta en background:
   - Si `AgentComposition.AgentService != null`: `AgentService.Execute(req)`
-  - Si no: alternativa `MockCopilotExecutor.Execute(req)`
+  - Si no: alternativa `MockAgentExecutor.Execute(req)`
 
 ### 5) Revisar resultados y “cambios”
 - La respuesta se muestra en `ResponseJsonText` (solo lectura) con preprocesamiento `ChatRenderPreprocessor.Preprocess(...)`.

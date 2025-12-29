@@ -39,7 +39,7 @@ A **classic VSIX** extension for Visual Studio that integrates a local AI agent 
 
 ⚠️ **LLM backend**
 - There is composition with an alternative:
-  - Default: `MockCopilotExecutor` via `AgentComposition.MockAgentService`.
+  - Default: `MockAgentExecutor` via `AgentComposition.MockAgentService`.
   - Real backend (LM Studio only in the current VSIX composition): `AgentComposition.TryComposeRealBackend()` creates `LmStudioClient` + `Application.AgentService` and exposes a synchronous adapter.
 - JAN in Infrastructure is implemented as a simulation: `AgenteIALocal.Infrastructure/Agents/JanServerClient.cs` returns a simulated response.
 
@@ -65,6 +65,7 @@ Code evidence:
 - Command: `Commands/OpenAgenteIALocalCommand.cs`.
 - ToolWindow opening: use of `IVsUIShell.FindToolWindow(...).Show()`.
 
+
 ## How to use it (real user flow)
 
 ### 1) Open the ToolWindow
@@ -88,12 +89,12 @@ Persistence:
 - Execute with the button (send icon) or with Enter (Enter sends, Shift+Enter keeps a newline): `PromptTextBox_KeyDown`.
 
 Real execution:
-- `RunButton_Click` builds a `CopilotRequest` using:
+- `RunButton_Click` builds an `AgentHostRequest` using:
   - `Action`: user text
   - `SolutionName` and `ProjectCount`: UI values
 - Then it executes in background:
   - If `AgentComposition.AgentService != null`: `AgentService.Execute(req)`
-  - Otherwise: alternative `MockCopilotExecutor.Execute(req)`
+  - Otherwise: alternative `MockAgentExecutor.Execute(req)`
 
 ### 5) Review results and “changes”
 - The response is shown in `ResponseJsonText` (read-only) with pre-processing `ChatRenderPreprocessor.Preprocess(...)`.
