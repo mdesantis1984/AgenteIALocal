@@ -5,8 +5,7 @@
     <AssemblyOriginatorKeyFile>..\AgenteIALocal.Core\AgenteIALocal.snk</AssemblyOriginatorKeyFile>
     <PublicSign>false</PublicSign>
   </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\AgenteIALocal.Application\AgenteIALocal.Application.csproj" />
+	<ItemGroup>
+    <ProjectReference Include="..\AgenteIALocal.Core\AgenteIALocal.Core.csproj" />
   </ItemGroup>
 </Project>
