@@ -1,16 +1,16 @@
 using System;
-using AgenteIALocalVSIX.Contracts;
+using AgenteIALocal.Core.Models.Agent;
 
 namespace AgenteIALocalVSIX.Execution
 {
     internal static class MockCopilotExecutor
     {
-        public static CopilotResponse Execute(CopilotRequest req)
+        public static AgentHostResponse Execute(AgentHostRequest req)
         {
             if (req == null) throw new ArgumentNullException(nameof(req));
 
             // Deterministic mock response based on request data
-            var resp = new CopilotResponse
+            var resp = new AgentHostResponse
             {
                 RequestId = req.RequestId,
                 Success = true,

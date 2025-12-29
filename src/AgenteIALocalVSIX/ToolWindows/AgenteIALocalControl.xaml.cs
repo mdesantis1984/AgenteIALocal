@@ -1,5 +1,5 @@
+using AgenteIALocal.Core.Models.Agent;
 using AgenteIALocalVSIX.Chats;
-using AgenteIALocalVSIX.Contracts;
 using AgenteIALocalVSIX.Execution;
 using MaterialDesignThemes.Wpf;
 using Newtonsoft.Json;
@@ -851,7 +851,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                 var userInput = PromptTextBox.Text ?? string.Empty;
 
-                var req = new CopilotRequest
+                var req = new AgentHostRequest
                 {
                     RequestId = Guid.NewGuid().ToString(),
                     Action = userInput,

@@ -1,11 +1,10 @@
 using System;
 using System.Diagnostics;
-using AgenteIALocalVSIX.Contracts;
 using AgenteIALocalVSIX.Execution;
 using System.Threading.Tasks;
-using AgenteIALocal.Application.Agents;
 using AgenteIALocal.Core.Settings;
 using AgenteIALocal.Infrastructure.Agents;
+using AgenteIALocal.Core.Models.Agent;
 
 namespace AgenteIALocalVSIX
 {
@@ -233,13 +232,13 @@ namespace AgenteIALocalVSIX
         // Minimal agent service interface local to VSIX project.
         internal interface IAgentService
         {
-            CopilotResponse Execute(CopilotRequest req);
+            AgentHostResponse Execute(AgentHostRequest req);
         }
 
         // Mock implementation that delegates to the existing MockCopilotExecutor.
         private class MockAgentService : IAgentService
         {
-            public CopilotResponse Execute(CopilotRequest req)
+            public AgentHostResponse Execute(AgentHostRequest req)
             {
                 return MockCopilotExecutor.Execute(req);
             }
@@ -255,11 +254,11 @@ namespace AgenteIALocalVSIX
                 this.appService = appService ?? throw new ArgumentNullException(nameof(appService));
             }
 
-            public CopilotResponse Execute(CopilotRequest req)
+            public AgentHostResponse Execute(AgentHostRequest req)
             {
                 try
                 {
-                    // Build a prompt string from CopilotRequest fields (minimal mapping)
+                    // Build a prompt string from request fields (minimal mapping)
                     var prompt = (req?.Action ?? string.Empty) + " " + (req?.SolutionName ?? string.Empty);
 
                     // Execute asynchronously on the app service and block here (caller runs in background task)
@@ -267,10 +266,10 @@ namespace AgenteIALocalVSIX
 
                     if (agentResp == null)
                     {
-                        return new CopilotResponse { RequestId = req?.RequestId, Success = false, Output = null, Error = "Empty response from agent", Timestamp = DateTime.UtcNow.ToString("o") };
+                        return new AgentHostResponse { RequestId = req?.RequestId, Success = false, Output = null, Error = "Empty response from agent", Timestamp = DateTime.UtcNow.ToString("o") };
                     }
 
-                    return new CopilotResponse
+                    return new AgentHostResponse
                     {
                         RequestId = req?.RequestId,
                         Success = agentResp.IsSuccess,
@@ -281,7 +280,7 @@ namespace AgenteIALocalVSIX
                 }
                 catch (Exception ex)
                 {
-                    return new CopilotResponse { RequestId = req?.RequestId, Success = false, Output = null, Error = ex.Message, Timestamp = DateTime.UtcNow.ToString("o") };
+                    return new AgentHostResponse { RequestId = req?.RequestId, Success = false, Output = null, Error = ex.Message, Timestamp = DateTime.UtcNow.ToString("o") };
                 }
             }
         }

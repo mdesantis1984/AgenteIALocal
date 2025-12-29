@@ -1,8 +1,9 @@
 using System;
 
-namespace AgenteIALocalVSIX.Contracts
+namespace AgenteIALocal.Core.Models.Agent
 {
-    internal class CopilotResponse
+    // Neutral DTO moved from VSIX.Contracts.CopilotResponse
+    public class AgentHostResponse
     {
         public string RequestId { get; set; }
         public bool Success { get; set; }
