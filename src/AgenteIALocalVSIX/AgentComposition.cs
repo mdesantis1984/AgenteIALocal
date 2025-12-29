@@ -240,7 +240,7 @@ namespace AgenteIALocalVSIX
         {
             public AgentHostResponse Execute(AgentHostRequest req)
             {
-                return MockCopilotExecutor.Execute(req);
+                return MockAgentExecutor.Execute(req);
             }
         }
 

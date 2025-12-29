@@ -871,7 +871,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         else
                         {
                             AppendLog("AgentService not composed; using MockCopilotExecutor fallback.");
-                            return MockCopilotExecutor.Execute(req);
+                            return MockAgentExecutor.Execute(req);
                         }
                     }
                     catch (Exception ex)

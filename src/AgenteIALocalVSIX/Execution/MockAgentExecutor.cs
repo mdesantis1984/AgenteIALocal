@@ -3,7 +3,7 @@ using AgenteIALocal.Core.Models.Agent;
 
 namespace AgenteIALocalVSIX.Execution
 {
-    internal static class MockCopilotExecutor
+    internal static class MockAgentExecutor
     {
         public static AgentHostResponse Execute(AgentHostRequest req)
         {
