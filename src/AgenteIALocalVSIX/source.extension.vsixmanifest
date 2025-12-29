@@ -4,6 +4,8 @@
         <Identity Id="AgenteIALocalVSIX.5110f6f2-6bef-4be1-a90a-e017c2971e99" Version="1.0.46" Language="en-US" Publisher="Marco Alejandro De Santis" />
         <DisplayName>AgenteIALocalVSIX</DisplayName>
         <Description xml:space="preserve">version 1.0.46</Description>
+        <Icon>favicon.ico</Icon>
+        <PreviewImage>favicon-128.png</PreviewImage>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0 )">

@@ -4,7 +4,14 @@
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\AgenteIALocal.Core\AgenteIALocal.snk</AssemblyOriginatorKeyFile>
     <PublicSign>false</PublicSign>
+    <PackageIcon>favicon-128.png</PackageIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\AgenteIALocalVSIX\favicon-128.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 	<ItemGroup>
     <ProjectReference Include="..\AgenteIALocal.Core\AgenteIALocal.Core.csproj" />
   </ItemGroup>

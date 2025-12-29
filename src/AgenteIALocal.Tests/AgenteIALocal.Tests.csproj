@@ -2,7 +2,18 @@
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <IsTestProject>true</IsTestProject>
+    <ApplicationIcon>favicon.ico</ApplicationIcon>
+    <PackageIcon>favicon-128.png</PackageIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Include="favicon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\AgenteIALocalVSIX\favicon-128.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MSTest.TestFramework" Version="3.2.2" />

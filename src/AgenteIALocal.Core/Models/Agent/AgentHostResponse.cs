@@ -2,7 +2,7 @@ using System;
 
 namespace AgenteIALocal.Core.Models.Agent
 {
-    // Neutral DTO moved from VSIX.Contracts.CopilotResponse
+    // Neutral DTO moved from VSIX.Contracts
     public class AgentHostResponse
     {
         public string RequestId { get; set; }
