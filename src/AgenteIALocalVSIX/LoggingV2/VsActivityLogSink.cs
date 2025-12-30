@@ -21,23 +21,14 @@ namespace AgenteIALocalVSIX.LoggingV2
                 var log = serviceProvider.GetService(typeof(SVsActivityLog)) as IVsActivityLog;
                 if (log == null) return;
 
-                var message = entry.Message ?? string.Empty;
-                if (entry.Exception != null)
-                {
-                    message += " | " + entry.Exception.GetType().FullName + ": " + (entry.Exception.Message ?? string.Empty);
-                }
+                // Use the canonical formatter from Core to produce the exact string to send to ActivityLog
+                var message = AgenteIALocal.Core.Logging.LogEntryTextFormatter.Format(entry) ?? string.Empty;
 
                 uint kind = (entry.Level == LogLevel.Error || entry.Level == LogLevel.Critical) ?
                     (uint)__ACTIVITYLOG_ENTRYTYPE.ALE_ERROR : (uint)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION;
 
                 try
                 {
-                    // For errors include exception.ToString() if possible
-                    if (kind == (uint)__ACTIVITYLOG_ENTRYTYPE.ALE_ERROR && entry.Exception != null)
-                    {
-                        try { message += "\n" + entry.Exception.ToString(); } catch { }
-                    }
-
                     log.LogEntry(kind, "AgenteIALocal", message);
                 }
                 catch

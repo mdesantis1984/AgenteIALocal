@@ -34,7 +34,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         public override void OnToolWindowCreated()
         {
             base.OnToolWindowCreated();
-            try { AgentComposition.Logger?.Invoke("AgenteIALocalToolWindow: OnToolWindowCreated"); } catch { }
+            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "AgenteIALocalToolWindow: OnToolWindowCreated"); } catch { }
 
             ThreadHelper.JoinableTaskFactory.Run(async () =>
             {
@@ -59,7 +59,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             try
             {
-                AgentComposition.Logger?.Invoke("ToolWindow created; skipping optional settings provider injection in this build.");
+                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ToolWindow created; skipping optional settings provider injection in this build.");
             }
             catch { }
 
@@ -130,7 +130,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     dteSolutionEvents.Opened += OnSolutionOpened;
                     dteSolutionEvents.AfterClosing += OnSolutionAfterClosing;
                     solutionEventsHooked = true;
-                    try { AgentComposition.Logger?.Invoke("AgenteIALocalToolWindow: Hooked SolutionEvents"); } catch { }
+                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "AgenteIALocalToolWindow: Hooked SolutionEvents"); } catch { }
                 }
             }
             catch
@@ -183,7 +183,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             try
             {
-                AgentComposition.Logger?.Invoke($"AgenteIALocalToolWindow: UpdateSolutionInfo start ({source})");
+                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: UpdateSolutionInfo start ({source})");
 
                 // Retry loop if solution not yet open/loaded
                 const int maxAttempts = 6;
@@ -201,7 +201,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                         if (dte == null)
                         {
-                            AgentComposition.Logger?.Invoke($"AgenteIALocalToolWindow: DTE null (attempt={attempt + 1})");
+                            AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: DTE null (attempt={attempt + 1})");
                             // wait and retry
                             try { await Task.Delay(delayMs).ConfigureAwait(false); } catch { }
                             continue;
@@ -219,7 +219,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                             string solutionName = !string.IsNullOrEmpty(fullName) ? Path.GetFileNameWithoutExtension(fullName) : name ?? string.Empty;
                             int projectCount = CountSolutionProjects(sol);
 
-                            AgentComposition.Logger?.Invoke($"AgenteIALocalToolWindow: Solution '{solutionName}' projects={projectCount} (attempt={attempt + 1})");
+                            AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: Solution '{solutionName}' projects={projectCount} (attempt={attempt + 1})");
 
                             try
                             {
@@ -227,33 +227,33 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                                 control.SetSolutionInfo(solutionName, projectCount);
                                 solutionInfoSet = true;
-                                AgentComposition.Logger?.Invoke($"AgenteIALocalToolWindow: SetSolutionInfo done ({source})");
+                                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: SetSolutionInfo done ({source})");
                             }
                             catch (Exception ex)
                             {
-                                AgentComposition.Logger?.Invoke($"AgenteIALocalToolWindow: SetSolutionInfo failed: {ex.Message}");
+                                AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: SetSolutionInfo failed: {ex.Message}", ex);
                             }
 
                             return; // done
                         }
 
                         // Log state for diagnostics
-                        AgentComposition.Logger?.Invoke($"AgenteIALocalToolWindow: No open solution (attempt={attempt + 1}) - hasSolution={hasSolution} IsOpen={isOpen} FullNameLen={fullName?.Length ?? 0} Name='{name}'");
+                        AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: No open solution (attempt={attempt + 1}) - hasSolution={hasSolution} IsOpen={isOpen} FullNameLen={fullName?.Length ?? 0} Name='{name}'");
                     }
                     catch (Exception ex)
                     {
-                        AgentComposition.Logger?.Invoke($"AgenteIALocalToolWindow: Error checking solution (attempt={attempt + 1}): {ex.Message}");
+                        AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: Error checking solution (attempt={attempt + 1}): {ex.Message}");
                     }
 
                     // wait before next attempt (do not block UI thread)
                     try { await Task.Delay(delayMs).ConfigureAwait(false); } catch { }
                 }
 
-                AgentComposition.Logger?.Invoke($"AgenteIALocalToolWindow: UpdateSolutionInfo giving up after retries ({source})");
+                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: UpdateSolutionInfo giving up after retries ({source})");
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Logger?.Invoke($"AgenteIALocalToolWindow: Unexpected error in TryUpdateSolutionInfoAsync: {ex.Message}"); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: Unexpected error in TryUpdateSolutionInfoAsync: {ex.Message}"); } catch { }
             }
         }
 

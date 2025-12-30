@@ -59,58 +59,31 @@ namespace AgenteIALocalVSIX
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
-            // Register a file-based logger early so AgentComposition and other components use it.
             try
             {
-                // local file logger to avoid direct dependency on LogFile symbol (files may not be included in csproj)
-                Action<string> fileLogger = (msg) =>
-                {
-                    try
-                    {
-                        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                        var logDir = Path.Combine(local ?? string.Empty, "AgenteIALocal", "logs");
-                        Directory.CreateDirectory(logDir);
-                        var logPath = Path.Combine(logDir, "AgenteIALocal.log");
-                        var line = DateTime.UtcNow.ToString("o") + " - " + (msg ?? string.Empty) + Environment.NewLine;
-                        File.AppendAllText(logPath, line, Encoding.UTF8);
-                    }
-                    catch
-                    {
-                        // never throw from logger
-                    }
-                };
-
-                AgentComposition.Logger = fileLogger;
-
-                // New: create Logging V2 pipeline and expose on AgentComposition without replacing existing Logger
                 try
                 {
+                    // Build V2 logging pipeline
                     var sinks = new CompositeLogSink(new ILogSink[] {
                         new VsActivityLogSink(),
-                        new VsixLegacyFileLogSink("AgenteIALocal")
+                        new VsixFileLogSink("AgenteIALocal")
                     });
 
                     var v2 = new AgentLoggerV2(sinks);
-                    AgentComposition.LoggerV2 = v2;
+                    AgentComposition.LoggerV2 = v2 ?? new AgentLoggerV2(new NullLogSink());
                 }
                 catch
                 {
-                    // fail-safe: do not break package init
+                    // If any failure, ensure non-null LoggerV2
+                    AgentComposition.LoggerV2 = new AgentLoggerV2(new NullLogSink());
                 }
 
                 AgentComposition.EnsureComposition();
-                if (AgentComposition.AgentService != null)
-                {
-                    AgentComposition.Logger?.Invoke("[AgenteIALocalVSIXPackage] Agent composition available.");
-                }
-                else
-                {
-                    AgentComposition.Logger?.Invoke("[AgenteIALocalVSIXPackage] Agent composition returned null AgentService.");
-                }
+
+                AgentComposition.Info("-", new LogEventId(9000, "VSIX.Startup"), "Agent composition scheduled.");
             }
             catch (Exception ex)
             {
-                // Ensure logging never throws; swallow exceptions if logger fails
                 try
                 {
                     var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);

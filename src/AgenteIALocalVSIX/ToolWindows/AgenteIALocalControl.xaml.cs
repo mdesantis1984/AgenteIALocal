@@ -21,6 +21,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Text.RegularExpressions;
+using AgenteIALocal.Core.Logging;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -140,7 +141,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             // Initial UI state - will be refreshed after loading settings
             UpdateUiState(ExecutionState.Idle);
 
-            // Do not override AgentComposition.Logger here; package provides a file-based logger.
+            // Do not override AgentComposition.LoggerV2 here; package wires the V2 logging pipeline.
 
             // Attempt to set initial solution info using composition if available
             try
@@ -157,7 +158,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                Trace.TraceError($"[AgenteIALocalControl] Error ensuring composition: {ex}");
+                // Replace Trace with V2 logger
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] Error ensuring composition: " + ex.Message, ex); } catch { }
             }
 
             // Load current log file content into the Log tab asynchronously
@@ -468,14 +470,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                 IsLlmConfigured = configured;
                 ConfigLabel = configured ? "OK Config" : "Not Config";
 
-                try { AgentComposition.Logger?.Invoke($"ConfigStatus: computed configured={configured} activeServerId={activeId ?? "(none)"} baseUrlPresent={baseUrlPresent} modelPresent={modelPresent}"); } catch { }
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigStatus: computed configured={configured} activeServerId={activeId ?? "(none)"} baseUrlPresent={baseUrlPresent} modelPresent={modelPresent}"); } catch { }
             }
             catch
             {
                 // never throw from UI
                 IsLlmConfigured = false;
                 ConfigLabel = "Not Config";
-                try { AgentComposition.Logger?.Invoke("ConfigStatus: compute error, defaulted to Not Config"); } catch { }
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigStatus: compute error, defaulted to Not Config"); } catch { }
             }
         }
 
@@ -483,7 +485,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             try
             {
-                AgentComposition.Logger?.Invoke("[AgenteIALocalControl] Settings button clicked (open modal).");
+                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] Settings button clicked (open modal).");
 
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
                 var title = settings.ActiveServerId ?? string.Empty;
@@ -495,18 +497,18 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                 try
                 {
-                    AgentComposition.Logger?.Invoke($"[AgenteIALocalControl] Opening config modal with title '{win.Title}'");
+                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"[AgenteIALocalControl] Opening config modal with title '{win.Title}'");
                     win.ShowDialog();
-                    AgentComposition.Logger?.Invoke("[AgenteIALocalControl] Config modal closed.");
+                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] Config modal closed.");
                 }
                 catch (Exception ex)
                 {
-                    AgentComposition.Logger?.Invoke($"[AgenteIALocalControl] Error showing config modal: {ex.Message}");
+                    AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"[AgenteIALocalControl] Error showing config modal: {ex.Message}", ex);
                 }
             }
             catch (Exception ex)
             {
-                AgentComposition.Logger?.Invoke($"[AgenteIALocalControl] SettingsButton_Click failure: {ex.Message}");
+                AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"[AgenteIALocalControl] SettingsButton_Click failure: {ex.Message}", ex);
             }
         }
 
@@ -636,19 +638,19 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             try
             {
-                AgentComposition.Logger?.Invoke("[AgenteIALocalControl] RefreshFromSettings invoked.");
+                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] RefreshFromSettings invoked.");
                 var settings = AgentSettingsStore.Load();
                 PopulateSettingsPanel(settings);
                 ComputeIsLlmConfigured(settings);
                 UpdateUiState(CurrentExecutionState);
-                try { AgentComposition.Logger?.Invoke($"ConfigStatus: RefreshFromSettings completed label={ConfigLabel} isConfigured={IsLlmConfigured}"); } catch { }
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigStatus: RefreshFromSettings completed label={ConfigLabel} isConfigured={IsLlmConfigured}"); } catch { }
 
                 // Refresh models for active server asynchronously (fire-and-forget)
                 try { _ = RefreshModelsForActiveServerAsync("RefreshFromSettings"); } catch { }
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Logger?.Invoke($"[AgenteIALocalControl] RefreshFromSettings error: {ex.Message}"); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"[AgenteIALocalControl] RefreshFromSettings error: {ex.Message}", ex); } catch { }
             }
         }
 
@@ -660,14 +662,14 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 if (string.IsNullOrWhiteSpace(baseUrl)) return result;
                 var url = baseUrl.TrimEnd('/') + "/v1/models";
-                AgentComposition.Logger?.Invoke($"ModelsFetch: GET {url}");
+                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: GET {url}");
                 using (var client = new HttpClient())
                 {
                     client.Timeout = TimeSpan.FromSeconds(5);
                     var resp = await client.GetAsync(url);
                     if (!resp.IsSuccessStatusCode)
                     {
-                        AgentComposition.Logger?.Invoke($"ModelsFetch: non-success status {resp.StatusCode}");
+                        AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: non-success status {resp.StatusCode}");
                         return result;
                     }
                     var txt = await resp.Content.ReadAsStringAsync();
@@ -700,13 +702,13 @@ namespace AgenteIALocalVSIX.ToolWindows
                     }
                     catch (Exception ex)
                     {
-                        AgentComposition.Logger?.Invoke($"ModelsFetch: parse error: {ex.Message}");
+                        AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: parse error: {ex.Message}", ex);
                     }
                 }
             }
             catch (Exception ex)
             {
-                AgentComposition.Logger?.Invoke($"ModelsFetch: error: {ex.Message}");
+                AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: error: {ex.Message}", ex);
             }
             return result;
         }
@@ -740,7 +742,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     return;
                 }
 
-                AgentComposition.Logger?.Invoke($"ModelOfLLM: RefreshModelsForActiveServer reason={reason} baseUrl={baseUrl}");
+                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: RefreshModelsForActiveServer reason={reason} baseUrl={baseUrl}");
                 var models = await FetchModelsFromBaseUrlAsync(baseUrl);
                 this.Dispatcher.BeginInvoke(new Action(() =>
                 {
@@ -778,7 +780,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                AgentComposition.Logger?.Invoke($"ModelOfLLM: Refresh error: {ex.Message}");
+                AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: Refresh error: {ex.Message}", ex);
             }
         }
 
@@ -789,7 +791,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 var sel = ModelOfLLM.SelectedItem as string;
                 if (string.IsNullOrEmpty(sel)) return;
-                AgentComposition.Logger?.Invoke($"ModelOfLLM: selection changed modelPresent=true modelIdLength={sel.Length}");
+                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: selection changed modelPresent=true modelIdLength={sel.Length}");
 
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
                 if (settings.Servers == null) settings.Servers = new List<ServerConfig>();
@@ -818,7 +820,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Logger?.Invoke($"ModelOfLLM: selection handler error: {ex.Message}"); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: selection handler error: {ex.Message}", ex); } catch { }
             }
         }
         private void PromptTextBox_KeyDown(object sender, KeyEventArgs e)
@@ -928,7 +930,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 UpdateUiState(ExecutionState.Error);
                 AppendLog("Execution failed: " + ex.Message);
-                Trace.TraceError("[AgenteIALocalControl] Execution failed: " + ex);
+                AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] Execution failed: " + ex.Message, ex);
                 ResponseJsonText.Document = RenderResponseToDocument("{ \"error\": \"Execution failed\" }");
 
                 try { RefreshLogFromFile(); } catch { }
@@ -969,7 +971,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                 // Heuristic: JSON structural + parse attempt
                 bool isJson = false;
-                if (trimmed.StartsWith("{") || trimmed.StartsWith("["))
+                if (trimmed.StartsWith("{") || trimmed.StartsWith("[")))
                 {
                     try
                     {
@@ -1088,7 +1090,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 p.Inlines.Add(new Run(codeFenceBuilder.ToString()));
                                 ApplyCodeBlockStyle(p);
                                 fd.Blocks.Add(p);
-                                try { AgentComposition.Logger?.Invoke("[VERBOSE] MarkdownResponseRenderer: code fence styled"); } catch { }
+                                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: code fence styled"); } catch { }
                                 inCodeFence = false;
                                 codeFenceLang = null;
                                 continue;
@@ -1117,7 +1119,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                             ApplyHeaderStyle(p, level);
                             fd.Blocks.Add(p);
 
-                            try { AgentComposition.Logger?.Invoke("[VERBOSE] MarkdownResponseRenderer: header styled level=" + level); } catch { }
+                            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: header styled level=" + level); } catch { }
 
                             // end any open list
                             if (currentList != null) { fd.Blocks.Add(currentList); currentList = null; }
@@ -1135,7 +1137,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                             AddInlinesToParagraph(p, text);
                             ApplyBlockQuoteStyle(p);
                             fd.Blocks.Add(p);
-                            try { AgentComposition.Logger?.Invoke("[VERBOSE] MarkdownResponseRenderer: blockquote styled"); } catch { }
+                            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: blockquote styled"); } catch { }
                             if (currentList != null) { fd.Blocks.Add(currentList); currentList = null; }
                             continue;
                         }
@@ -1313,7 +1315,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                             break;
                     }
 
-                    try { AgentComposition.Logger?.Invoke("[VERBOSE] MarkdownResponseRenderer: ApplyHeaderStyle level=" + level); } catch { }
+                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: ApplyHeaderStyle level=" + level); } catch { }
                 }
                 catch { }
             }
@@ -1327,7 +1329,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     p.Foreground = HexBrush("#DCDCDC");
                     p.Margin = new Thickness(0, 6, 0, 6);
                     // no padding property on Paragraph; keep simple
-                    try { AgentComposition.Logger?.Invoke("[VERBOSE] MarkdownResponseRenderer: ApplyCodeBlockStyle"); } catch { }
+                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: ApplyCodeBlockStyle"); } catch { }
                 }
                 catch { }
             }
@@ -1338,7 +1340,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 {
                     p.Foreground = HexBrush("#9DA5B4");
                     p.Margin = new Thickness(12, 4, 0, 6);
-                    try { AgentComposition.Logger?.Invoke("[VERBOSE] MarkdownResponseRenderer: ApplyBlockQuoteStyle"); } catch { }
+                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: ApplyBlockQuoteStyle"); } catch { }
                 }
                 catch { }
             }
@@ -1359,7 +1361,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 {
                     list.Margin = new Thickness(0, 2, 0, 6);
                     // left padding simulated by marker indent
-                    try { AgentComposition.Logger?.Invoke("[VERBOSE] MarkdownResponseRenderer: ApplyListStyle"); } catch { }
+                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: ApplyListStyle"); } catch { }
                 }
                 catch { }
             }
@@ -1448,7 +1450,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AppendLog("[VERBOSE] RenderResponseToDocument: unexpected error -> " + ex.Message); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] RenderResponseToDocument: unexpected error -> " + ex.Message, ex); } catch { }
                 return CreatePlainDocument(content ?? raw ?? string.Empty);
             }
         }
@@ -1640,11 +1642,11 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             try
             {
-                if (AgentComposition.Logger != null)
+                try
                 {
-                    try { AgentComposition.Logger.Invoke("[AgenteIALocalControl] " + message); } catch { }
+                    AgentComposition.Info("-", new LogEventId(9100, "VSIX.UI"), "[AgenteIALocalControl] " + message);
                 }
-                else
+                catch
                 {
                     AppendLogFileLine("[AgenteIALocalControl] " + message);
                 }

@@ -67,12 +67,12 @@ namespace AgenteIALocalVSIX.ToolWindows
                 catch { }
 
                 // Log attempt
-                try { AgentComposition.Logger?.Invoke("ConfigModal: DragMove start"); } catch { }
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: DragMove start"); } catch { }
                 this.DragMove();
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Logger?.Invoke($"ConfigModal: DragMove failed: {ex.Message}"); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: DragMove failed: {ex.Message}", ex); } catch { }
             }
         }
 
@@ -106,9 +106,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                     {
                         try
                         {
-                            AgentComposition.Logger?.Invoke($"ConfigModal: FetchModels start for {baseUrl}");
+                            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModels start for {baseUrl}"); } catch { }
                             var models = await FetchModelsAsync(baseUrl);
-                            AgentComposition.Logger?.Invoke($"ConfigModal: FetchModels end for {baseUrl} (count={models?.Count ?? 0})");
+                            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModels end for {baseUrl} (count={models?.Count ?? 0})"); } catch { }
 
                             if (models != null && models.Count > 0)
                             {
@@ -123,20 +123,20 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 else
                                 {
                                     ServerModelCombo_Modal.SelectedIndex = 0;
-                                    AgentComposition.Logger?.Invoke($"ConfigModal: Defaulted model selection to '{ServerModelCombo_Modal.SelectedItem}'");
+                                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Defaulted model selection to '{ServerModelCombo_Modal.SelectedItem}'"); } catch { }
                                 }
                             }
                         }
                         catch (Exception ex)
                         {
-                            AgentComposition.Logger?.Invoke($"ConfigModal: FetchModels error on load: {ex.Message}");
+                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModels error on load: {ex.Message}", ex); } catch { }
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                AgentComposition.Logger?.Invoke($"ConfigModal: Load error: {ex.Message}");
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Load error: {ex.Message}", ex); } catch { }
             }
         }
 
@@ -151,7 +151,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     return;
                 }
 
-                AgentComposition.Logger?.Invoke($"ConfigModal: BaseUrl changed in modal to {newBase}; fetching models...");
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: BaseUrl changed in modal to {newBase}; fetching models..."); } catch { }
                 var models = await FetchModelsAsync(newBase);
                 ServerModelCombo_Modal.Items.Clear();
                 if (models != null && models.Count > 0)
@@ -162,7 +162,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                AgentComposition.Logger?.Invoke($"ConfigModal: Error re-fetching models on BaseUrl change: {ex.Message}");
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Error re-fetching models on BaseUrl change: {ex.Message}", ex); } catch { }
             }
         }
 
@@ -177,12 +177,12 @@ namespace AgenteIALocalVSIX.ToolWindows
                 using (var client = new System.Net.Http.HttpClient())
                 {
                     client.Timeout = TimeSpan.FromSeconds(5);
-                    AgentComposition.Logger?.Invoke($"ConfigModal: FetchModelsAsync GET {url}");
+                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModelsAsync GET {url}"); } catch { }
 
                     var resp = await client.GetAsync(url);
                     if (!resp.IsSuccessStatusCode)
                     {
-                        AgentComposition.Logger?.Invoke($"ConfigModal: FetchModelsAsync non-success status: {resp.StatusCode}");
+                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModelsAsync non-success status: {resp.StatusCode}"); } catch { }
                         return result;
                     }
 
@@ -235,13 +235,13 @@ namespace AgenteIALocalVSIX.ToolWindows
                     }
                     catch (Exception ex)
                     {
-                        AgentComposition.Logger?.Invoke($"ConfigModal: FetchModelsAsync parse error: {ex.Message}");
+                        try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModelsAsync parse error: {ex.Message}", ex); } catch { }
                     }
                 }
             }
             catch (Exception ex)
             {
-                AgentComposition.Logger?.Invoke($"ConfigModal: FetchModelsAsync error: {ex.Message}");
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModelsAsync error: {ex.Message}", ex); } catch { }
             }
 
             return result;
@@ -249,7 +249,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            AgentComposition.Logger?.Invoke("ConfigModal: Save start");
+            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Save start"); } catch { }
             try
             {
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
@@ -287,14 +287,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                 catch { }
                 selectedModel = (selectedModel ?? string.Empty).Trim();
 
-                AgentComposition.Logger?.Invoke($"ConfigModal: Save activeId='{targetId}', baseUrlPresent={(!string.IsNullOrWhiteSpace(srv.BaseUrl)).ToString()}, modelPresent={(string.IsNullOrEmpty(selectedModel) ? "false" : "true")} ");
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Save activeId='{targetId}', baseUrlPresent={(!string.IsNullOrWhiteSpace(srv.BaseUrl)).ToString()}, modelPresent={(string.IsNullOrEmpty(selectedModel) ? "false" : "true")} "); } catch { }
 
                 try { if (!string.IsNullOrEmpty(selectedModel)) srv.Model = selectedModel; } catch { }
 
                 settings.ActiveServerId = targetId;
                 AgentSettingsStore.Save(settings);
 
-                AgentComposition.Logger?.Invoke($"ConfigModal: Save persisted ActiveServerId={settings.ActiveServerId}, BaseUrl={(srv.BaseUrl ?? "(empty)")}, ModelLength={(srv.Model != null ? srv.Model.Length : 0)}");
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Save persisted ActiveServerId={settings.ActiveServerId}, BaseUrl={(srv.BaseUrl ?? "(empty)" )}, ModelLength={(srv.Model != null ? srv.Model.Length : 0)}"); } catch { }
 
                 // Recompose and refresh
                 try
@@ -303,7 +303,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 catch (Exception ex)
                 {
-                    AgentComposition.Logger?.Invoke($"ConfigModal: RecomposeFromSettings error: {ex.Message}");
+                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: RecomposeFromSettings error: {ex.Message}", ex); } catch { }
                 }
 
                 // Refresh owner control UI state using public API (no reflection)
@@ -330,28 +330,28 @@ namespace AgenteIALocalVSIX.ToolWindows
                         try
                         {
                             found.RefreshFromSettings();
-                            AgentComposition.Logger?.Invoke("ConfigModal: RefreshFromSettings called on owner control.");
+                            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: RefreshFromSettings called on owner control."); } catch { }
                         }
                         catch (Exception ex)
                         {
-                            AgentComposition.Logger?.Invoke($"ConfigModal: Error calling RefreshFromSettings: {ex.Message}");
+                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Error calling RefreshFromSettings: {ex.Message}", ex); } catch { }
                         }
                     }
                     else
                     {
-                        AgentComposition.Logger?.Invoke("ConfigModal: Owner AgenteIALocalControl not found to refresh UI after save.");
+                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Owner AgenteIALocalControl not found to refresh UI after save."); } catch { }
                     }
                 }
                 catch (Exception ex)
                 {
-                    AgentComposition.Logger?.Invoke($"ConfigModal: Error refreshing owner UI: {ex.Message}");
+                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Error refreshing owner UI: {ex.Message}", ex); } catch { }
                 }
 
-                AgentComposition.Logger?.Invoke("ConfigModal: Save end");
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Save end"); } catch { }
             }
             catch (Exception ex)
             {
-                AgentComposition.Logger?.Invoke($"ConfigModal: Save error: {ex.Message}");
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Save error: {ex.Message}", ex); } catch { }
             }
             finally
             {
@@ -367,7 +367,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                AgentComposition.Logger?.Invoke($"ConfigModal: Close error: {ex.Message}");
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Close error: {ex.Message}", ex); } catch { }
             }
         }
 
