@@ -7,6 +7,9 @@ using Task = System.Threading.Tasks.Task;
 using AgenteIALocalVSIX.Commands;
 using System.IO;
 using System.Text;
+using AgenteIALocal.Core.Logging;
+using AgenteIALocal.Infrastructure.LoggingV2;
+using AgenteIALocalVSIX.LoggingV2;
 
 
 namespace AgenteIALocalVSIX
@@ -78,6 +81,23 @@ namespace AgenteIALocalVSIX
                 };
 
                 AgentComposition.Logger = fileLogger;
+
+                // New: create Logging V2 pipeline and expose on AgentComposition without replacing existing Logger
+                try
+                {
+                    var sinks = new CompositeLogSink(new ILogSink[] {
+                        new VsActivityLogSink(),
+                        new VsixLegacyFileLogSink("AgenteIALocal")
+                    });
+
+                    var v2 = new AgentLoggerV2(sinks);
+                    AgentComposition.LoggerV2 = v2;
+                }
+                catch
+                {
+                    // fail-safe: do not break package init
+                }
+
                 AgentComposition.EnsureComposition();
                 if (AgentComposition.AgentService != null)
                 {

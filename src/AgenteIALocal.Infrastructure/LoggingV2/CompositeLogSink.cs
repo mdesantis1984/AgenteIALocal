@@ -4,7 +4,7 @@ using AgenteIALocal.Core.Logging;
 
 namespace AgenteIALocal.Infrastructure.LoggingV2
 {
-    internal class CompositeLogSink : ILogSink
+    public class CompositeLogSink : ILogSink
     {
         private readonly IReadOnlyList<ILogSink> sinks;
 

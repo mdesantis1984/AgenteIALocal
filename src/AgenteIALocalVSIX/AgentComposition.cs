@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AgenteIALocal.Core.Settings;
 using AgenteIALocal.Infrastructure.Agents;
 using AgenteIALocal.Core.Models.Agent;
+using AgenteIALocal.Core.Logging;
 
 namespace AgenteIALocalVSIX
 {
@@ -22,6 +23,9 @@ namespace AgenteIALocalVSIX
 
         // Optional logger hook that consumers can set. When null, Trace is used as fallback.
         public static Action<string> Logger { get; set; }
+
+        // New: V2 logger instance exposed for later wiring. Not used by current code yet.
+        public static AgenteIALocal.Core.Logging.IAgentLoggerV2 LoggerV2 { get; set; }
 
         public static void EnsureComposition()
         {
