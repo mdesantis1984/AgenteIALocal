@@ -62,6 +62,7 @@
     <Compile Include="Commands\VsctConsistencyValidator.cs" />
     <Compile Include="Commons\VsixExtensions.cs" />
     <Compile Include="Execution\MockAgentExecutor.cs" />
+    <Compile Include="LoggingV2\VsActivityLogSink.cs" />
     <Compile Include="Logging\ActivityLogHelper.cs" />
     <Compile Include="Logging\FileAgentLogger.cs" />
     <Compile Include="Options\AgentOptionsViewModel.cs" />
