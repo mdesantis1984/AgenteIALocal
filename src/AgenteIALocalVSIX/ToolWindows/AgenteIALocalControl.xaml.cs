@@ -971,7 +971,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                 // Heuristic: JSON structural + parse attempt
                 bool isJson = false;
-                if (trimmed.StartsWith("{") || trimmed.StartsWith("[")))
+                if (trimmed.StartsWith("{") || trimmed.StartsWith("["))
                 {
                     try
                     {
