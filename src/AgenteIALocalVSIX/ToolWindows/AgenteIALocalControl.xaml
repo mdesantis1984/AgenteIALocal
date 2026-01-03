@@ -9,6 +9,7 @@
 
   <UserControl.Resources>
     <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FF1E1E22" />
+    <SolidColorBrush x:Key="HeaderBoneEmphasisBrush" Color="#FFE6DDC8" />
     <SolidColorBrush x:Key="HeaderHighEmphasisBrush" Color="#FFFFFFFF" />
     <SolidColorBrush x:Key="HeaderMediumEmphasisBrush" Color="#FF424242" />
     <SolidColorBrush x:Key="HeaderCyanHoverBrush" Color="#00BCD4" />
@@ -682,15 +683,7 @@
                     Click="RevertChanges_Click">
               <md:PackIcon Kind="DeleteSweepOutline" Width="14" Height="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Style="{StaticResource IconHoverZoomPackIconStrongStyle}" />
             </Button>
-            <Button Width="28" Height="28" Margin="8,0,0,0"
-                    Style="{StaticResource IconButtonChromeStyle}"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
-                    BorderThickness="0"
-                    Foreground="#FFF85149"
-                    Click="ClearChanges_Click">
-              <md:PackIcon Kind="EraserVariant" Width="14" Height="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Style="{StaticResource IconHoverZoomPackIconStrongStyle}" />
-            </Button>
+            <!-- Clear changes button removed -->
           </StackPanel>
         </Expander.Tag>
 
@@ -1525,7 +1518,7 @@
             <!-- File size (auto-updated) -->
             <TextBlock Text="{Binding LogFileSizeLabel, FallbackValue=0 K}"
                        VerticalAlignment="Center"
-                       Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                       Foreground="{StaticResource HeaderBoneEmphasisBrush}"
                        Style="{StaticResource Text.Caption}"
                        Margin="0,0,12,0" />
 

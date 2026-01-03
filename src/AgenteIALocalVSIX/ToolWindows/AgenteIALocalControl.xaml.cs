@@ -276,23 +276,6 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        private void ClearChanges_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var res = MessageBox.Show("You are clearing the list of changes. Are you sure?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-                if (res != MessageBoxResult.Yes) return;
-
-                ModifiedFiles.Clear();
-                RaisePropertyChanged(nameof(ModifiedFiles));
-                RaisePropertyChanged(nameof(ModifiedFilesCount));
-            }
-            catch
-            {
-                // ignore
-            }
-        }
-
         private void RefreshChatCombo()
         {
             try
