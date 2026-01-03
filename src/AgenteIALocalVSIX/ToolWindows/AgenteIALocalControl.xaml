@@ -497,18 +497,11 @@
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0"
+                <Border Grid.Column="0"
                 Height="36"
                 VerticalAlignment="Center"
-                Margin="0,0,12,0" >
-          <md:PackIcon Kind="ChatBubbleOutline"
-                       Width="18"
-                       Height="18"
-                       VerticalAlignment="Center"
-                       HorizontalAlignment="Center"
-                       Foreground="#D0D0D0"
-                       Style="{StaticResource IconHoverZoomPackIconStyle}" />
-        </Border>
+                Margin="0,0,0,0" >
+                </Border>
 
         <ComboBox x:Name="ChatComboBox"
                   Grid.Column="1"
@@ -562,7 +555,7 @@
       </Grid>
 
       <!-- CHAT SURFACE (single conversation history) -->
-      <Border Grid.Row="1" MinHeight="180" Margin="0,8,0,8" Padding="12" BorderThickness="0" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" CornerRadius="4" Background="{StaticResource Brush.LayoutBg}">
+      <Border Grid.Row="1" MinHeight="180" Margin="12,0,12,8"  BorderThickness="0" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" CornerRadius="4" Background="{StaticResource Brush.LayoutBg}">
         <RichTextBox x:Name="ResponseJsonText"
                      IsReadOnly="True"
                      IsDocumentEnabled="True"
@@ -747,7 +740,7 @@
       </Expander>
 
       <!-- PROMPT AREA (fixed bottom panel) -->
-      <Grid x:Name="PromptAreaGrid" Grid.Row="3" Margin="12,8,12,0">
+      <Grid x:Name="PromptAreaGrid" Grid.Row="3" Margin="12,0,12,0">
         <Border Background="{StaticResource Brush.FooterBg}"
                 BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
                 BorderThickness="1"
@@ -1437,7 +1430,7 @@
 
       <!-- LOG (matches Changes accordion style) -->
       <Expander Grid.Row="4"
-                Margin="12,0,12,12"
+                Margin="12,8,12,8"
                 BorderThickness="1"
                 BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
                 Background="{StaticResource Brush.ChangesBg}"
