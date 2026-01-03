@@ -1,4 +1,4 @@
-# Arquitectura — Agente IA Local (VSIX clásico)
+# Architecture — Agente IA Local (classic VSIX)
 
 > Documento de arquitectura canónico (ES). Describe decisiones y composición técnica verificable en el código. No describe UX pixel-perfect.
 
@@ -9,7 +9,7 @@ Este documento describe, de forma técnica y verificable en el repositorio:
 - La arquitectura de la extensión **VSIX clásica** (host, composición, configuración, logging).
 - La separación por proyectos/capas en la solución.
 - El punto único de composición del agente y el estado real de los proveedores LLM.
-- Dónde y cómo se persiste configuración (Options Page y `settings.json`).
+- Dónde y cómo se persiste la configuración (Options Page y `settings.json`).
 
 Este documento **NO** cubre:
 
@@ -44,7 +44,7 @@ Referencia:
 
 Referencias:
 - `src/AgenteIALocalVSIX/AgenteIALocalVSIXPackage.cs`
-- `src/AgenteIALocalVSIX/Logging/ActivityLogHelper.cs`
+- `src/AgenteIALocalVSIX/LoggingV2/VsActivityLogSink.cs`
 
 ## 🧩 Estructura por capas / proyectos
 
@@ -193,34 +193,29 @@ Referencias:
 
 ## 🧾 Observabilidad y logging
 
-### Log a archivo
+### Log en archivo
 
-- El runtime escribe logs a:
-  - `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log`
-- El Package inicializa el logger temprano y lo expone a la composición.
+- Runtime escribe logs en:
+  - `%LOCALAPPDATA%\\AgenteIALocal\\logs\\AgenteIALocal.log`
+- El Package inicializa la tubería Logger V2 y expone `AgentComposition.LoggerV2` como punto único de logging para el código en el VSIX.
 
 Referencia:
 - `src/AgenteIALocalVSIX/AgenteIALocalVSIXPackage.cs`
 
-### ActivityLogHelper
+### ActivityLog (V2)
 
-- `ActivityLogHelper` encapsula escrituras al ActivityLog de Visual Studio de forma defensiva (fail-safe).
+- Las escrituras en ActivityLog se realizan mediante el sink V2 `LoggingV2/VsActivityLogSink.cs` que encapsula escrituras defensivas al ActivityLog de Visual Studio.
 
 Referencia:
-- `src/AgenteIALocalVSIX/Logging/ActivityLogHelper.cs`
+- `src/AgenteIALocalVSIX/LoggingV2/VsActivityLogSink.cs`
 
 ## ✅ Hechos verificables (tabla)
 
 | Componente | Archivo/Clase | Descripción | Estado |
 |---|---|---|---|
-| Package (autoload, ToolWindow, Options) | `src/AgenteIALocalVSIX/AgenteIALocalVSIXPackage.cs` (`AgenteIALocalVSIXPackage`) | Autoload (con/sin solución), ToolWindow y Options Page | ✅ real |
-| Composición del agente | `src/AgenteIALocalVSIX/AgentComposition.cs` (`AgentComposition`) | Mock por defecto + intento de backend real (LM Studio) por `settings.json` | ✅ real |
-| Config por archivo | `src/AgenteIALocalVSIX/AgentSettingsStore.cs` (`AgentSettingsStore`) | `settings.json` v1 en `%LOCALAPPDATA%\AgenteIALocal` y preservación de campos desconocidos | ✅ real |
-| Options Page | `src/AgenteIALocalVSIX/Options/AgenteOptionsPage.cs` (`AgenteOptionsPage`) | Persistencia en VS Settings Store (colección `AgenteIALocal`) | ✅ real |
-| Proveedor LM Studio | `src/AgenteIALocal.Infrastructure/Agents/LmStudioClient.cs` (`LmStudioClient`) | Cliente HTTP real a `"/v1/chat/completions"` con parsing defensivo | ✅ real |
-| Resolver LM Studio | `src/AgenteIALocal.Infrastructure/Agents/LmStudioEndpointResolver.cs` (`LmStudioEndpointResolver`) | Normalización/resolución de endpoints para LM Studio | ✅ real |
-| Proveedor JAN | `src/AgenteIALocal.Infrastructure/Agents/JanServerClient.cs` (`JanServerClient`) | Implementación simulada (stub), sin HTTP real y no cableada en el VSIX | ⚠️ stub |
-| ActivityLog | `src/AgenteIALocalVSIX/Logging/ActivityLogHelper.cs` (`ActivityLogHelper`) | Escritura defensiva en ActivityLog | ✅ real |
+| Package (autoload, ToolWindow, Options) | `src/AgenteIALocalVSIX/AgenteIALocalVSIXPackage.cs` (`AgenteIALocalVSIXPackage`) | Autoload (with/without solution), ToolWindow y Options Page | ✅ real |
+| Agent composition | `src/AgenteIALocalVSIX/AgentComposition.cs` (`AgentComposition`) | Mock por defecto + intento de backend real (LM Studio) vía `settings.json` | ✅ real |
+| ActivityLog sink (V2) | `src/AgenteIALocalVSIX/LoggingV2/VsActivityLogSink.cs` | Escrituras defensivas en ActivityLog de Visual Studio | ✅ real |
 
 ## ⚠️ Ambigüedades / pendientes (sin inventar)
 

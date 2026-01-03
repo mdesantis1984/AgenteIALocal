@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using AgenteIALocal.Core.Settings;
+using AgenteIALocal.Core.Logging;
 
 namespace AgenteIALocalVSIX.Options
 {
@@ -27,7 +28,7 @@ namespace AgenteIALocalVSIX.Options
 
                 try
                 {
-                    AgentComposition.Logger?.Invoke("Options: Provider changed " + old + " -> " + provider);
+                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_Composition, "Options: Provider changed " + old + " -> " + provider);
                 }
                 catch { }
             }

@@ -39,7 +39,7 @@ A **classic VSIX** extension for Visual Studio that integrates a local AI agent 
 
 ⚠️ **LLM backend**
 - There is composition with an alternative:
-  - Default: `MockCopilotExecutor` via `AgentComposition.MockAgentService`.
+  - Default: `MockAgentExecutor` via `AgentComposition.MockAgentService`.
   - Real backend (LM Studio only in the current VSIX composition): `AgentComposition.TryComposeRealBackend()` creates `LmStudioClient` + `Application.AgentService` and exposes a synchronous adapter.
 - JAN in Infrastructure is implemented as a simulation: `AgenteIALocal.Infrastructure/Agents/JanServerClient.cs` returns a simulated response.
 
@@ -65,6 +65,7 @@ Code evidence:
 - Command: `Commands/OpenAgenteIALocalCommand.cs`.
 - ToolWindow opening: use of `IVsUIShell.FindToolWindow(...).Show()`.
 
+
 ## How to use it (real user flow)
 
 ### 1) Open the ToolWindow
@@ -88,12 +89,12 @@ Persistence:
 - Execute with the button (send icon) or with Enter (Enter sends, Shift+Enter keeps a newline): `PromptTextBox_KeyDown`.
 
 Real execution:
-- `RunButton_Click` builds a `CopilotRequest` using:
+- `RunButton_Click` builds an `AgentHostRequest` using:
   - `Action`: user text
   - `SolutionName` and `ProjectCount`: UI values
 - Then it executes in background:
   - If `AgentComposition.AgentService != null`: `AgentService.Execute(req)`
-  - Otherwise: alternative `MockCopilotExecutor.Execute(req)`
+  - Otherwise: alternative `MockAgentExecutor.Execute(req)`
 
 ### 5) Review results and “changes”
 - The response is shown in `ResponseJsonText` (read-only) with pre-processing `ChatRenderPreprocessor.Preprocess(...)`.
@@ -153,12 +154,17 @@ Selection at runtime:
 
 ### File log
 - Location: `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log`.
-- The Package registers a simple logger on initialization: `AgenteIALocalVSIXPackage.InitializeAsync`.
-- The ToolWindow also writes to that file (when `AgentComposition.Logger` is not available, it uses a local alternative).
+- The Package registers a V2 logging pipeline on initialization: `AgenteIALocalVSIXPackage.InitializeAsync` wires `AgentComposition.LoggerV2`.
+- The ToolWindow also writes to that file via the V2 file sink when available, and falls back to a local append-to-file helper when necessary.
 
-### Visual Studio ActivityLog
-- Helper: `Logging/ActivityLogHelper.cs`.
-- Use: the command logs events and errors to the ActivityLog when possible.
+### Visual Studio ActivityLog (V2 sink)
+- The VSIX uses a V2 sink that writes to the Visual Studio activity/diagnostic log: `src/AgenteIALocalVSIX/LoggingV2/VsActivityLogSink.cs`.
+
+### Logging implementation components
+- VSIX sink: `LoggingV2/VsActivityLogSink.cs` (writes to Visual Studio ActivityLog defensively).
+- Infra sink: `LoggingV2/VsixFileLogSink.cs` (writes formatted entries to local files under `%LOCALAPPDATA%\AgenteIALocal\logs`).
+- Core formatter: `Logging/LogEntryTextFormatter.cs` (text formatting of log entries).
+- Core V2 contract: `Logging/IAgentLoggerV2` (V2 logger interface used by composition).
 
 ### What is recorded (minimum verifiable)
 - Package initialization events.
@@ -173,7 +179,7 @@ Selection at runtime:
 - `AgenteIALocal.Core`
   - Provider models and settings (e.g. `AgentProviderType`, `LmStudioSettings`, `JanServerSettings`).
 - `AgenteIALocal.Application`
-  - Agent services and logging contracts (e.g. `Application.Agents.AgentService`, `IAgentLogger`).
+  - Agent services and logging contracts (V2 logger abstractions).
 - `AgenteIALocal.Infrastructure`
   - Provider clients (e.g. `LmStudioClient`, `JanServerClient` and endpoint resolvers).
 - `AgenteIALocal.UI`

@@ -18,6 +18,7 @@ namespace AgenteIALocal.Infrastructure.Agents
 
         public Task<AgentResponse> ExecuteAsync(AgentRequest request, CancellationToken cancellationToken)
         {
+            // include request.CorrelationId in returned data only as metadata if needed by caller
             return Task.FromResult(new AgentResponse
             {
                 IsSuccess = true,

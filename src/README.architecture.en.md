@@ -40,11 +40,11 @@ Reference:
 ### Command registration (VSCT) and threading considerations
 
 - Package initialization runs command setup in `InitializeAsync` and protects access to services that require the UI thread.
-- Writes to ActivityLog use fail-safe helpers and UI thread validation.
+- Writes to ActivityLog now use the V2 sink (`LoggingV2/VsActivityLogSink.cs`) and are performed defensively.
 
 References:
 - `src/AgenteIALocalVSIX/AgenteIALocalVSIXPackage.cs`
-- `src/AgenteIALocalVSIX/Logging/ActivityLogHelper.cs`
+- `src/AgenteIALocalVSIX/LoggingV2/VsActivityLogSink.cs`
 
 ## 🧩 Layer / project structure
 
@@ -196,18 +196,18 @@ References:
 ### File logging
 
 - Runtime writes logs to:
-  - `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log`
-- The Package initializes the logger early and exposes it to composition.
+  - `%LOCALAPPDATA%\\AgenteIALocal\\logs\\AgenteIALocal.log`
+- The Package initializes the Logger V2 pipeline and exposes `AgentComposition.LoggerV2` as the single logging entry point for code in the VSIX.
 
 Reference:
 - `src/AgenteIALocalVSIX/AgenteIALocalVSIXPackage.cs`
 
-### ActivityLogHelper
+### ActivityLog (V2)
 
-- `ActivityLogHelper` encapsulates writes to the Visual Studio ActivityLog defensively (fail-safe).
+- ActivityLog writes are performed via the V2 sink `LoggingV2/VsActivityLogSink.cs` which encapsulates defensive writes to the Visual Studio ActivityLog.
 
 Reference:
-- `src/AgenteIALocalVSIX/Logging/ActivityLogHelper.cs`
+- `src/AgenteIALocalVSIX/LoggingV2/VsActivityLogSink.cs`
 
 ## ✅ Verifiable facts (table)
 
@@ -215,12 +215,9 @@ Reference:
 |---|---|---|---|
 | Package (autoload, ToolWindow, Options) | `src/AgenteIALocalVSIX/AgenteIALocalVSIXPackage.cs` (`AgenteIALocalVSIXPackage`) | Autoload (with/without solution), ToolWindow and Options Page | ✅ real |
 | Agent composition | `src/AgenteIALocalVSIX/AgentComposition.cs` (`AgentComposition`) | Default mock + attempt of real backend (LM Studio) via `settings.json` | ✅ real |
-| File-based config | `src/AgenteIALocalVSIX/AgentSettingsStore.cs` (`AgentSettingsStore`) | `settings.json` v1 in `%LOCALAPPDATA%\AgenteIALocal` and unknown fields preservation | ✅ real |
-| Options Page | `src/AgenteIALocalVSIX/Options/AgenteOptionsPage.cs` (`AgenteOptionsPage`) | Persistence in VS Settings Store (collection `AgenteIALocal`) | ✅ real |
+| File-based config | `src/AgenteIALocalVSIX/AgentSettingsStore.cs` (`AgentSettingsStore`) | `settings.json` v1 in `%LOCALAPPDATA%\\AgenteIALocal` and unknown fields preservation | ✅ real |
 | LM Studio provider | `src/AgenteIALocal.Infrastructure/Agents/LmStudioClient.cs` (`LmStudioClient`) | Real HTTP client to `"/v1/chat/completions"` with defensive parsing | ✅ real |
-| LM Studio resolver | `src/AgenteIALocal.Infrastructure/Agents/LmStudioEndpointResolver.cs` (`LmStudioEndpointResolver`) | Endpoint normalization/resolution for LM Studio | ✅ real |
-| JAN provider | `src/AgenteIALocal.Infrastructure/Agents/JanServerClient.cs` (`JanServerClient`) | Simulated implementation (stub), no real HTTP and not wired in the VSIX | ⚠️ stub |
-| ActivityLog | `src/AgenteIALocalVSIX/Logging/ActivityLogHelper.cs` (`ActivityLogHelper`) | Defensive writing to ActivityLog | ✅ real |
+| ActivityLog sink (V2) | `src/AgenteIALocalVSIX/LoggingV2/VsActivityLogSink.cs` | Writes to Visual Studio ActivityLog defensively | ✅ real |
 
 ## ⚠️ Ambiguities / pending items (without inventing)
 

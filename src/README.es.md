@@ -39,7 +39,7 @@ Extensión **VSIX clásica** para Visual Studio que integra un agente de IA loca
 
 ⚠️ **Backend LLM**
 - Existe composición con alternativa:
-  - Default: `MockCopilotExecutor` vía `AgentComposition.MockAgentService`.
+  - Default: `MockAgentExecutor` vía `AgentComposition.MockAgentService`.
   - Backend real (solo LM Studio en la composición VSIX actual): `AgentComposition.TryComposeRealBackend()` crea `LmStudioClient` + `Application.AgentService` y expone un adaptador síncrono.
 - JAN en Infrastructure está como implementación simulada: `AgenteIALocal.Infrastructure/Agents/JanServerClient.cs` devuelve respuesta simulada.
 
@@ -88,12 +88,12 @@ Persistencia:
 - Ejecuta con el botón (icono enviar) o con Enter (Enter envía, Shift+Enter mantiene salto): `PromptTextBox_KeyDown`.
 
 Ejecución real:
-- `RunButton_Click` arma un `CopilotRequest` usando:
+- `RunButton_Click` arma un `AgentHostRequest` usando:
   - `Action`: texto del usuario
   - `SolutionName` y `ProjectCount`: valores de UI
 - Luego ejecuta en background:
   - Si `AgentComposition.AgentService != null`: `AgentService.Execute(req)`
-  - Si no: alternativa `MockCopilotExecutor.Execute(req)`
+  - Si no: alternativa `MockAgentExecutor.Execute(req)`
 
 ### 5) Revisar resultados y “cambios”
 - La respuesta se muestra en `ResponseJsonText` (solo lectura) con preprocesamiento `ChatRenderPreprocessor.Preprocess(...)`.
@@ -152,13 +152,18 @@ Selección en ejecución:
 ## Observabilidad y logging (dónde ver logs, qué se registra)
 
 ### Log en archivo
-- Ubicación: `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log`.
-- El Package registra un logger simple al inicializar: `AgenteIALocalVSIXPackage.InitializeAsync`.
-- La ToolWindow también escribe en ese archivo (cuando `AgentComposition.Logger` no está disponible, usa alternativa local).
+- Ubicación: `%LOCALAPPDATA%\\AgenteIALocal\\logs\\AgenteIALocal.log`.
+- El Package registra la tubería de logging V2 en la inicialización: `AgenteIALocalVSIXPackage.InitializeAsync` configura `AgentComposition.LoggerV2`.
+- La ToolWindow escribe en ese archivo a través del sink V2 de fichero cuando está disponible y en fallback usa una escritura local en archivo.
 
-### ActivityLog de Visual Studio
-- Helper: `Logging/ActivityLogHelper.cs`.
-- Uso: el comando registra eventos y errores en ActivityLog cuando puede.
+### ActivityLog de Visual Studio (sink V2)
+- El VSIX usa un sink V2 que escribe en el ActivityLog/diagnóstico de Visual Studio: `src/AgenteIALocalVSIX/LoggingV2/VsActivityLogSink.cs`.
+
+### Componentes de logging
+- Sink VSIX: `LoggingV2/VsActivityLogSink.cs` (escribe en ActivityLog de Visual Studio de forma defensiva).
+- Sink fichero: `LoggingV2/VsixFileLogSink.cs` (escribe entradas formateadas en archivos locales bajo `%LOCALAPPDATA%\\AgenteIALocal\\logs`).
+- Formateador core: `Logging/LogEntryTextFormatter.cs` (formateo de entradas de log en texto).
+- Contrato V2 core: `Logging/IAgentLoggerV2` (interfaz V2 usada por la composición).
 
 ### Qué se registra (mínimo verificable)
 - Eventos de inicialización del Package.
@@ -173,7 +178,7 @@ Selección en ejecución:
 - `AgenteIALocal.Core`
   - Modelos y settings de proveedores (por ejemplo `AgentProviderType`, `LmStudioSettings`, `JanServerSettings`).
 - `AgenteIALocal.Application`
-  - Servicios de agente y contratos de logging (por ejemplo `Application.Agents.AgentService`, `IAgentLogger`).
+  - Servicios de agente y contratos de logging V2 (por ejemplo `Application.Agents.AgentService`, `IAgentLoggerV2`).
 - `AgenteIALocal.Infrastructure`
   - Clientes de proveedores (por ejemplo `LmStudioClient`, `JanServerClient` y resolvers de endpoint).
 - `AgenteIALocal.UI`
@@ -184,7 +189,7 @@ Selección en ejecución:
 ## Troubleshooting (errores típicos y qué verificar)
 
 ### El comando aparece pero al click no abre la ToolWindow
-- Verificar el log en ActivityLog y en `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log`.
+- Verificar el log en ActivityLog y en `%LOCALAPPDATA%\\AgenteIALocal\\logs\\AgenteIALocal.log`.
 - Confirmar que el Package cargó (autoload) y que `OpenAgenteIALocalCommand.InitializeAsync` registró el comando.
 
 ### Run deshabilitado / configuración incompleta

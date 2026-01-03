@@ -1,16 +1,21 @@
+using AgenteIALocal.Core.Logging;
+using AgenteIALocal.Core.Models.Agent;
 using AgenteIALocalVSIX.Chats;
-using AgenteIALocalVSIX.Contracts;
 using AgenteIALocalVSIX.Execution;
 using MaterialDesignThemes.Wpf;
+using Microsoft.VisualStudio.Shell;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -36,16 +41,20 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         // New bindable properties for control enablement
         private bool runButtonEnabled;
-        public bool RunButtonEnabled { get { return runButtonEnabled; } private set { if (runButtonEnabled == value) return; runButtonEnabled = value; OnPropertyChanged(nameof(RunButtonEnabled)); } }
+        public bool RunButtonEnabled { get { return runButtonEnabled; } private set { if (runButtonEnabled == value) return; runButtonEnabled = value; RaisePropertyChanged(nameof(RunButtonEnabled)); } }
 
         private bool clearButtonEnabled;
-        public bool ClearButtonEnabled { get { return clearButtonEnabled; } private set { if (clearButtonEnabled == value) return; clearButtonEnabled = value; OnPropertyChanged(nameof(ClearButtonEnabled)); } }
+        public bool ClearButtonEnabled { get { return clearButtonEnabled; } private set { if (clearButtonEnabled == value) return; clearButtonEnabled = value; RaisePropertyChanged(nameof(ClearButtonEnabled)); } }
 
         private bool isPromptReadOnly;
-        public bool IsPromptReadOnly { get { return isPromptReadOnly; } private set { if (isPromptReadOnly == value) return; isPromptReadOnly = value; OnPropertyChanged(nameof(IsPromptReadOnly)); } }
+        public bool IsPromptReadOnly { get { return isPromptReadOnly; } private set { if (isPromptReadOnly == value) return; isPromptReadOnly = value; RaisePropertyChanged(nameof(IsPromptReadOnly)); } }
 
         private bool isLlmConfigured;
-        private bool IsLlmConfigured { get { return isLlmConfigured; } set { if (isLlmConfigured == value) return; isLlmConfigured = value; OnPropertyChanged(nameof(IsLlmConfigured)); } }
+        private bool IsLlmConfigured { get { return isLlmConfigured; } set { if (isLlmConfigured == value) return; isLlmConfigured = value; RaisePropertyChanged(nameof(IsLlmConfigured)); } }
+
+        // Config status label (bound in XAML)
+        private string configLabel = "Not Config";
+        public string ConfigLabel { get { return configLabel; } private set { if (configLabel == value) return; configLabel = value ?? "Not Config"; RaisePropertyChanged(nameof(ConfigLabel)); } }
 
         // Chat state
         private List<ChatSession> chats = new List<ChatSession>();
@@ -54,7 +63,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         // Mock modified files
         public List<string> ModifiedFiles { get; private set; } = new List<string> { "ProjectA/File1.cs", "ProjectB/Helper.cs", "Shared/Utils.cs" };
         private bool isChangesExpanded = false;
-        public bool IsChangesExpanded { get { return isChangesExpanded; } set { if (isChangesExpanded == value) return; isChangesExpanded = value; OnPropertyChanged(nameof(IsChangesExpanded)); } }
+        public bool IsChangesExpanded { get { return isChangesExpanded; } set { if (isChangesExpanded == value) return; isChangesExpanded = value; RaisePropertyChanged(nameof(IsChangesExpanded)); } }
 
         public ExecutionState CurrentExecutionState
         {
@@ -63,7 +72,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 if (currentExecutionState == value) return;
                 currentExecutionState = value;
-                OnPropertyChanged(nameof(CurrentExecutionState));
+                RaisePropertyChanged(nameof(CurrentExecutionState));
                 UpdateStateProperties(value);
             }
         }
@@ -71,6 +80,11 @@ namespace AgenteIALocalVSIX.ToolWindows
         private CancellationTokenSource logRefreshCts;
 
         private static bool _mahAppsResolveHooked;
+
+        // Active correlation id for the current Run execution (used by logging in this control)
+        private string activeCorrelationId = null;
+        private CancellationTokenSource _runCts;
+        private int _runVersion;
 
         private static void EnsureMahAppsIconPacksLoaded()
         {
@@ -87,7 +101,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
                     return;
 
-                 void LoadIfExists(string path)
+                void LoadIfExists(string path)
                 {
                     if (File.Exists(path))
                         Assembly.LoadFrom(path);
@@ -133,7 +147,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             // Initial UI state - will be refreshed after loading settings
             UpdateUiState(ExecutionState.Idle);
 
-            // Do not override AgentComposition.Logger here; package provides a file-based logger.
+            // Do not override AgentComposition.LoggerV2 here; package wires the V2 logging pipeline.
 
             // Attempt to set initial solution info using composition if available
             try
@@ -141,16 +155,17 @@ namespace AgenteIALocalVSIX.ToolWindows
                 AgentComposition.EnsureComposition();
                 if (AgentComposition.AgentService != null)
                 {
-                    Log("AgentService available at control construction.");
+                    AppendLog("AgentService available at control construction.");
                 }
                 else
                 {
-                    Log("AgentService is null at control construction.");
+                    AppendLog("AgentService is null at control construction.");
                 }
             }
             catch (Exception ex)
             {
-                Trace.TraceError($"[AgenteIALocalControl] Error ensuring composition: {ex}");
+                // Replace Trace with V2 logger
+                try { AgentComposition.Error(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] Error ensuring composition: " + ex.Message, ex); } catch { }
             }
 
             // Load current log file content into the Log tab asynchronously
@@ -192,8 +207,15 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
 
             // Ensure mock modified files are available for binding
-            OnPropertyChanged(nameof(ModifiedFiles));
-            OnPropertyChanged(nameof(ModifiedFilesCount));
+            RaisePropertyChanged(nameof(ModifiedFiles));
+            RaisePropertyChanged(nameof(ModifiedFilesCount));
+
+            // Ensure header reflects current settings immediately
+            try
+            {
+                RefreshFromSettings();
+            }
+            catch { }
         }
 
         public int ModifiedFilesCount
@@ -249,8 +271,8 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (res != MessageBoxResult.Yes) return;
 
                 ModifiedFiles.Clear();
-                OnPropertyChanged(nameof(ModifiedFiles));
-                OnPropertyChanged(nameof(ModifiedFilesCount));
+                RaisePropertyChanged(nameof(ModifiedFiles));
+                RaisePropertyChanged(nameof(ModifiedFilesCount));
             }
             catch
             {
@@ -296,7 +318,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (activeChat == null)
                 {
                     PromptTextBox.Text = string.Empty;
-                    ResponseJsonText.Text = string.Empty;
+                    ResponseJsonText.Document = CreatePlainDocument(string.Empty);
                     return;
                 }
 
@@ -307,7 +329,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     sb.AppendLine($"[{m.Timestamp}] {m.Sender}: {m.Content}");
                 }
 
-                ResponseJsonText.Text = ChatRenderPreprocessor.Preprocess(sb.ToString());
+                ResponseJsonText.Document = CreatePlainDocument(sb.ToString());
                 PromptTextBox.Text = string.Empty;
             }
             catch
@@ -432,30 +454,67 @@ namespace AgenteIALocalVSIX.ToolWindows
             try
             {
                 bool configured = false;
-                if (settings != null && !string.IsNullOrEmpty(settings.ActiveServerId) && settings.Servers != null)
+                string activeId = null;
+                bool baseUrlPresent = false;
+                bool modelPresent = false;
+
+                if (settings != null)
                 {
-                    var srv = settings.Servers.Find(s => s.Id == settings.ActiveServerId);
-                    if (srv != null)
+                    activeId = settings.ActiveServerId;
+                    if (!string.IsNullOrEmpty(activeId) && settings.Servers != null)
                     {
-                        if (!string.IsNullOrEmpty(srv.BaseUrl) && !string.IsNullOrEmpty(srv.Model)) configured = true;
+                        var srv = settings.Servers.Find(s => s.Id == activeId);
+                        if (srv != null)
+                        {
+                            baseUrlPresent = !string.IsNullOrWhiteSpace(srv.BaseUrl);
+                            modelPresent = !string.IsNullOrWhiteSpace(srv.Model);
+                            if (baseUrlPresent && modelPresent) configured = true;
+                        }
                     }
                 }
 
                 IsLlmConfigured = configured;
+                ConfigLabel = configured ? "OK Config" : "Not Config";
+
+                try { AgentComposition.Info(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigStatus: computed configured={configured} activeServerId={activeId ?? "(none)"} baseUrlPresent={baseUrlPresent} modelPresent={modelPresent}"); } catch { }
             }
             catch
             {
                 // never throw from UI
                 IsLlmConfigured = false;
+                ConfigLabel = "Not Config";
+                try { AgentComposition.Info(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigStatus: compute error, defaulted to Not Config"); } catch { }
             }
         }
 
         private void SettingsButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            var panel = GetElement<FrameworkElement>("SettingsPanel");
-            if (panel != null)
+            try
             {
-                panel.Visibility = panel.Visibility == System.Windows.Visibility.Visible ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] Settings button clicked (open modal).");
+
+                var settings = AgentSettingsStore.Load() ?? new AgentSettings();
+                var title = settings.ActiveServerId ?? string.Empty;
+
+                var owner = Window.GetWindow(this);
+                var win = new AgenteIALocalConfigWindow(title);
+                if (owner != null) win.Owner = owner;
+                win.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+
+                try
+                {
+                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"[AgenteIALocalControl] Opening config modal with title '{win.Title}'");
+                    win.ShowDialog();
+                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] Config modal closed.");
+                }
+                catch (Exception ex)
+                {
+                    AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"[AgenteIALocalControl] Error showing config modal: {ex.Message}", ex);
+                }
+            }
+            catch (Exception ex)
+            {
+                AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"[AgenteIALocalControl] SettingsButton_Click failure: {ex.Message}", ex);
             }
         }
 
@@ -504,7 +563,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 UpdateUiState(CurrentExecutionState);
 
                 // feedback
-                Log("Settings saved.");
+                AppendLog("Settings saved.");
             }
             catch
             {
@@ -523,32 +582,29 @@ namespace AgenteIALocalVSIX.ToolWindows
             var ct = logRefreshCts.Token;
 
             // Start a background task that refreshes the log every 2 seconds without blocking the UI
-            Task.Run(async () =>
+            _ = Task.Run(async () =>
             {
                 while (!ct.IsCancellationRequested)
                 {
                     try
                     {
                         var content = await Task.Run(() => ReadLogFile());
-                        this.Dispatcher.BeginInvoke(new Action(() =>
-                        {
-                            if (string.IsNullOrEmpty(content))
-                            {
-                                LogText.Text = "(no logs)";
-                            }
-                            else
-                            {
-                                LogText.Text = content;
-                            }
-                        }));
+
+                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+
+                        LogText.Text = string.IsNullOrEmpty(content)
+                            ? "(no logs)"
+                            : content;
                     }
                     catch
                     {
-                        this.Dispatcher.BeginInvoke(new Action(() => { LogText.Text = "(unable to read logs)"; }));
+                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+                        LogText.Text = "(unable to read logs)";
                     }
 
                     try { await Task.Delay(2000, ct); } catch { }
                 }
+
             }, ct);
         }
 
@@ -567,92 +623,1061 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         public void SetSolutionInfo(string solutionName, int projectCount)
         {
-            SolutionNameText.Text = solutionName;
-            ProjectCountText.Text = projectCount.ToString();
-
-            // Prepare initial request but do not execute
-            var req = BuildRequest(solutionName, projectCount);
-            PromptTextBox.Text = SerializeToJson(req);
-            ResponseJsonText.Text = string.Empty;
-            // Do not clear LogText here; keep file-backed content
-        }
-
-        private CopilotRequest BuildRequest(string solutionName, int projectCount)
-        {
-            return new CopilotRequest
+            try
             {
-                RequestId = System.Guid.NewGuid().ToString(),
-                Action = "mock-execute",
-                Timestamp = System.DateTime.UtcNow.ToString("o"),
-                SolutionName = solutionName,
-                ProjectCount = projectCount
-            };
-        }
-
-        private string SerializeToJson<T>(T obj)
-        {
-            return JsonConvert.SerializeObject(obj, Formatting.Indented);
-        }
-
-        private void UpdateStateProperties(ExecutionState newState)
-        {
-            // Map states to icon kind, color and label according to UX spec
-            switch (newState)
+                // Minimal behavior: only update visible solution/project labels.
+                // Do not prepare or serialize any request, and do not modify prompt/response fields.
+                SolutionNameText.Text = solutionName ?? string.Empty;
+                ProjectCountText.Text = projectCount.ToString();
+            }
+            catch
             {
-                case ExecutionState.Idle:
-                    StateIconKind = PackIconKind.PauseCircleOutline;
-                    StateColor = Brushes.Gray;
-                    StateLabel = "Idle";
-                    break;
-                case ExecutionState.Running:
-                    StateIconKind = PackIconKind.ProgressClock;
-                    StateColor = Brushes.DodgerBlue;
-                    StateLabel = "Running";
-                    break;
-                case ExecutionState.Completed:
-                    StateIconKind = PackIconKind.CheckCircleOutline;
-                    StateColor = Brushes.LimeGreen;
-                    StateLabel = "Completed";
-                    break;
-                case ExecutionState.Error:
-                    StateIconKind = PackIconKind.AlertCircleOutline;
-                    StateColor = Brushes.IndianRed;
-                    StateLabel = "Error";
-                    break;
-                default:
-                    StateIconKind = PackIconKind.PauseCircleOutline;
-                    StateColor = Brushes.Gray;
-                    StateLabel = newState.ToString();
-                    break;
+                // never throw from UI
+            }
+        }
+
+        // Public helper to refresh UI from persisted settings (used by modal after save)
+        public void RefreshFromSettings()
+        {
+            try
+            {
+                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] RefreshFromSettings invoked.");
+                var settings = AgentSettingsStore.Load();
+                PopulateSettingsPanel(settings);
+                ComputeIsLlmConfigured(settings);
+                UpdateUiState(CurrentExecutionState);
+                try { AgentComposition.Verbose("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigStatus: RefreshFromSettings completed label={ConfigLabel} isConfigured={IsLlmConfigured}"); } catch { }
+
+                // Refresh models for active server asynchronously (fire-and-forget)
+                try { _ = RefreshModelsForActiveServerAsync("RefreshFromSettings"); } catch { }
+            }
+            catch (Exception ex)
+            {
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"[AgenteIALocalControl] RefreshFromSettings error: {ex.Message}", ex); } catch { }
+            }
+        }
+
+        // Fetch models from baseUrl (same parsing logic as modal) and return list of ids
+        private async Task<List<string>> FetchModelsFromBaseUrlAsync(string baseUrl)
+        {
+            var result = new List<string>();
+            try
+            {
+                if (string.IsNullOrWhiteSpace(baseUrl)) return result;
+                var url = baseUrl.TrimEnd('/') + "/v1/models";
+                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: GET {url}");
+                using (var client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(5);
+                    var resp = await client.GetAsync(url);
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: non-success status {resp.StatusCode}");
+                        return result;
+                    }
+                    var txt = await resp.Content.ReadAsStringAsync();
+                    if (string.IsNullOrWhiteSpace(txt)) return result;
+                    try
+                    {
+                        var root = Newtonsoft.Json.Linq.JToken.Parse(txt);
+                        var data = root["data"] as Newtonsoft.Json.Linq.JArray;
+                        if (data != null)
+                        {
+                            foreach (var item in data)
+                            {
+                                try { var id = item.Value<string>("id"); if (!string.IsNullOrEmpty(id)) result.Add(id); } catch { }
+                            }
+                            return result;
+                        }
+                        var models = root["models"] as Newtonsoft.Json.Linq.JArray;
+                        if (models != null)
+                        {
+                            foreach (var item in models)
+                            {
+                                try { var id = item.Value<string>("id") ?? item.ToString(); if (!string.IsNullOrEmpty(id)) result.Add(id); } catch { }
+                            }
+                            return result;
+                        }
+                        if (root is Newtonsoft.Json.Linq.JArray arr)
+                        {
+                            foreach (var item in arr) { var s = item.ToString(); if (!string.IsNullOrEmpty(s)) result.Add(s); }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: parse error: {ex.Message}", ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: error: {ex.Message}", ex);
+            }
+            return result;
+        }
+
+        // Refresh the ModelOfLLM ComboBox based on Active Server settings and remote model list
+        public async Task RefreshModelsForActiveServerAsync(string reason)
+        {
+            try
+            {
+                var settings = AgentSettingsStore.Load();
+                if (settings == null) return;
+                var activeId = settings.ActiveServerId;
+                if (string.IsNullOrWhiteSpace(activeId) || settings.Servers == null)
+                {
+                    await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                    ModelOfLLM.Items.Clear();
+                    return;
+                }
+
+                var srv = settings.Servers.Find(s => s.Id == activeId);
+                if (srv == null)
+                {
+                    await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                    ModelOfLLM.Items.Clear();
+                    return;
+                }
+
+                var baseUrl = srv.BaseUrl ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(baseUrl))
+                {
+                    await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                    ModelOfLLM.Items.Clear();
+                    return;
+                }
+
+                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: RefreshModelsForActiveServer reason={reason} baseUrl={baseUrl}");
+                var models = await FetchModelsFromBaseUrlAsync(baseUrl);
+                await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                try
+                {
+                    ModelOfLLM.Items.Clear();
+                    if (models != null && models.Count > 0)
+                    {
+                        foreach (var m in models) ModelOfLLM.Items.Add(m);
+                        // try select saved model
+                        var saved = srv.Model ?? string.Empty;
+                        if (!string.IsNullOrEmpty(saved) && ModelOfLLM.Items.Contains(saved))
+                        {
+                            ModelOfLLM.SelectedItem = saved;
+                        }
+                        else
+                        {
+                            ModelOfLLM.SelectedIndex = 0;
+                            // if saved model existed but not found, persist first as fallback
+                            if (!string.IsNullOrEmpty(saved))
+                            {
+                                try
+                                {
+                                    srv.Model = ModelOfLLM.SelectedItem as string ?? string.Empty;
+                                    AgentSettingsStore.Save(settings);
+                                    AgentComposition.RecomposeFromSettings("ModelOfLLM.AutoFallback");
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+            catch (Exception ex)
+            {
+                AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: Refresh error: {ex.Message}", ex);
+            }
+        }
+
+        // Handler when user changes selection in ModelOfLLM - persist and recompose
+        private void ModelOfLLM_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                var sel = ModelOfLLM.SelectedItem as string;
+                if (string.IsNullOrEmpty(sel)) return;
+                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: selection changed modelPresent=true modelIdLength={sel.Length}");
+
+                var settings = AgentSettingsStore.Load() ?? new AgentSettings();
+                if (settings.Servers == null) settings.Servers = new List<ServerConfig>();
+                var srv = settings.Servers.Find(s => s.Id == settings.ActiveServerId);
+                if (srv == null)
+                {
+                    // nothing to persist against
+                    return;
+                }
+
+                srv.Model = sel;
+                AgentSettingsStore.Save(settings);
+                try
+                {
+                    AgentComposition.RecomposeFromSettings("ModelOfLLM.SelectionChanged");
+                }
+                catch { }
+
+                // Refresh UI state
+                try
+                {
+                    ComputeIsLlmConfigured(settings);
+                    UpdateUiState(CurrentExecutionState);
+                }
+                catch { }
+            }
+            catch (Exception ex)
+            {
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: selection handler error: {ex.Message}", ex); } catch { }
+            }
+        }
+        private void PromptTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                if (e.Key != Key.Enter) return;
+                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
+                if (CurrentExecutionState == ExecutionState.Running) return;
+                if (!RunButtonEnabled) return;
+                e.Handled = true;
+                RunButton_Click(sender, new RoutedEventArgs());
+            }
+            catch
+            {
+                // never throw from UI
+            }
+        }
+
+        private void RunButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Fire-and-forget wrapper to avoid async void (VSTHRD100).
+            // If running, treat click as STOP.
+            if (CurrentExecutionState == ExecutionState.Running)
+            {
+                RequestStopExecution();
+                return;
             }
 
-            // Notify bindings for related properties
-            OnPropertyChanged(nameof(StateIconKind));
-            OnPropertyChanged(nameof(StateColor));
-            OnPropertyChanged(nameof(StateLabel));
+            _ = RunButton_ClickAsync(sender, e);
         }
 
+        private void RequestStopExecution()
+        {
+            try
+            {
+                // Invalidate any in-flight completion (ignore late results)
+                _ = Interlocked.Increment(ref _runVersion);
+            }
+            catch { }
+
+            try { _runCts?.Cancel(); } catch { }
+            try { _runCts?.Dispose(); } catch { }
+            _runCts = null;
+
+            // Log while correlation id is still available
+            AppendLog("Stop requested.");
+
+            activeCorrelationId = null;
+
+            Ui(() =>
+            {
+                UpdateUiState(ExecutionState.Idle);
+            });
+        }
+
+
+
+        private async System.Threading.Tasks.Task RunButton_ClickAsync(object sender, RoutedEventArgs e)
+        {
+            if (CurrentExecutionState == ExecutionState.Running) return;
+
+            // New run: cancel any previous token (best-effort) and create a fresh one
+            try { _runCts?.Cancel(); } catch { }
+            try { _runCts?.Dispose(); } catch { }
+
+            _runCts = new CancellationTokenSource();
+            var ct = _runCts.Token;
+            var myVersion = Interlocked.Increment(ref _runVersion);
+
+            activeCorrelationId = Guid.NewGuid().ToString("N");
+            var myCorrelationId = activeCorrelationId;
+
+            AppendLog("Run clicked.");
+            UpdateUiState(ExecutionState.Running);
+            AppendLog("Execution started.");
+
+            try
+            {
+                AgentComposition.EnsureComposition();
+
+                var userInput = PromptTextBox.Text ?? string.Empty;
+
+                var req = new AgentHostRequest
+                {
+                    RequestId = myCorrelationId,
+                    CorrelationId = myCorrelationId,
+                    Action = userInput,
+                    Timestamp = DateTime.UtcNow.ToString("o"),
+                    SolutionName = SolutionNameText.Text ?? string.Empty,
+                    ProjectCount = int.TryParse(ProjectCountText.Text, out var pc) ? pc : 0
+                };
+
+                var execTask = Task.Run(() =>
+                {
+                    try
+                    {
+                        if (AgentComposition.AgentService != null)
+                        {
+                            return AgentComposition.AgentService.Execute(req);
+                        }
+
+                        AppendLog("AgentService not composed; using MockAgentExecutor fallback.");
+                        return MockAgentExecutor.Execute(req);
+                    }
+                    catch (Exception ex)
+                    {
+                        var corr =
+                            !string.IsNullOrEmpty(req?.CorrelationId) ? req.CorrelationId :
+                            !string.IsNullOrEmpty(req?.RequestId) ? req.RequestId :
+                            "-";
+
+                        try
+                        {
+                            AgentComposition.Error(
+                                corr,
+                                new AgenteIALocal.Core.Logging.LogEventId(9102, "VSIX.UI.Exception"),
+                                "[AgenteIALocalControl] Execution exception in background task: " + ex.Message,
+                                ex);
+                        }
+                        catch { }
+
+                        AppendLog("Execution exception in background task: " + ex.Message);
+                        throw;
+                    }
+                });
+
+                // If Stop is requested, return immediately and ignore late results.
+                var completed = await Task.WhenAny(execTask, Task.Delay(Timeout.Infinite, ct));
+                if (completed != execTask)
+                {
+                    // Ensure background exception is observed even if we stop waiting.
+                    _ = execTask.ContinueWith(t => { _ = t.Exception; }, TaskContinuationOptions.OnlyOnFaulted);
+                    return;
+                }
+
+                var response = await execTask;
+
+                // Ignore stale/canceled completions
+                if (ct.IsCancellationRequested) return;
+                if (myVersion != _runVersion) return;
+                if (!string.Equals(activeCorrelationId, myCorrelationId, StringComparison.Ordinal)) return;
+
+                string display;
+                if (response == null) display = "(no response)";
+                else if (!string.IsNullOrEmpty(response.Output)) display = response.Output;
+                else if (!string.IsNullOrEmpty(response.Error)) display = "Error: " + response.Error;
+                else display = "(empty response)";
+
+                Ui(() =>
+                {
+                    // Re-check on UI thread (Stop could have been requested between awaits)
+                    if (ct.IsCancellationRequested) return;
+                    if (myVersion != _runVersion) return;
+                    if (!string.Equals(activeCorrelationId, myCorrelationId, StringComparison.Ordinal)) return;
+
+                    try
+                    {
+                        AppendLog("[VERBOSE] RenderResponse: start; len=" + (display?.Length ?? 0));
+                        ResponseJsonText.Document = RenderResponseToDocument(display);
+                        AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
+                    }
+                    catch (Exception exRender)
+                    {
+                        AppendLog("[VERBOSE] RenderResponse failed: " + exRender.Message);
+                        ResponseJsonText.Document = CreatePlainDocument(display ?? string.Empty);
+                    }
+
+                    UpdateUiState(ExecutionState.Completed);
+                    AppendLog("Execution completed successfully.");
+
+                    activeCorrelationId = null;
+
+                    try { _runCts?.Dispose(); } catch { }
+                    _runCts = null;
+
+                    try { RefreshLogFromFile(); } catch { }
+                });
+            }
+            catch (Exception ex)
+            {
+                // If Stop was requested, do not surface as error
+                if (ct.IsCancellationRequested) return;
+                if (myVersion != _runVersion) return;
+                if (!string.Equals(activeCorrelationId, myCorrelationId, StringComparison.Ordinal)) return;
+
+                Ui(() =>
+                {
+                    UpdateUiState(ExecutionState.Error);
+                    AppendLog("Execution failed: " + ex.Message);
+
+                    try
+                    {
+                        AgentComposition.Error(
+                            activeCorrelationId ?? "-",
+                            AgenteIALocal.Core.Logging.LogEvents.Vsix_UI,
+                            "[AgenteIALocalControl] Execution failed: " + ex.Message,
+                            ex);
+                    }
+                    catch { }
+
+                    try
+                    {
+                        ResponseJsonText.Document = RenderResponseToDocument("{ \"error\": \"Execution failed\" }");
+                    }
+                    catch
+                    {
+                        ResponseJsonText.Document = CreatePlainDocument("{ \"error\": \"Execution failed\" }");
+                    }
+
+                    activeCorrelationId = null;
+
+                    try { _runCts?.Dispose(); } catch { }
+                    _runCts = null;
+
+                    try { RefreshLogFromFile(); } catch { }
+                });
+            }
+        }
+
+
+        // Response format enum (Phase 1 + Markdown)
+        private enum ResponseFormat { PlainText, Json, Markdown }
+
+        // Simple format detector (JSON vs Markdown vs PlainText)
+        private static class FormatDetector
+        {
+            public static ResponseFormat DetectFormat(string content)
+            {
+                if (string.IsNullOrWhiteSpace(content)) return ResponseFormat.PlainText;
+
+                var trimmed = content.TrimStart();
+
+                // Heuristic: Markdown markers
+                bool looksLikeMarkdown = false;
+                try
+                {
+                    if (content.Contains("```")) looksLikeMarkdown = true;
+                    var lines = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var rawLine in lines)
+                    {
+                        var line = rawLine.TrimStart();
+                        if (line.StartsWith("# ") || line.StartsWith("## ") || line.StartsWith("### ") ||
+                            line.StartsWith("- ") || line.StartsWith("* ") || line.StartsWith("> ") ||
+                            Regex.IsMatch(line, "^\\d+\\.\\s"))
+                        {
+                            looksLikeMarkdown = true;
+                            break;
+                        }
+                    }
+                }
+                catch { }
+
+                // Heuristic: JSON structural + parse attempt
+                bool isJson = false;
+                if (trimmed.StartsWith("{") || trimmed.StartsWith("["))
+                {
+                    try
+                    {
+                        JToken.Parse(content);
+                        isJson = true;
+                    }
+                    catch { isJson = false; }
+                }
+
+                // Preference: if both detected, prefer JSON; if markdown detected and NOT json, return Markdown
+                if (looksLikeMarkdown && !isJson)
+                {
+                    return ResponseFormat.Markdown;
+                }
+
+                if (isJson)
+                {
+                    return ResponseFormat.Json;
+                }
+
+                if (looksLikeMarkdown)
+                {
+                    return ResponseFormat.Markdown;
+                }
+
+                return ResponseFormat.PlainText;
+            }
+        }
+
+        // Renderer interface and implementations (modified to accept correlationId)
+        private interface IResponseRenderer
+        {
+            FlowDocument Render(string content, string correlationId);
+        }
+
+        private class PlainTextResponseRenderer : IResponseRenderer
+        {
+            public FlowDocument Render(string content, string correlationId)
+            {
+                return CreatePlainDocument(content ?? string.Empty);
+            }
+        }
+
+        private class JsonResponseRenderer : IResponseRenderer
+        {
+            public FlowDocument Render(string content, string correlationId)
+            {
+                if (content == null) content = string.Empty;
+                try
+                {
+                    var token = JToken.Parse(content);
+                    var pretty = token.ToString(Formatting.Indented);
+
+                    var fd = new FlowDocument { PagePadding = new Thickness(0) };
+                    var p = new Paragraph { Margin = new Thickness(0) };
+                    p.FontFamily = new FontFamily("Consolas");
+
+                    var lines = pretty.Split(new[] { '\n' });
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        var line = lines[i] ?? string.Empty;
+                        var run = new Run(line);
+                        p.Inlines.Add(run);
+                        if (i < lines.Length - 1) p.Inlines.Add(new LineBreak());
+                    }
+
+                    fd.Blocks.Clear();
+                    fd.Blocks.Add(p);
+
+                    try { AgentComposition.Verbose(correlationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] JsonResponseRenderer: rendered json"); } catch { }
+
+                    return fd;
+                }
+                catch (Exception)
+                {
+                    return CreatePlainDocument(content);
+                }
+            }
+        }
+
+        private class MarkdownResponseRenderer : IResponseRenderer
+        {
+            public FlowDocument Render(string content, string correlationId)
+            {
+                try
+                {
+                    if (content == null) content = string.Empty;
+
+                    var fd = new FlowDocument { PagePadding = new Thickness(0) };
+
+                    var lines = Regex.Split(content, "\r?\n");
+                    bool inCodeFence = false;
+                    var codeFenceBuilder = new StringBuilder();
+                    string codeFenceLang = null;
+
+                    List currentList = null;
+
+                    foreach (var raw in lines)
+                    {
+                        var line = raw ?? string.Empty;
+
+                        // Code fence handling
+                        var trimmed = line.TrimStart();
+                        if (!inCodeFence && trimmed.StartsWith("```"))
+                        {
+                            inCodeFence = true;
+                            codeFenceLang = trimmed.Length > 3 ? trimmed.Substring(3).Trim() : string.Empty;
+                            codeFenceBuilder.Clear();
+                            continue;
+                        }
+                        if (inCodeFence)
+                        {
+                            if (trimmed.StartsWith("```"))
+                            {
+                                var p = new Paragraph { Margin = new Thickness(0) };
+                                p.FontFamily = new FontFamily("Consolas");
+                                p.Inlines.Add(new Run(codeFenceBuilder.ToString()));
+                                ApplyCodeBlockStyle(p);
+                                fd.Blocks.Add(p);
+                                try { AgentComposition.Verbose(correlationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: code fence styled"); } catch { }
+                                inCodeFence = false;
+                                codeFenceLang = null;
+                                continue;
+                            }
+                            codeFenceBuilder.AppendLine(line);
+                            continue;
+                        }
+
+                        // Headings
+                        if (Regex.IsMatch(trimmed, "^#{1,3}\\s+"))
+                        {
+                            int level = 1;
+                            if (trimmed.StartsWith("###")) level = 3;
+                            else if (trimmed.StartsWith("##")) level = 2;
+
+                            var text = trimmed.TrimStart('#').Trim();
+                            var p = new Paragraph { Margin = new Thickness(0) };
+                            switch (level)
+                            {
+                                case 1: p.FontSize = 18; break;
+                                case 2: p.FontSize = 15; break;
+                                case 3: p.FontSize = 13; break;
+                            }
+                            p.FontWeight = FontWeights.Bold;
+                            AddInlinesToParagraph(p, text);
+                            ApplyHeaderStyle(p, level);
+                            fd.Blocks.Add(p);
+
+                            try { AgentComposition.Verbose(correlationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: header styled level=" + level); } catch { }
+
+                            if (currentList != null) { fd.Blocks.Add(currentList); currentList = null; }
+                            continue;
+                        }
+
+                        // Blockquote
+                        if (trimmed.StartsWith("> "))
+                        {
+                            var text = trimmed.Substring(2).Trim();
+                            var p = new Paragraph { Margin = new Thickness(12, 0, 0, 0), Foreground = Brushes.Gray };
+                            var borderRun = new Run("│ ") { Foreground = HexBrush("#3F3F46") };
+                            p.Inlines.Add(borderRun);
+                            AddInlinesToParagraph(p, text);
+                            ApplyBlockQuoteStyle(p);
+                            fd.Blocks.Add(p);
+                            try { AgentComposition.Verbose(correlationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: blockquote styled"); } catch { }
+                            if (currentList != null) { fd.Blocks.Add(currentList); currentList = null; }
+                            continue;
+                        }
+
+                        // Unordered list
+                        if (Regex.IsMatch(trimmed, "^[-*]\\s+"))
+                        {
+                            var itemText = Regex.Replace(trimmed, "^[-*]\\s+", "");
+                            if (currentList == null || currentList.MarkerStyle != TextMarkerStyle.Disc)
+                            {
+                                if (currentList != null) { fd.Blocks.Add(currentList); }
+                                currentList = new List { MarkerStyle = TextMarkerStyle.Disc };
+                                ApplyListStyle(currentList);
+                            }
+                            var li = new ListItem();
+                            var p = new Paragraph { Margin = new Thickness(0) };
+                            AddInlinesToParagraph(p, itemText);
+                            ApplyParagraphStyle(p);
+                            li.Blocks.Add(p);
+                            currentList.ListItems.Add(li);
+                            continue;
+                        }
+
+                        // Ordered list
+                        if (Regex.IsMatch(trimmed, "^\\d+\\.\\s+"))
+                        {
+                            var itemText = Regex.Replace(trimmed, "^\\d+\\.\\s+", "");
+                            if (currentList == null || currentList.MarkerStyle != TextMarkerStyle.Decimal)
+                            {
+                                if (currentList != null) { fd.Blocks.Add(currentList); }
+                                currentList = new List { MarkerStyle = TextMarkerStyle.Decimal };
+                                ApplyListStyle(currentList);
+                            }
+                            var li = new ListItem();
+                            var p = new Paragraph { Margin = new Thickness(0) };
+                            AddInlinesToParagraph(p, itemText);
+                            ApplyParagraphStyle(p);
+                            li.Blocks.Add(p);
+                            currentList.ListItems.Add(li);
+                            continue;
+                        }
+
+                        // Empty line -> close current list and add paragraph break
+                        if (string.IsNullOrWhiteSpace(line))
+                        {
+                            if (currentList != null) { fd.Blocks.Add(currentList); currentList = null; }
+                            var empty = new Paragraph { Margin = new Thickness(0) };
+                            ApplyParagraphStyle(empty);
+                            fd.Blocks.Add(empty);
+                            continue;
+                        }
+
+                        // Regular paragraph line
+                        var para = new Paragraph { Margin = new Thickness(0) };
+                        AddInlinesToParagraph(para, line);
+                        ApplyParagraphStyle(para);
+                        fd.Blocks.Add(para);
+                        if (currentList != null) { fd.Blocks.Add(currentList); currentList = null; }
+                    }
+
+                    if (inCodeFence)
+                    {
+                        return CreatePlainDocument(content);
+                    }
+
+                    try { AgentComposition.Verbose(correlationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: render complete"); } catch { }
+
+                    return fd;
+                }
+                catch (Exception)
+                {
+                    return CreatePlainDocument(content);
+                }
+            }
+
+            // Simple inline parser to add Runs/Bold/Italic/InlineCode into paragraph
+            private void AddInlinesToParagraph(Paragraph p, string text)
+            {
+                try
+                {
+                    if (string.IsNullOrEmpty(text)) return;
+
+                    // Handle inline code first using backticks
+                    var parts = Regex.Split(text, "(`[^`]+`)");
+
+                    foreach (var part in parts)
+                    {
+                        if (part.StartsWith("`") && part.EndsWith("`"))
+                        {
+                            var code = part.Substring(1, part.Length - 2);
+                            var run = new Run(code) { FontFamily = new FontFamily("Consolas") };
+                            // inline code styling
+                            run.Background = HexBrush("#2D2D30");
+                            run.Foreground = HexBrush("#DCDCDC");
+                            p.Inlines.Add(run);
+                        }
+                        else
+                        {
+                            // handle bold **text**
+                            var pattern = new Regex("(\\*\\*([^\\*]+)\\*\\*)");
+                            var m = pattern.Match(part);
+                            if (!m.Success)
+                            {
+                                var ital = new Regex("(\\*([^\\*]+)\\*)");
+                                var mi = ital.Match(part);
+                                if (!mi.Success)
+                                {
+                                    p.Inlines.Add(new Run(part));
+                                }
+                                else
+                                {
+                                    var segs = Regex.Split(part, "(\\*[^\\*]+\\*)");
+                                    foreach (var s in segs)
+                                    {
+                                        if (s.StartsWith("*") && s.EndsWith("*"))
+                                        {
+                                            var inner = s.Substring(1, s.Length - 2);
+                                            var it = new Italic(new Run(inner));
+                                            p.Inlines.Add(it);
+                                        }
+                                        else
+                                        {
+                                            p.Inlines.Add(new Run(s));
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                var segs = Regex.Split(part, "(\\*\\*[^\\*]+\\*\\*)");
+                                foreach (var s in segs)
+                                {
+                                    if (s.StartsWith("**") && s.EndsWith("**"))
+                                    {
+                                        var inner = s.Substring(2, s.Length - 4);
+                                        var b = new Bold(new Run(inner));
+                                        p.Inlines.Add(b);
+                                    }
+                                    else
+                                    {
+                                        p.Inlines.Add(new Run(s));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    p.Inlines.Add(new Run(text));
+                }
+            }
+
+            // Styling helpers
+            private void ApplyHeaderStyle(Paragraph p, int level)
+            {
+                try
+                {
+                    switch (level)
+                    {
+                        case 1:
+                            p.FontSize = 18;
+                            p.FontWeight = FontWeights.Bold;
+                            p.Margin = new Thickness(0, 12, 0, 6);
+                            break;
+                        case 2:
+                            p.FontSize = 16;
+                            p.FontWeight = FontWeights.Bold;
+                            p.Margin = new Thickness(0, 10, 0, 6);
+                            break;
+                        default:
+                            p.FontSize = 14;
+                            p.FontWeight = FontWeights.SemiBold;
+                            p.Margin = new Thickness(0, 8, 0, 4);
+                            break;
+                    }
+                }
+                catch { }
+            }
+
+            private void ApplyCodeBlockStyle(Paragraph p)
+            {
+                try
+                {
+                    p.FontFamily = new FontFamily("Consolas");
+                    p.Background = HexBrush("#1E1E1E");
+                    p.Foreground = HexBrush("#DCDCDC");
+                    p.Margin = new Thickness(0, 6, 0, 6);
+                }
+                catch { }
+            }
+
+            private void ApplyBlockQuoteStyle(Paragraph p)
+            {
+                try
+                {
+                    p.Foreground = HexBrush("#9DA5B4");
+                    p.Margin = new Thickness(12, 4, 0, 6);
+                }
+                catch { }
+            }
+
+            private void ApplyParagraphStyle(Paragraph p)
+            {
+                try
+                {
+                    p.Margin = new Thickness(0, 2, 0, 6);
+                    p.LineHeight = 18;
+                }
+                catch { }
+            }
+
+            private void ApplyListStyle(List list)
+            {
+                try
+                {
+                    list.Margin = new Thickness(0, 2, 0, 6);
+                    // left padding simulated by marker indent
+                }
+                catch { }
+            }
+
+            private Brush HexBrush(string hex)
+            {
+                try
+                {
+                    var bc = new BrushConverter();
+                    var b = bc.ConvertFrom(hex) as Brush;
+                    return b ?? Brushes.Transparent;
+                }
+                catch
+                {
+                    return Brushes.Transparent;
+                }
+            }
+        }
+
+        private static class RendererFactory
+        {
+            public static IResponseRenderer Get(ResponseFormat fmt)
+            {
+                switch (fmt)
+                {
+                    case ResponseFormat.Json: return new JsonResponseRenderer();
+                    case ResponseFormat.Markdown: return new MarkdownResponseRenderer();
+                    case ResponseFormat.PlainText:
+                    default: return new PlainTextResponseRenderer();
+                }
+            }
+        }
+
+        // Orchestrator: normalize -> detect -> render -> fallback
+        private System.Windows.Documents.FlowDocument RenderResponseToDocument(string raw)
+        {
+            AppendLog("[VERBOSE] RenderResponseToDocument: start; rawLen=" + (raw?.Length ?? 0));
+
+            string content = null;
+            try
+            {
+                // 1) Detect format using RAW input (do not normalize before detection)
+                var fmt = FormatDetector.DetectFormat(raw);
+                AppendLog("[VERBOSE] RenderResponseToDocument: detected format=" + fmt.ToString());
+
+                // 2) Decide normalization strategy
+                if (fmt == ResponseFormat.Markdown)
+                {
+                    // For Markdown we must preserve original raw text exactly
+                    content = raw ?? string.Empty;
+                    AppendLog("[VERBOSE] RenderResponseToDocument: Markdown detected -> normalization bypassed");
+                }
+                else
+                {
+                    // For JSON and PlainText use normalizer
+                    content = ResponseNormalizer.Normalize(raw, activeCorrelationId ?? "-") ?? string.Empty;
+                    AppendLog("[VERBOSE] RenderResponseToDocument: normalization applied");
+                }
+
+                AppendLog("[VERBOSE] RenderResponseToDocument: rawLen=" + (raw?.Length ?? 0) + " contentLen=" + (content?.Length ?? 0));
+
+                // 3) Select renderer
+                var renderer = RendererFactory.Get(fmt);
+                AppendLog("[VERBOSE] RenderResponseToDocument: renderer selected=" + renderer.GetType().Name);
+
+                // 4) Render
+                try
+                {
+                    var doc = renderer.Render(content, activeCorrelationId);
+                    if (doc == null)
+                    {
+                        AppendLog("[VERBOSE] RenderResponseToDocument: renderer returned null, fallback to plain text");
+                        return CreatePlainDocument(content);
+                    }
+
+                    AppendLog("[VERBOSE] RenderResponseToDocument: render OK; outLen=" + (content?.Length ?? 0));
+                    return doc;
+                }
+                catch (Exception exRender)
+                {
+                    AppendLog("[VERBOSE] RenderResponseToDocument: renderer threw -> " + exRender.Message);
+                    return CreatePlainDocument(content);
+                }
+            }
+            catch (Exception ex)
+            {
+                try { AgentComposition.Error(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] RenderResponseToDocument: unexpected error -> " + ex.Message, ex); } catch { }
+                return CreatePlainDocument(content ?? raw ?? string.Empty);
+            }
+        }
+
+        private static System.Windows.Documents.FlowDocument CreatePlainDocument(string text)
+        {
+            var fd = new System.Windows.Documents.FlowDocument();
+            try
+            {
+                fd.PagePadding = new System.Windows.Thickness(0);
+                var p = new System.Windows.Documents.Paragraph();
+                p.Margin = new System.Windows.Thickness(0);
+                p.Inlines.Add(new System.Windows.Documents.Run(text ?? string.Empty));
+                fd.Blocks.Clear();
+                fd.Blocks.Add(p);
+            }
+            catch
+            {
+                try
+                {
+                    fd.Blocks.Clear();
+                    fd.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run(text ?? string.Empty)));
+                }
+                catch { }
+            }
+
+            return fd;
+        }
+
+        // Raise property changed helper to avoid name collisions
+        private void RaisePropertyChanged(string propertyName)
+        {
+            try
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
+            catch { }
+        }
+
+        // Map ExecutionState to UI properties (icon/color/label)
+        private void UpdateStateProperties(ExecutionState newState)
+        {
+            try
+            {
+                switch (newState)
+                {
+                    case ExecutionState.Idle:
+                        StateIconKind = PackIconKind.PauseCircleOutline;
+                        StateColor = Brushes.Gray;
+                        StateLabel = "Idle";
+                        break;
+                    case ExecutionState.Running:
+                        StateIconKind = PackIconKind.ProgressClock;
+                        StateColor = Brushes.DodgerBlue;
+                        StateLabel = "Running";
+                        break;
+                    case ExecutionState.Completed:
+                        StateIconKind = PackIconKind.CheckCircleOutline;
+                        StateColor = Brushes.LimeGreen;
+                        StateLabel = "Completed";
+                        break;
+                    case ExecutionState.Error:
+                        StateIconKind = PackIconKind.AlertCircleOutline;
+                        StateColor = Brushes.IndianRed;
+                        StateLabel = "Error";
+                        break;
+                    default:
+                        StateIconKind = PackIconKind.PauseCircleOutline;
+                        StateColor = Brushes.Gray;
+                        StateLabel = newState.ToString();
+                        break;
+                }
+
+                RaisePropertyChanged(nameof(StateIconKind));
+                RaisePropertyChanged(nameof(StateColor));
+                RaisePropertyChanged(nameof(StateLabel));
+            }
+            catch { }
+        }
+
+        // UI-thread marshal helper (safe to call from background threads)
+        private void Ui(Action action)
+        {
+            try
+            {
+                if (action == null) return;
+
+                var dispatcher = this.Dispatcher;
+                if (dispatcher == null)
+                {
+                    action();
+                    return;
+                }
+
+                if (dispatcher.CheckAccess())
+                {
+                    action();
+                    return;
+                }
+
+                Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.Run(async () =>
+                {
+                    await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                    action();
+                });
+            }
+            catch { }
+        }
+
+        // Update UI enablement based on current state and configuration
         private void UpdateUiState(ExecutionState newState)
         {
             CurrentExecutionState = newState;
 
-            // Apply enable/disable rules based on LLM configuration and state
             if (!IsLlmConfigured)
             {
-                // No LLM configured: disable interactive controls except settings/help, allow prompt read-only
                 RunButtonEnabled = false;
                 ClearButtonEnabled = false;
                 IsPromptReadOnly = true;
                 return;
             }
 
-            // LLM configured: apply state-specific rules
             switch (CurrentExecutionState)
             {
                 case ExecutionState.Running:
-                    RunButtonEnabled = false;
+                    RunButtonEnabled = true;
                     ClearButtonEnabled = false;
-                    IsPromptReadOnly = false;
+                    IsPromptReadOnly = true;
                     break;
                 case ExecutionState.Idle:
                 case ExecutionState.Completed:
@@ -665,182 +1690,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        private async void RunButton_Click(object sender, System.Windows.RoutedEventArgs e)
-        {
-            if (CurrentExecutionState == ExecutionState.Running) return;
-
-            Log("Run clicked.");
-            UpdateUiState(ExecutionState.Running);
-            Log("Execution started.");
-
-            try
-            {
-                // Ensure composition is available before attempting execution
-                AgentComposition.EnsureComposition();
-
-                // NEW: treat user input as plain text prompt; build CopilotRequest internally
-                var userInput = PromptTextBox.Text ?? string.Empty;
-
-                var req = new CopilotRequest
-                {
-                    RequestId = System.Guid.NewGuid().ToString(),
-                    Action = userInput, // use user text as main prompt fragment
-                    Timestamp = System.DateTime.UtcNow.ToString("o"),
-                    SolutionName = SolutionNameText.Text ?? string.Empty,
-                    ProjectCount = int.TryParse(ProjectCountText.Text, out var pc) ? pc : 0
-                };
-
-                // Execute using composed AgentService if available; otherwise fall back to direct MockCopilotExecutor
-                var response = await Task.Run(() =>
-                {
-                    try
-                    {
-                        if (AgentComposition.AgentService != null)
-                        {
-                            return AgentComposition.AgentService.Execute(req);
-                        }
-                        else
-                        {
-                            Log("AgentService not composed; using MockCopilotExecutor fallback.");
-                            return MockCopilotExecutor.Execute(req);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log("Execution exception in background task: " + ex.Message);
-                        throw;
-                    }
-                });
-
-                // Display plain text output (or error) instead of serializing full DTO
-                var display = string.Empty;
-                try
-                {
-                    if (response == null)
-                    {
-                        display = "(no response)";
-                    }
-                    else if (!string.IsNullOrEmpty(response.Output))
-                    {
-                        display = response.Output;
-                    }
-                    else if (!string.IsNullOrEmpty(response.Error))
-                    {
-                        display = "Error: " + response.Error;
-                    }
-                    else
-                    {
-                        display = "(empty response)";
-                    }
-                }
-                catch
-                {
-                    display = "(unable to render response)";
-                }
-
-                // Update UI on UI thread
-                this.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    ResponseJsonText.Text = ChatRenderPreprocessor.Preprocess(display);
-                    UpdateUiState(ExecutionState.Completed);
-                    Log("Execution completed successfully.");
-
-                    // Refresh log tab to show newly appended entries (immediately)
-                    try
-                    {
-                        var content = ReadLogFile();
-                        if (string.IsNullOrEmpty(content))
-                        {
-                            LogText.Text = "(no logs)";
-                        }
-                        else
-                        {
-                            LogText.Text = content;
-                        }
-                    }
-                    catch { }
-                }));
-            }
-            catch (Exception ex)
-            {
-                UpdateUiState(ExecutionState.Error);
-                Log("Execution failed: " + ex.Message);
-                Trace.TraceError("[AgenteIALocalControl] Execution failed: " + ex);
-                ResponseJsonText.Text = ChatRenderPreprocessor.Preprocess("{ \"error\": \"Execution failed\" }");
-
-                // Attempt to refresh log view even on error
-                try { RefreshLogFromFile(); } catch { }
-            }
-        }
-
-        private void ClearButton_Click(object sender, System.Windows.RoutedEventArgs e)
-        {
-            PromptTextBox.Text = string.Empty;
-            ResponseJsonText.Text = string.Empty;
-
-            // Clear the persistent log file and refresh view
-            try
-            {
-                ClearLogFile();
-            }
-            catch
-            {
-                // ensure UI does not throw
-            }
-
-            RefreshLogFromFile();
-
-            UpdateUiState(ExecutionState.Idle);
-        }
-
-        private void RefreshLogFromFile()
-        {
-            try
-            {
-                var content = ReadLogFile();
-                // If file is empty, show placeholder
-                if (string.IsNullOrEmpty(content))
-                {
-                    LogText.Text = "(no logs)";
-                }
-                else
-                {
-                    LogText.Text = content;
-                }
-            }
-            catch
-            {
-                // never throw from UI refresh; show minimal info
-                LogText.Text = "(unable to read logs)";
-            }
-        }
-
-        private void Log(string message)
-        {
-            var ts = DateTime.UtcNow.ToString("o");
-            // Prepend to UI log view for immediate feedback
-            LogText.Text = ts + " - " + message + "\n" + LogText.Text;
-
-            // Write to persistent log via composition logger or direct file writer
-            try
-            {
-                if (AgentComposition.Logger != null)
-                {
-                    try { AgentComposition.Logger.Invoke("[AgenteIALocalControl] " + message); } catch { }
-                }
-                else
-                {
-                    // fallback
-                    AppendLogFileLine("[AgenteIALocalControl] " + message);
-                }
-            }
-            catch
-            {
-                // never throw
-            }
-        }
-
-        // Helper methods to access the persistent log file without depending on LogFile.cs being in project
+        // Logging file helpers
         private static string GetLogFilePath()
         {
             try
@@ -882,10 +1732,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var line = DateTime.UtcNow.ToString("o") + " - " + (message ?? string.Empty) + Environment.NewLine;
                 File.AppendAllText(path, line, Encoding.UTF8);
             }
-            catch
-            {
-                // never throw
-            }
+            catch { }
         }
 
         private static void ClearLogFile()
@@ -894,10 +1741,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 var path = GetLogFilePath();
                 var dir = Path.GetDirectoryName(path);
-                if (!Directory.Exists(dir))
-                {
-                    Directory.CreateDirectory(dir);
-                }
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
                 if (File.Exists(path))
                 {
@@ -908,100 +1752,73 @@ namespace AgenteIALocalVSIX.ToolWindows
                     using (var fs = new FileStream(path, FileMode.CreateNew)) { }
                 }
             }
-            catch
-            {
-                // never throw
-            }
+            catch { }
         }
 
-        private void OnPropertyChanged(string name)
+        // Append to UI log and persistent storage
+        private void AppendLog(string message)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
+            var ts = DateTime.UtcNow.ToString("o");
+            var line = ts + " - " + (message ?? string.Empty);
 
-        // Helper to build a FlowDocument from raw chat text (prepares future rich rendering)
-        private static FlowDocument BuildChatDocument(string raw)
-        {
-            var doc = new FlowDocument();
-            if (string.IsNullOrEmpty(raw)) return doc;
-
-            string[] lines = raw.Replace("\r\n", "\n").Split('\n');
-            bool inFence = false;
-            var codeLines = new List<string>();
-            foreach (var line in lines)
+            Ui(() =>
             {
-                if (line.StartsWith("```"))
+                try
                 {
-                    if (!inFence)
+                    if (LogText != null)
                     {
-                        inFence = true;
-                        codeLines.Clear();
+                        LogText.Text = line + "\n" + (LogText.Text ?? string.Empty);
                     }
-                    else
-                    {
-                        // close fence
-                        inFence = false;
-                        var codeText = string.Join("\n", codeLines);
-                        var section = new Section();
-                        var para = new Paragraph(new Run(codeText)) { FontFamily = new FontFamily("Consolas") };
-                        section.Blocks.Add(para);
-                        doc.Blocks.Add(section);
-                        codeLines.Clear();
-                    }
-                    continue;
                 }
+                catch { }
+            });
 
-                if (inFence)
-                {
-                    codeLines.Add(line);
-                }
-                else
-                {
-                    var para = new Paragraph(new Run(line));
-                    doc.Blocks.Add(para);
-                }
-            }
-
-            // If file ends while inside fence, emit collected as code block
-            if (inFence && codeLines.Count > 0)
+            try
             {
-                var codeText = string.Join("\n", codeLines);
-                var section = new Section();
-                var para = new Paragraph(new Run(codeText)) { FontFamily = new FontFamily("Consolas") };
-                section.Blocks.Add(para);
-                doc.Blocks.Add(section);
+                try { AgentComposition.Info(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] " + (message ?? string.Empty)); } catch { }
+                AppendLogFileLine("[AgenteIALocalControl] " + (message ?? string.Empty));
             }
-
-            return doc;
+            catch { }
         }
-
-        private void VerboseLog_Click(object sender, RoutedEventArgs e)
+        private void RefreshLogFromFile()
         {
             try
             {
-                // TODO: connect to verbose log view if available.
-                RefreshLogFromFile();
+                var content = ReadLogFile();
+                Ui(() =>
+                {
+                    try
+                    {
+                        if (string.IsNullOrEmpty(content))
+                        {
+                            LogText.Text = "(no logs)";
+                        }
+                        else
+                        {
+                            LogText.Text = content;
+                        }
+                    }
+                    catch { }
+                });
             }
             catch
             {
-                // never throw from UI
+                Ui(() =>
+                {
+                    try { LogText.Text = "(unable to read logs)"; } catch { }
+                });
             }
         }
-
-        private void PromptTextBox_KeyDown(object sender, KeyEventArgs e)
+        private void ServerLLM_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             try
             {
-                if (e.Key != Key.Enter) return;
-                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
-                if (!RunButtonEnabled) return;
-                e.Handled = true;
-                RunButton_Click(sender, new RoutedEventArgs());
+                if (!IsLoaded) return;
+                var cb = sender as ComboBox;
+                var selected = cb?.SelectedItem as string ?? cb?.SelectedItem?.ToString() ?? string.Empty;
+                AppendLog($"[VERBOSE] ServerLLM selection changed -> {selected}");
             }
-            catch
-            {
-                // never throw from UI
-            }
+            catch { }
         }
     }
 }

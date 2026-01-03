@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AgenteIALocal.Core.Agents;
 using AgenteIALocal.Core.Settings;
+using AgenteIALocal.Core.Networking;
 
 namespace AgenteIALocal.Infrastructure.Agents
 {
@@ -59,6 +60,7 @@ namespace AgenteIALocal.Infrastructure.Agents
                     sb.Append("\"messages\":[{");
                     sb.Append("\"role\":\"user\",\"content\":\"");
                     sb.Append(EscapeJson(request.Prompt ?? string.Empty));
+                    // Close the content string and the message object/array: "}
                     sb.Append("\"}]");
 
                     sb.Append('}');
@@ -73,6 +75,13 @@ namespace AgenteIALocal.Infrastructure.Agents
                     req.Accept = "application/json";
                     // H1: Authorization: Bearer <apiKey>
                     req.Headers[HttpRequestHeader.Authorization] = "Bearer " + apiKey;
+
+                    // Increase the default timeout (default ~100s). Apply both main timeout and read/write timeout.
+                    req.Timeout = (int)HttpTimeouts.LmStudioChatRequestTimeout.TotalMilliseconds;
+                    req.ReadWriteTimeout = (int)HttpTimeouts.LmStudioChatRequestTimeout.TotalMilliseconds;
+
+                    // Do NOT add any new headers that change network behavior (correlation used only for logging)
+
                     req.ContentLength = bytes.Length;
 
                     using (var s = req.GetRequestStream())
@@ -117,13 +126,27 @@ namespace AgenteIALocal.Infrastructure.Agents
                         using (var sr = new StreamReader(wex.Response?.GetResponseStream() ?? Stream.Null))
                         {
                             var body = sr.ReadToEnd();
+                            // Distinguish timeout vs other web exceptions
+                            if (wex.Status == WebExceptionStatus.Timeout)
+                            {
+                                return new AgentResponse { IsSuccess = false, Error = $"Se excedió el tiempo de espera ({(int)HttpTimeouts.LmStudioChatRequestTimeout.TotalSeconds}s): {wex.Message} - {body}" };
+                            }
+
                             return new AgentResponse { IsSuccess = false, Error = wex.Message + " - " + body };
                         }
                     }
                     catch
                     {
+                        if (wex.Status == WebExceptionStatus.Timeout)
+                        {
+                            return new AgentResponse { IsSuccess = false, Error = $"Se excedió el tiempo de espera ({(int)HttpTimeouts.LmStudioChatRequestTimeout.TotalSeconds}s): {wex.Message}" };
+                        }
                         return new AgentResponse { IsSuccess = false, Error = wex.Message };
                     }
+                }
+                catch (OperationCanceledException)
+                {
+                    return new AgentResponse { IsSuccess = false, Error = "Operación cancelada" };
                 }
                 catch (Exception ex)
                 {
