@@ -7,5 +7,6 @@ namespace AgenteIALocal.Application.Agents
     public interface IAgentService
     {
         Task<AgentResponse> RunAsync(string prompt, CancellationToken cancellationToken);
+        Task<AgentResponse> RunAsync(AgentRequest request, CancellationToken cancellationToken);
     }
 }

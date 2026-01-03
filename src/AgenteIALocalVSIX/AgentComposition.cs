@@ -1,28 +1,43 @@
 using System;
-using System.Diagnostics;
-using AgenteIALocalVSIX.Contracts;
-using AgenteIALocalVSIX.Execution;
 using System.Threading.Tasks;
-using AgenteIALocal.Application.Agents;
 using AgenteIALocal.Core.Settings;
 using AgenteIALocal.Infrastructure.Agents;
+using AgenteIALocal.Core.Models.Agent;
+using AgenteIALocal.Core.Logging;
 
 namespace AgenteIALocalVSIX
 {
-    /// <summary>
-    /// Static composition root for the VSIX. Responsible for providing a lightweight
-    /// AgentService instance at runtime. Composition is idempotent and fail-safe.
-    /// </summary>
     internal static class AgentComposition
     {
         private static readonly object sync = new object();
         private static bool composed = false;
 
-        // Publicly accessible service used by ToolWindow and other VSIX components.
         public static IAgentService AgentService { get; private set; }
 
-        // Optional logger hook that consumers can set. When null, Trace is used as fallback.
-        public static Action<string> Logger { get; set; }
+        // V2 logger instance exposed as the single logging entry point for all code.
+        private static IAgentLoggerV2 loggerV2;
+        public static IAgentLoggerV2 LoggerV2
+        {
+            get
+            {
+                if (loggerV2 == null)
+                {
+                    lock (sync)
+                    {
+                        if (loggerV2 == null)
+                        {
+                            loggerV2 = new AgenteIALocal.Infrastructure.LoggingV2.AgentLoggerV2(new AgenteIALocal.Infrastructure.LoggingV2.NullLogSink());
+                        }
+                    }
+                }
+                return loggerV2;
+            }
+            set
+            {
+                if (value == null) throw new ArgumentNullException(nameof(value));
+                loggerV2 = value;
+            }
+        }
 
         public static void EnsureComposition()
         {
@@ -32,26 +47,13 @@ namespace AgenteIALocalVSIX
             {
                 if (composed) return;
 
-                LogInfo("[AgentComposition] Composition start.");
+                // Default: assign mock immediately to avoid blocking UI
+                AgentService = new MockAgentService();
 
-                try
-                {
-                    // Default: assign mock immediately to avoid blocking UI
-                    AgentService = new MockAgentService();
+                // Attempt to build real backend in background; if it fails, keep mock
+                _ = Task.Run(() => TryComposeRealBackend());
 
-                    // Attempt to build real backend in background; if it fails, keep mock
-                    Task.Run(() => TryComposeRealBackend());
-
-                    composed = true;
-
-                    LogInfo("[AgentComposition] Composition scheduled.");
-                }
-                catch (Exception ex)
-                {
-                    AgentService = new MockAgentService();
-                    composed = true; // mark as composed to avoid retrying repeatedly
-                    LogError($"[AgentComposition] Composition failure: {ex}");
-                }
+                composed = true;
             }
         }
 
@@ -59,44 +61,39 @@ namespace AgenteIALocalVSIX
         {
             try
             {
-                // Read settings from VSIX local settings store (file-based). This may perform minimal IO but runs off-UI-thread.
                 var vsixSettings = AgentSettingsStore.Load();
                 if (vsixSettings == null)
                 {
-                    LogInfo("[AgentComposition] No VSIX settings found; keeping mock.");
+                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "No VSIX settings found; keeping mock.");
                     return;
                 }
 
-                // Determine active server
                 var activeId = vsixSettings.ActiveServerId;
                 if (string.IsNullOrEmpty(activeId) || vsixSettings.Servers == null)
                 {
-                    LogInfo("[AgentComposition] No active server configured; keeping mock.");
+                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "No active server configured; keeping mock.");
                     return;
                 }
 
                 var srv = vsixSettings.Servers.Find(s => string.Equals(s.Id, activeId, StringComparison.OrdinalIgnoreCase));
                 if (srv == null)
                 {
-                    LogInfo("[AgentComposition] Active server entry not found; keeping mock.");
+                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Active server entry not found; keeping mock.");
                     return;
                 }
 
-                // Provider selection: expect provider string 'lmstudio' for LM Studio
                 if (string.IsNullOrEmpty(srv.Provider) || !srv.Provider.Equals("lmstudio", StringComparison.OrdinalIgnoreCase))
                 {
-                    LogInfo("[AgentComposition] Active provider is not lmstudio; keeping mock.");
+                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Active provider is not lmstudio; keeping mock.");
                     return;
                 }
 
-                // Validate base URL
                 if (string.IsNullOrWhiteSpace(srv.BaseUrl))
                 {
-                    LogInfo("[AgentComposition] LM Studio BaseUrl empty; keeping mock.");
+                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "LM Studio BaseUrl empty; keeping mock.");
                     return;
                 }
 
-                // Map VSIX server config to Core LmStudioSettings
                 var lmSettings = new LmStudioSettings
                 {
                     BaseUrl = srv.BaseUrl ?? string.Empty,
@@ -105,103 +102,187 @@ namespace AgenteIALocalVSIX
                     ChatCompletionsPath = "/v1/chat/completions"
                 };
 
-                // Create endpoint resolver and client (no IO in constructors)
                 var resolver = new LmStudioEndpointResolver(lmSettings);
                 var client = new LmStudioClient(lmSettings, resolver);
-
-                // Create application-level AgentService
                 var appService = new AgenteIALocal.Application.Agents.AgentService(client);
-
-                // Wrap with adapter that implements the VSIX AgentService contract
                 var adapter = new CoreAgentServiceAdapter(appService);
 
-                // Replace the AgentService atomically
                 AgentService = adapter;
 
-                LogInfo("[AgentComposition] Real LM Studio backend composed and active.");
+                LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Real LM Studio backend composed and active.");
             }
             catch (Exception ex)
             {
-                try { LogInfo("[AgentComposition] Real backend composition failed: " + ex.Message); } catch { }
+                try { LoggerV2.Error("-", new LogEventId(9001, "VSIX.Composition"), "Real backend composition failed: " + ex.Message, ex); } catch { }
                 // keep existing mock
             }
         }
 
-        private static void LogInfo(string message)
+        public static void RecomposeFromSettings(string reason)
         {
-            if (Logger != null)
+            try
             {
-                try { Logger.Invoke(message); } catch { /* swallow logging errors */ }
-                return;
-            }
+                LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), $"RecomposeFromSettings invoked. Reason: {reason}");
 
-            Trace.TraceInformation(message);
-        }
+                var vsixSettings = AgentSettingsStore.Load();
+                if (vsixSettings == null)
+                {
+                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "No settings found during recompose; assigning mock.");
+                    AgentService = new MockAgentService();
+                    return;
+                }
 
-        private static void LogError(string message)
-        {
-            if (Logger != null)
-            {
-                try { Logger.Invoke("ERROR: " + message); } catch { }
-                return;
-            }
+                var activeId = vsixSettings.ActiveServerId;
+                ServerConfig srv = null;
+                if (!string.IsNullOrEmpty(activeId) && vsixSettings.Servers != null)
+                {
+                    srv = vsixSettings.Servers.Find(s => string.Equals(s.Id, activeId, StringComparison.OrdinalIgnoreCase));
+                }
 
-            Trace.TraceError(message);
-        }
+                if (srv == null && vsixSettings.Servers != null && vsixSettings.Servers.Count > 0)
+                {
+                    srv = vsixSettings.Servers[0];
+                }
 
-        // Minimal agent service interface local to VSIX project.
-        internal interface IAgentService
-        {
-            CopilotResponse Execute(CopilotRequest req);
-        }
+                var provider = srv?.Provider ?? string.Empty;
+                var baseUrl = srv?.BaseUrl ?? string.Empty;
+                var model = srv?.Model ?? string.Empty;
 
-        // Mock implementation that delegates to the existing MockCopilotExecutor.
-        private class MockAgentService : IAgentService
-        {
-            public CopilotResponse Execute(CopilotRequest req)
-            {
-                return MockCopilotExecutor.Execute(req);
-            }
-        }
+                LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), $"Recompose settings: ActiveServerId={srv?.Id}, Provider={provider}, BaseUrl={baseUrl}, Model={model}");
 
-        // Adapter that exposes the Core/Application async AgentService through the VSIX sync IAgentService
-        private sealed class CoreAgentServiceAdapter : IAgentService
-        {
-            private readonly AgenteIALocal.Application.Agents.IAgentService appService;
-
-            public CoreAgentServiceAdapter(AgenteIALocal.Application.Agents.IAgentService appService)
-            {
-                this.appService = appService ?? throw new ArgumentNullException(nameof(appService));
-            }
-
-            public CopilotResponse Execute(CopilotRequest req)
-            {
                 try
                 {
-                    // Build a prompt string from CopilotRequest fields (minimal mapping)
-                    var prompt = (req?.Action ?? string.Empty) + " " + (req?.SolutionName ?? string.Empty);
-
-                    // Execute asynchronously on the app service and block here (caller runs in background task)
-                    var agentResp = appService.RunAsync(prompt, System.Threading.CancellationToken.None).GetAwaiter().GetResult();
-
-                    if (agentResp == null)
+                    if (string.IsNullOrEmpty(srv?.Provider) || !srv.Provider.Equals("lmstudio", StringComparison.OrdinalIgnoreCase))
                     {
-                        return new CopilotResponse { RequestId = req?.RequestId, Success = false, Output = null, Error = "Empty response from agent", Timestamp = DateTime.UtcNow.ToString("o") };
+                        LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Provider not lmstudio; assigning mock AgentService.");
+                        AgentService = new MockAgentService();
+                        return;
                     }
 
-                    return new CopilotResponse
+                    if (string.IsNullOrWhiteSpace(srv.BaseUrl))
                     {
-                        RequestId = req?.RequestId,
-                        Success = agentResp.IsSuccess,
-                        Output = agentResp.Content,
-                        Error = agentResp.Error,
-                        Timestamp = DateTime.UtcNow.ToString("o")
+                        LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "LM Studio BaseUrl empty; assigning mock AgentService.");
+                        AgentService = new MockAgentService();
+                        return;
+                    }
+
+                    var lmSettings = new LmStudioSettings
+                    {
+                        BaseUrl = srv.BaseUrl ?? string.Empty,
+                        ApiKey = srv.ApiKey ?? string.Empty,
+                        Model = srv.Model ?? string.Empty,
+                        ChatCompletionsPath = "/v1/chat/completions"
                     };
+
+                    var resolver = new LmStudioEndpointResolver(lmSettings);
+                    var client = new LmStudioClient(lmSettings, resolver);
+                    var appService = new AgenteIALocal.Application.Agents.AgentService(client);
+                    var adapter = new CoreAgentServiceAdapter(appService);
+
+                    AgentService = adapter;
+
+                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "RecomposeFromSettings: Real LM Studio backend composed and active.");
+                    return;
                 }
                 catch (Exception ex)
                 {
-                    return new CopilotResponse { RequestId = req?.RequestId, Success = false, Output = null, Error = ex.Message, Timestamp = DateTime.UtcNow.ToString("o") };
+                    LoggerV2.Error("-", new LogEventId(9001, "VSIX.Composition"), $"RecomposeFromSettings failed to compose real backend: {ex.Message}", ex);
+                    AgentService = new MockAgentService();
+                    return;
                 }
+            }
+            catch (Exception ex)
+            {
+                try { LoggerV2.Error("-", new LogEventId(9001, "VSIX.Composition"), $"RecomposeFromSettings general failure: {ex.Message}", ex); } catch { }
+                try { AgentService = new MockAgentService(); } catch { }
+            }
+        }
+
+        // Minimal V2 helpers that capture caller info via CallerInfo helpers
+        public static void Info(string correlationId, LogEventId eventId, string message, Exception ex = null, System.Collections.Generic.IReadOnlyDictionary<string, string> ctx = null, string ns = null, string type = null, string assembly = null, [System.Runtime.CompilerServices.CallerMemberName] string member = "", [System.Runtime.CompilerServices.CallerFilePath] string file = "", [System.Runtime.CompilerServices.CallerLineNumber] int? line = null)
+        {
+            try
+            {
+                LoggerV2.Info(string.IsNullOrEmpty(correlationId) ? "-" : correlationId, eventId, message, ex, ctx, member, file, line, ns, type, assembly);
+            }
+            catch { }
+        }
+
+        public static void Verbose(string correlationId, LogEventId eventId, string message, Exception ex = null, System.Collections.Generic.IReadOnlyDictionary<string, string> ctx = null, string ns = null, string type = null, string assembly = null, [System.Runtime.CompilerServices.CallerMemberName] string member = "", [System.Runtime.CompilerServices.CallerFilePath] string file = "", [System.Runtime.CompilerServices.CallerLineNumber] int? line = null)
+        {
+            try
+            {
+                LoggerV2.Verbose(string.IsNullOrEmpty(correlationId) ? "-" : correlationId, eventId, message, ex, ctx, member, file, line, ns, type, assembly);
+            }
+            catch { }
+        }
+
+        public static void Error(string correlationId, LogEventId eventId, string message, Exception ex = null, System.Collections.Generic.IReadOnlyDictionary<string, string> ctx = null, string ns = null, string type = null, string assembly = null, [System.Runtime.CompilerServices.CallerMemberName] string member = "", [System.Runtime.CompilerServices.CallerFilePath] string file = "", [System.Runtime.CompilerServices.CallerLineNumber] int? line = null)
+        {
+            try
+            {
+                LoggerV2.Error(string.IsNullOrEmpty(correlationId) ? "-" : correlationId, eventId, message, ex, ctx, member, file, line, ns, type, assembly);
+            }
+            catch { }
+        }
+
+        // ... other levels as needed (Debug, Warning, Critical)
+    }
+
+    // Minimal agent service interface local to VSIX project.
+    internal interface IAgentService
+    {
+        AgentHostResponse Execute(AgentHostRequest req);
+    }
+
+    // Mock implementation that delegates to the existing MockAgentExecutor.
+    internal class MockAgentService : IAgentService
+    {
+        public AgentHostResponse Execute(AgentHostRequest req)
+        {
+            return AgenteIALocalVSIX.Execution.MockAgentExecutor.Execute(req);
+        }
+    }
+
+    // Adapter that exposes the Core/Application async AgentService through the VSIX sync IAgentService
+    internal sealed class CoreAgentServiceAdapter : IAgentService
+    {
+        private readonly AgenteIALocal.Application.Agents.IAgentService appService;
+
+        public CoreAgentServiceAdapter(AgenteIALocal.Application.Agents.IAgentService appService)
+        {
+            this.appService = appService ?? throw new ArgumentNullException(nameof(appService));
+        }
+
+        public AgentHostResponse Execute(AgentHostRequest req)
+        {
+            try
+            {
+                var prompt = (req?.Action ?? string.Empty) + " " + (req?.SolutionName ?? string.Empty);
+                // Build Core AgentRequest and propagate correlation id
+                var agentReq = new AgenteIALocal.Core.Agents.AgentRequest { Prompt = prompt, CorrelationId = req?.CorrelationId };
+                var agentResp = Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.Run(
+                    () => appService.RunAsync(agentReq, System.Threading.CancellationToken.None)
+                    );
+
+
+                if (agentResp == null)
+                {
+                    return new AgentHostResponse { RequestId = req?.RequestId, Success = false, Output = null, Error = "Empty response from agent", Timestamp = DateTime.UtcNow.ToString("o") };
+                }
+
+                return new AgentHostResponse
+                {
+                    RequestId = req?.RequestId,
+                    Success = agentResp.IsSuccess,
+                    Output = agentResp.Content,
+                    Error = agentResp.Error,
+                    Timestamp = DateTime.UtcNow.ToString("o")
+                };
+            }
+            catch (Exception ex)
+            {
+                return new AgentHostResponse { RequestId = req?.RequestId, Success = false, Output = null, Error = ex.Message, Timestamp = DateTime.UtcNow.ToString("o") };
             }
         }
     }

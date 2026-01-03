@@ -1,0 +1,18 @@
+Agente IA Local — Getting Started (v1.0.46)
+
+1. Install the VSIX (Marketplace or local .vsix install).
+2. Start Visual Studio (or Experimental Instance for development).
+3. Open the extension: Tools → Agente IA Local.
+4. Enter a prompt in the ToolWindow prompt box and press Enter or click Run.
+5. Review the rendered response in the response pane and the Log tab for diagnostics.
+
+Configuration:
+- Settings are available via Options and an inline Settings Panel in the ToolWindow. Persistent settings live at `%LOCALAPPDATA%\AgenteIALocal\settings.json`.
+- To enable a real backend, configure an LM Studio-compatible server (set `activeServerId`, `baseUrl`, `model`, and optionally `apiKey`).
+
+Logs & Troubleshooting:
+- Runtime logs: `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log`.
+- ActivityLog entries may appear in Visual Studio ActivityLog depending on sink availability.
+- If backend composition fails, the UI falls back to a mock executor; check logs for `VSIX.Composition` entries.
+
+Disclaimer: THIS SOFTWARE IS PROVIDED "AS IS". USE AT YOUR OWN RISK; NO LIABILITY IS PROVIDED.

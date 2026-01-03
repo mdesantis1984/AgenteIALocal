@@ -54,7 +54,18 @@ namespace AgenteIALocal.Infrastructure.Workspace
             {
                 if (dte != null && VsSdkAvailability.IsVsSdkPresent())
                 {
-                    var adapterType = Type.GetType("AgenteIALocal.Infrastructure.Workspace.VsSdkDocumentContextAdapter, AgenteIALocal.Infrastructure");
+                    // Use a compile-time-known assembly reference instead of an assembly-qualified string
+                    Type adapterType = null;
+                    try
+                    {
+                        var infraAsm = typeof(AgenteIALocal.Infrastructure.Agents.LmStudioClient).Assembly;
+                        adapterType = infraAsm.GetType("AgenteIALocal.Infrastructure.Workspace.VsSdkDocumentContextAdapter", throwOnError: false, ignoreCase: false);
+                    }
+                    catch
+                    {
+                        adapterType = null;
+                    }
+
                     if (adapterType != null)
                     {
                         var adapter = Activator.CreateInstance(adapterType, new[] { dte });
@@ -78,7 +89,18 @@ namespace AgenteIALocal.Infrastructure.Workspace
             {
                 if (dte != null && VsSdkAvailability.IsVsSdkPresent())
                 {
-                    var adapterType = Type.GetType("AgenteIALocal.Infrastructure.Workspace.VsSdkDocumentContextAdapter, AgenteIALocal.Infrastructure");
+                    // Use a compile-time-known assembly reference instead of an assembly-qualified string
+                    Type adapterType = null;
+                    try
+                    {
+                        var infraAsm = typeof(AgenteIALocal.Infrastructure.Agents.LmStudioClient).Assembly;
+                        adapterType = infraAsm.GetType("AgenteIALocal.Infrastructure.Workspace.VsSdkDocumentContextAdapter", throwOnError: false, ignoreCase: false);
+                    }
+                    catch
+                    {
+                        adapterType = null;
+                    }
+
                     if (adapterType != null)
                     {
                         var adapter = Activator.CreateInstance(adapterType, new[] { dte });

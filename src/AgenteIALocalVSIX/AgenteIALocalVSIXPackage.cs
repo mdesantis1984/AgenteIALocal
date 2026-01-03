@@ -7,6 +7,11 @@ using Task = System.Threading.Tasks.Task;
 using AgenteIALocalVSIX.Commands;
 using System.IO;
 using System.Text;
+using AgenteIALocal.Core.Logging;
+using AgenteIALocal.Core.Models.Agent;
+using AgenteIALocal.Core.Agents;
+using AgenteIALocal.Infrastructure.LoggingV2;
+using AgenteIALocalVSIX.LoggingV2;
 
 
 namespace AgenteIALocalVSIX
@@ -34,7 +39,6 @@ namespace AgenteIALocalVSIX
     [ProvideAutoLoad(UIContextGuids80.SolutionExists, PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideToolWindow(typeof(ToolWindows.AgenteIALocalToolWindow))]
-    [ProvideOptionPage(typeof(Options.AgenteOptionsPage), "Chat de Agente IA Local", "General", 0, 0, true)]
     public sealed class AgenteIALocalVSIXPackage : AsyncPackage
     {
         /// <summary>
@@ -57,48 +61,50 @@ namespace AgenteIALocalVSIX
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
-            // Register a file-based logger early so AgentComposition and other components use it.
             try
             {
-                // local file logger to avoid direct dependency on LogFile symbol (files may not be included in csproj)
-                Action<string> fileLogger = (msg) =>
+                try
                 {
-                    try
-                    {
-                        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                        var logDir = Path.Combine(local ?? string.Empty, "AgenteIALocal", "logs");
-                        Directory.CreateDirectory(logDir);
-                        var logPath = Path.Combine(logDir, "AgenteIALocal.log");
-                        var line = DateTime.UtcNow.ToString("o") + " - " + (msg ?? string.Empty) + Environment.NewLine;
-                        File.AppendAllText(logPath, line, Encoding.UTF8);
-                    }
-                    catch
-                    {
-                        // never throw from logger
-                    }
-                };
+                    // Build V2 logging pipeline
+                    var sinks = new CompositeLogSink(new ILogSink[] {
+                        new VsActivityLogSink(),
+                        new VsixFileLogSink("AgenteIALocal")
+                    });
 
-                AgentComposition.Logger = fileLogger;
+                    var v2 = new AgentLoggerV2(sinks);
+                    AgentComposition.LoggerV2 = v2 ?? new AgentLoggerV2(new NullLogSink());
+                }
+                catch
+                {
+                    // If any failure, ensure non-null LoggerV2
+                    AgentComposition.LoggerV2 = new AgentLoggerV2(new NullLogSink());
+                }
+
                 AgentComposition.EnsureComposition();
-                if (AgentComposition.AgentService != null)
-                {
-                    AgentComposition.Logger?.Invoke("[AgenteIALocalVSIXPackage] Agent composition available.");
-                }
-                else
-                {
-                    AgentComposition.Logger?.Invoke("[AgenteIALocalVSIXPackage] Agent composition returned null AgentService.");
-                }
+
+                AgentComposition.Info("-", new LogEventId(9000, "VSIX.Startup"), "Agent composition scheduled.");
             }
             catch (Exception ex)
             {
-                // Ensure logging never throws; swallow exceptions if logger fails
                 try
                 {
                     var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
                     var logDir = Path.Combine(local ?? string.Empty, "AgenteIALocal", "logs");
                     Directory.CreateDirectory(logDir);
                     var logPath = Path.Combine(logDir, "AgenteIALocal.log");
-                    File.AppendAllText(logPath, DateTime.UtcNow.ToString("o") + " - " + "[AgenteIALocalVSIXPackage] Agent composition threw: " + ex + Environment.NewLine, Encoding.UTF8);
+
+
+                    // Create a structured LogEntry and format it via canonical formatter to avoid legacy lines
+                    try
+                    {
+                        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Error, "-", new LogEventId(9000, "VSIX.Startup"), "[AgenteIALocalVSIXPackage] Agent composition threw: " + ex.ToString(), ex, null, null);
+                        var formatted = LogEntryTextFormatter.Format(entry);
+                        File.AppendAllText(logPath, formatted + Environment.NewLine, Encoding.UTF8);
+                    }
+                    catch
+                    {
+                        // Do NOT persist any non-formatted fallback line to ensure all persisted lines go through formatter.
+                    }
                 }
                 catch { }
             }

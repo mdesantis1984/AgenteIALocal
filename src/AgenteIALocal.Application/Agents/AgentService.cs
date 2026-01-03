@@ -13,10 +13,17 @@ namespace AgenteIALocal.Application.Agents
             this.client = client;
         }
 
+        public Task<AgentResponse> RunAsync(AgentRequest request, CancellationToken cancellationToken)
+        {
+            if (request == null) throw new System.ArgumentNullException(nameof(request));
+            return client.ExecuteAsync(request, cancellationToken);
+        }
+
+        // Keep original convenience method for compatibility
         public Task<AgentResponse> RunAsync(string prompt, CancellationToken cancellationToken)
         {
             var req = new AgentRequest { Prompt = prompt };
-            return client.ExecuteAsync(req, cancellationToken);
+            return RunAsync(req, cancellationToken);
         }
     }
 }

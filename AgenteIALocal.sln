@@ -4,15 +4,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 18.3.11312.210
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}"
-	ProjectSection(SolutionItems) = preProject
-		src\README.architecture.en.md = src\README.architecture.en.md
-		src\README.architecture.es.md = src\README.architecture.es.md
-		src\README.en.md = src\README.en.md
-		src\README.es.md = src\README.es.md
-		src\README.md = src\README.md
-		src\Readme.UX.md = src\Readme.UX.md
-		src\Reglas.md = src\Reglas.md
-	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgenteIALocal.Application", "src\AgenteIALocal.Application\AgenteIALocal.Application.csproj", "{665CAEDD-900F-1F40-2E92-C4A28BEAC487}"
 EndProject
@@ -29,6 +20,27 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Pruebas", "Pruebas", "{AED0369B-F7DF-4EF4-88D6-0D2DEF95A966}"
 	ProjectSection(SolutionItems) = preProject
 		src\Pruebas\lmstudio-test.http = src\Pruebas\lmstudio-test.http
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentacion", "Documentacion", "{21E4881B-57BE-4504-95AF-24633B85FE23}"
+	ProjectSection(SolutionItems) = preProject
+		CHANGELOG.md = CHANGELOG.md
+		GettingStarted.txt = GettingStarted.txt
+		LICENSE.txt = LICENSE.txt
+		MARKETPLACE.md = MARKETPLACE.md
+		Plan.md = Plan.md
+		PRIVACY.md = PRIVACY.md
+		src\README.architecture.en.md = src\README.architecture.en.md
+		src\README.architecture.es.md = src\README.architecture.es.md
+		src\README.en.md = src\README.en.md
+		src\README.es.md = src\README.es.md
+		src\README.md = src\README.md
+		README.md = README.md
+		src\Readme.UX.md = src\Readme.UX.md
+		src\Reglas.md = src\Reglas.md
+		ReleaseNotes.txt = ReleaseNotes.txt
+		RELEASE_NOTES.md = RELEASE_NOTES.md
+		SUPPORT.md = SUPPORT.md
 	EndProjectSection
 EndProject
 Global
@@ -73,6 +85,7 @@ Global
 		{31844BBD-CF2D-133F-9FCF-57B22964920E} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
 		{215F26C1-312F-407E-A713-FA4C4E7D755A} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
 		{AED0369B-F7DF-4EF4-88D6-0D2DEF95A966} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
+		{21E4881B-57BE-4504-95AF-24633B85FE23} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0AC6B85A-033F-465F-813E-E4296842506A}

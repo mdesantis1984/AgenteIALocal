@@ -1,0 +1,12 @@
+Agente IA Local VSIX — Release Notes (v1.0.46)
+
+Version: 1.0.46
+
+- Initial packaging for Visual Studio Marketplace (classic VSIX).
+- Adds a ToolWindow (`AgenteIALocalControl`) that provides a prompt → execution → result flow inside Visual Studio.
+- Includes a MockAgentExecutor by default; LM Studio HTTP client is implemented and can be enabled via configuration (settings.json / Options).
+- Local diagnostic logging to %LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log and optional writes to Visual Studio ActivityLog via a V2 sink.
+- Settings persisted to `%LOCALAPPDATA%\AgenteIALocal\settings.json` (active server, servers list, basic options).
+- Known limitations: JAN provider is a stub; no streaming responses; classic VSIX (AsyncPackage/ToolWindow) model used.
+
+Disclaimer: THIS SOFTWARE IS PROVIDED "AS IS". USE AT YOUR OWN RISK; THE AUTHOR ACCEPTS NO LIABILITY.
