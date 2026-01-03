@@ -65,20 +65,6 @@ namespace AgenteIALocalVSIX.ToolWindows
         private bool isChangesExpanded = false;
         public bool IsChangesExpanded { get { return isChangesExpanded; } set { if (isChangesExpanded == value) return; isChangesExpanded = value; RaisePropertyChanged(nameof(IsChangesExpanded)); } }
 
-        // Log panel state
-        private bool isLogAutoScrollEnabled = true;
-        public bool IsLogAutoScrollEnabled
-        {
-            get { return isLogAutoScrollEnabled; }
-            set
-            {
-                if (isLogAutoScrollEnabled == value) return;
-                isLogAutoScrollEnabled = value;
-                RaisePropertyChanged(nameof(IsLogAutoScrollEnabled));
-            }
-        }
-
-
         public ExecutionState CurrentExecutionState
         {
             get => currentExecutionState;
@@ -154,10 +140,6 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             EnsureMahAppsIconPacksLoaded();
             InitializeComponent();
-
-            // Hotkeys (ToolWindow scope): Esc stops while running.
-            this.PreviewKeyDown += AgenteIALocalControl_PreviewKeyDown;
-
 
             // Set DataContext for XAML bindings
             this.DataContext = this;
@@ -589,6 +571,62 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
+        private void RefreshLogButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                RefreshLogFromFile();
+            }
+            catch (Exception ex)
+            {
+                AppendLog("Refresh log failed: " + ex.Message);
+            }
+        }
+
+        private void CopyLogAllButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var text = LogText?.Text ?? string.Empty;
+                Clipboard.SetText(text);
+                AppendLog("Log copied to clipboard.");
+            }
+            catch (Exception ex)
+            {
+                AppendLog("Copy log failed: " + ex.Message);
+            }
+        }
+
+        private void OpenLogFileButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var path = GetLogFilePath();
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    AppendLog("Open log file: path not available.");
+                    return;
+                }
+
+                // Ensure the file exists so Explorer can select it.
+                if (!File.Exists(path))
+                {
+                    try { AppendLogFileLine("(log file created)"); } catch { }
+                }
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{path}\"",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                AppendLog("Open log file failed: " + ex.Message);
+            }
+        }
+
         private void StartLogRefreshLoop()
         {
             // Cancel any previous
@@ -613,17 +651,6 @@ namespace AgenteIALocalVSIX.ToolWindows
                         LogText.Text = string.IsNullOrEmpty(content)
                             ? "(no logs)"
                             : content;
-
-                        try
-                        {
-                            if (IsLogAutoScrollEnabled)
-                            {
-                                LogText.CaretIndex = LogText.Text?.Length ?? 0;
-                                LogText.ScrollToEnd();
-                            }
-                        }
-                        catch { }
-
                     }
                     catch
                     {
@@ -855,45 +882,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                 try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: selection handler error: {ex.Message}", ex); } catch { }
             }
         }
-        private void AgenteIALocalControl_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            try
-            {
-                if (e.Key != Key.Escape) return;
-                if (CurrentExecutionState != ExecutionState.Running) return;
-
-                e.Handled = true;
-
-                // Use the same logic path as the Run button (when running it becomes Stop).
-                RunButton_Click(this, new RoutedEventArgs());
-            }
-            catch
-            {
-                // never throw from UI
-            }
-        }
-
-
         private void PromptTextBox_KeyDown(object sender, KeyEventArgs e)
         {
             try
             {
                 if (e.Key != Key.Enter) return;
-
-                // Keep existing behavior: Shift+Enter inserts a newline.
                 if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
-
-                // Hotkey: Ctrl+Enter runs (same as Run button). Plain Enter keeps current behavior.
-                var mods = Keyboard.Modifiers;
-                var isCtrlEnter = mods.HasFlag(ModifierKeys.Control);
-                var isPlainEnter = mods == ModifierKeys.None;
-
-                // Ignore other modifier combinations (e.g., Alt+Enter).
-                if (!isCtrlEnter && !isPlainEnter) return;
-
                 if (CurrentExecutionState == ExecutionState.Running) return;
                 if (!RunButtonEnabled) return;
-
                 e.Handled = true;
                 RunButton_Click(sender, new RoutedEventArgs());
             }
@@ -902,7 +898,6 @@ namespace AgenteIALocalVSIX.ToolWindows
                 // never throw from UI
             }
         }
-
 
         private void RunButton_Click(object sender, RoutedEventArgs e)
         {
@@ -1757,53 +1752,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        
-        private void OpenLogFileButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var path = GetLogFilePath();
-                var dir = Path.GetDirectoryName(path);
-                if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir))
-                {
-                    Directory.CreateDirectory(dir);
-                }
-
-                if (!File.Exists(path))
-                {
-                    File.WriteAllText(path, string.Empty, Encoding.UTF8);
-                }
-
-                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-            }
-            catch
-            {
-                // UI must never throw
-            }
-        }
-
-        private void CopyLogToClipboardButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                ThreadHelper.ThrowIfNotOnUIThread();
-
-                var text = LogText?.Text ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(text))
-                {
-                    return;
-                }
-
-                Clipboard.SetText(text);
-            }
-            catch
-            {
-                // no-op (UI must not throw)
-            }
-        }
-
-
-// Logging file helpers
+        // Logging file helpers
         private static string GetLogFilePath()
         {
             try
@@ -1880,16 +1829,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 {
                     if (LogText != null)
                     {
-                        LogText.Text = (LogText.Text ?? string.Empty) + line + Environment.NewLine;
-                        try
-                        {
-                            if (IsLogAutoScrollEnabled)
-                            {
-                                LogText.CaretIndex = LogText.Text?.Length ?? 0;
-                                LogText.ScrollToEnd();
-                            }
-                        }
-                        catch { }
+                        LogText.Text = line + "\n" + (LogText.Text ?? string.Empty);
                     }
                 }
                 catch { }
@@ -1914,30 +1854,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                         if (string.IsNullOrEmpty(content))
                         {
                             LogText.Text = "(no logs)";
-                        try
-                        {
-                            if (IsLogAutoScrollEnabled)
-                            {
-                                LogText.CaretIndex = LogText.Text?.Length ?? 0;
-                                LogText.ScrollToEnd();
-                            }
-                        }
-                        catch { }
-
                         }
                         else
                         {
                             LogText.Text = content;
-                        try
-                        {
-                            if (IsLogAutoScrollEnabled)
-                            {
-                                LogText.CaretIndex = LogText.Text?.Length ?? 0;
-                                LogText.ScrollToEnd();
-                            }
-                        }
-                        catch { }
-
                         }
                     }
                     catch { }

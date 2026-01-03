@@ -483,6 +483,7 @@
         <RowDefinition Height="*" MinHeight="0" />
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
+        <!-- LOG: keep visible; content scrolls instead of expanding indefinitely -->
         <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
 
@@ -1441,14 +1442,15 @@
         </Border>
       </Grid>
 
-            <!-- LOG ACCORDION -->
+      <!-- LOG (matches Changes accordion style) -->
       <Expander Grid.Row="4"
-                Margin="12,8,12,12"
+                Margin="12,0,12,12"
                 BorderThickness="1"
                 BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
                 Background="{StaticResource Brush.ChangesBg}"
                 IsExpanded="False">
         <Expander.Style>
+          <!-- Same header behavior as Changes: toggle only on the left area; right-side buttons never paint accent -->
           <Style TargetType="{x:Type Expander}">
             <Setter Property="Template">
               <Setter.Value>
@@ -1464,14 +1466,12 @@
                         <RowDefinition Height="Auto"/>
                       </Grid.RowDefinitions>
 
-                      <!-- HEADER: Toggle SOLO en la zona izquierda -->
                       <Grid Grid.Row="0" Height="36">
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="Auto"/>
                           <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- Zona izquierda clickable -->
                         <ToggleButton Grid.Column="0"
                                       IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
                                       Background="Transparent"
@@ -1481,7 +1481,6 @@
                                       FocusVisualStyle="{x:Null}">
                           <ToggleButton.Template>
                             <ControlTemplate TargetType="{x:Type ToggleButton}">
-                              <!-- No triggers: never paint accent -->
                               <Border Background="Transparent"
                                       BorderThickness="0"
                                       Padding="0"
@@ -1493,14 +1492,12 @@
                           <ContentPresenter ContentSource="Header"/>
                         </ToggleButton>
 
-                        <!-- Zona derecha (botones) NO clickable -->
                         <ContentPresenter Grid.Column="1"
                                           Content="{TemplateBinding Tag}"
                                           HorizontalAlignment="Right"
                                           VerticalAlignment="Center"/>
                       </Grid>
 
-                      <!-- CONTENT con background distinto + separador -->
                       <Border x:Name="ContentHost"
                               Grid.Row="1"
                               Background="{StaticResource Brush.LayoutBg}"
@@ -1524,37 +1521,34 @@
         </Expander.Style>
 
         <Expander.Tag>
-          <StackPanel Orientation="Horizontal"
-                      VerticalAlignment="Center">
-            <ToggleButton Width="28" Height="28"
-                          Background="Transparent"
-                          BorderBrush="Transparent"
-                          BorderThickness="0"
-                          IsChecked="{Binding IsLogAutoScrollEnabled, Mode=TwoWay}"
-                          ToolTip="Autoscroll">
-              <md:PackIcon Kind="ArrowDownBold"
-                           Width="14"
-                           Height="14">
-                <md:PackIcon.Style>
-                  <Style TargetType="{x:Type md:PackIcon}">
-                    <Setter Property="Foreground" Value="{StaticResource HeaderMediumEmphasisBrush}" />
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
-                        <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </md:PackIcon.Style>
-              </md:PackIcon>
-            </ToggleButton>
-
-            
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <!-- Refresh from file -->
             <Button Width="28" Height="28"
+                    Style="{StaticResource IconButtonChromeStyle}"
                     Background="Transparent"
                     BorderBrush="Transparent"
                     BorderThickness="0"
-                    ToolTip="Copy log to clipboard"
-                    Click="CopyLogToClipboardButton_Click">
+                    Focusable="False"
+                    FocusVisualStyle="{x:Null}"
+                    Click="RefreshLogButton_Click"
+                    ToolTip="Refresh">
+              <md:PackIcon Kind="Download"
+                           Width="14"
+                           Height="14"
+                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                           Style="{StaticResource IconHoverZoomPackIconStrongStyle}" />
+            </Button>
+
+            <!-- Copy all -->
+            <Button Width="28" Height="28" Margin="8,0,0,0"
+                    Style="{StaticResource IconButtonChromeStyle}"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    BorderThickness="0"
+                    Focusable="False"
+                    FocusVisualStyle="{x:Null}"
+                    Click="CopyLogAllButton_Click"
+                    ToolTip="Copy all">
               <md:PackIcon Kind="ContentCopy"
                            Width="14"
                            Height="14"
@@ -1562,13 +1556,16 @@
                            Style="{StaticResource IconHoverZoomPackIconStrongStyle}" />
             </Button>
 
-<Button Width="28" Height="28" Margin="8,0,0,0"
+            <!-- Open log file -->
+            <Button Width="28" Height="28" Margin="8,0,0,0"
                     Style="{StaticResource IconButtonChromeStyle}"
                     Background="Transparent"
                     BorderBrush="Transparent"
                     BorderThickness="0"
-                    ToolTip="Open log file"
-                    Click="OpenLogFileButton_Click">
+                    Focusable="False"
+                    FocusVisualStyle="{x:Null}"
+                    Click="OpenLogFileButton_Click"
+                    ToolTip="Open log file">
               <md:PackIcon Kind="OpenInNew"
                            Width="14"
                            Height="14"
@@ -1579,9 +1576,7 @@
         </Expander.Tag>
 
         <Expander.Header>
-          <Grid x:Name="LogAccordionHeaderGrid"
-                Height="36"
-                VerticalAlignment="Center">
+          <Grid Height="36" VerticalAlignment="Center">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="12" />
@@ -1621,20 +1616,22 @@
           </Grid>
         </Expander.Header>
 
-        <Grid>
+        <Border Background="{StaticResource Brush.LayoutBg}"
+                BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="12">
           <TextBox x:Name="LogText"
                    IsReadOnly="True"
-                   AcceptsReturn="True"
-                   VerticalScrollBarVisibility="Auto"
-                   HorizontalScrollBarVisibility="Auto"
+                   VerticalScrollBarVisibility="Visible"
+                   HorizontalScrollBarVisibility="Visible"
                    TextWrapping="NoWrap"
                    FontFamily="Consolas"
-                   Background="{StaticResource Brush.LayoutBg}"
+                   Background="{StaticResource HeaderBackgroundBrush}"
                    Foreground="{StaticResource HeaderHighEmphasisBrush}"
                    BorderThickness="0"
-                   Padding="12,8,12,8"
-                   MinHeight="160" />
-        </Grid>
+                   Height="160"
+                   md:ScrollViewerAssist.IsAutoHideEnabled="False" />
+        </Border>
       </Expander>
     </Grid>
   </Grid>
