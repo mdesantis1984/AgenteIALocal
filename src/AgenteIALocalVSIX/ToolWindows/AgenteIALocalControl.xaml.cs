@@ -141,6 +141,10 @@ namespace AgenteIALocalVSIX.ToolWindows
             EnsureMahAppsIconPacksLoaded();
             InitializeComponent();
 
+            // Hotkeys (ToolWindow scope): Esc stops while running.
+            this.PreviewKeyDown += AgenteIALocalControl_PreviewKeyDown;
+
+
             // Set DataContext for XAML bindings
             this.DataContext = this;
 
@@ -826,14 +830,45 @@ namespace AgenteIALocalVSIX.ToolWindows
                 try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: selection handler error: {ex.Message}", ex); } catch { }
             }
         }
+        private void AgenteIALocalControl_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                if (e.Key != Key.Escape) return;
+                if (CurrentExecutionState != ExecutionState.Running) return;
+
+                e.Handled = true;
+
+                // Use the same logic path as the Run button (when running it becomes Stop).
+                RunButton_Click(this, new RoutedEventArgs());
+            }
+            catch
+            {
+                // never throw from UI
+            }
+        }
+
+
         private void PromptTextBox_KeyDown(object sender, KeyEventArgs e)
         {
             try
             {
                 if (e.Key != Key.Enter) return;
+
+                // Keep existing behavior: Shift+Enter inserts a newline.
                 if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
+
+                // Hotkey: Ctrl+Enter runs (same as Run button). Plain Enter keeps current behavior.
+                var mods = Keyboard.Modifiers;
+                var isCtrlEnter = mods.HasFlag(ModifierKeys.Control);
+                var isPlainEnter = mods == ModifierKeys.None;
+
+                // Ignore other modifier combinations (e.g., Alt+Enter).
+                if (!isCtrlEnter && !isPlainEnter) return;
+
                 if (CurrentExecutionState == ExecutionState.Running) return;
                 if (!RunButtonEnabled) return;
+
                 e.Handled = true;
                 RunButton_Click(sender, new RoutedEventArgs());
             }
@@ -842,6 +877,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 // never throw from UI
             }
         }
+
 
         private void RunButton_Click(object sender, RoutedEventArgs e)
         {
