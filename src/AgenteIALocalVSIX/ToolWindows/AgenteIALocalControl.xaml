@@ -480,7 +480,7 @@
     <Grid x:Name="BodyContainer" Grid.Row="1">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
-        <RowDefinition Height="*" MinHeight="0" />
+        <RowDefinition Height="*" MinHeight="180" />
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
         <!-- LOG: keep visible; content scrolls instead of expanding indefinitely -->
@@ -561,7 +561,7 @@
       </Grid>
 
       <!-- CHAT SURFACE (single conversation history) -->
-      <Border Grid.Row="1" Margin="0,8,0,8" Padding="12" BorderThickness="0" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" CornerRadius="4" Background="{StaticResource Brush.LayoutBg}">
+      <Border Grid.Row="1" MinHeight="180" Margin="0,8,0,8" Padding="12" BorderThickness="0" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" CornerRadius="4" Background="{StaticResource Brush.LayoutBg}">
         <RichTextBox x:Name="ResponseJsonText"
                      IsReadOnly="True"
                      IsDocumentEnabled="True"
@@ -1522,6 +1522,13 @@
 
         <Expander.Tag>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <!-- File size (auto-updated) -->
+            <TextBlock Text="{Binding LogFileSizeLabel, FallbackValue=0 K}"
+                       VerticalAlignment="Center"
+                       Foreground="{StaticResource HeaderMediumEmphasisBrush}"
+                       Style="{StaticResource Text.Caption}"
+                       Margin="0,0,12,0" />
+
             <!-- Refresh from file -->
             <Button Width="28" Height="28"
                     Style="{StaticResource IconButtonChromeStyle}"
@@ -1529,6 +1536,7 @@
                     BorderBrush="Transparent"
                     BorderThickness="0"
                     Focusable="False"
+                    IsTabStop="False"
                     FocusVisualStyle="{x:Null}"
                     Click="RefreshLogButton_Click"
                     ToolTip="Refresh">
@@ -1546,6 +1554,7 @@
                     BorderBrush="Transparent"
                     BorderThickness="0"
                     Focusable="False"
+                    IsTabStop="False"
                     FocusVisualStyle="{x:Null}"
                     Click="CopyLogAllButton_Click"
                     ToolTip="Copy all">
@@ -1563,6 +1572,7 @@
                     BorderBrush="Transparent"
                     BorderThickness="0"
                     Focusable="False"
+                    IsTabStop="False"
                     FocusVisualStyle="{x:Null}"
                     Click="OpenLogFileButton_Click"
                     ToolTip="Open log file">
@@ -1570,6 +1580,24 @@
                            Width="14"
                            Height="14"
                            Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                           Style="{StaticResource IconHoverZoomPackIconStrongStyle}" />
+            </Button>
+
+            <!-- Delete log file (disk) -->
+            <Button Width="28" Height="28" Margin="8,0,0,0"
+                    Style="{StaticResource IconButtonChromeStyle}"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    BorderThickness="0"
+                    Focusable="False"
+                    IsTabStop="False"
+                    FocusVisualStyle="{x:Null}"
+                    Click="DeleteLogFileButton_Click"
+                    ToolTip="Delete log file">
+              <md:PackIcon Kind="DeleteOutline"
+                           Width="14"
+                           Height="14"
+                           Foreground="IndianRed"
                            Style="{StaticResource IconHoverZoomPackIconStrongStyle}" />
             </Button>
           </StackPanel>
@@ -1621,15 +1649,17 @@
                 BorderThickness="0,1,0,0"
                 Padding="12">
           <TextBox x:Name="LogText"
+                   Style="{x:Null}"
                    IsReadOnly="True"
                    VerticalScrollBarVisibility="Visible"
-                   HorizontalScrollBarVisibility="Visible"
+                   HorizontalScrollBarVisibility="Auto"
                    TextWrapping="NoWrap"
                    FontFamily="Consolas"
                    Background="{StaticResource HeaderBackgroundBrush}"
                    Foreground="{StaticResource HeaderHighEmphasisBrush}"
                    BorderThickness="0"
-                   Height="160"
+                   Height="140"
+                   MaxHeight="180"
                    md:ScrollViewerAssist.IsAutoHideEnabled="False" />
         </Border>
       </Expander>

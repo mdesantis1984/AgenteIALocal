@@ -56,6 +56,16 @@ namespace AgenteIALocalVSIX.ToolWindows
         private string configLabel = "Not Config";
         public string ConfigLabel { get { return configLabel; } private set { if (configLabel == value) return; configLabel = value ?? "Not Config"; RaisePropertyChanged(nameof(ConfigLabel)); } }
 
+        // Log file size label (bound in XAML, auto-updated)
+        private string logFileSizeLabel = "0 K";
+        public string LogFileSizeLabel
+        {
+            get { return logFileSizeLabel; }
+            private set { if (logFileSizeLabel == value) return; logFileSizeLabel = value ?? "0 K"; RaisePropertyChanged(nameof(LogFileSizeLabel)); }
+        }
+
+        private bool _logScrollInitialized;
+
         // Chat state
         private List<ChatSession> chats = new List<ChatSession>();
         private ChatSession activeChat = null;
@@ -170,6 +180,9 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             // Load current log file content into the Log tab asynchronously
             StartLogRefreshLoop();
+
+            // Ensure initial size label is correct even before first refresh tick
+            try { UpdateLogFileSizeLabelFromBytes(TryGetLogFileSizeBytes()); } catch { }
 
             // Load current settings into settings panel (but keep panel hidden)
             try
@@ -319,6 +332,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 {
                     PromptTextBox.Text = string.Empty;
                     ResponseJsonText.Document = CreatePlainDocument(string.Empty);
+                    ScrollResponseToEnd();
                     return;
                 }
 
@@ -330,6 +344,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
 
                 ResponseJsonText.Document = CreatePlainDocument(sb.ToString());
+                ScrollResponseToEnd();
                 PromptTextBox.Text = string.Empty;
             }
             catch
@@ -627,6 +642,57 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
+
+        private void DeleteLogFileButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var path = GetLogFilePath();
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    AppendLog("Delete log file: path not available.");
+                    return;
+                }
+
+                if (!File.Exists(path))
+                {
+                    UpdateLogFileSizeLabelFromBytes(0);
+                    AppendLog("Delete log file: file does not exist.");
+                    return;
+                }
+
+                var res = MessageBox.Show(
+                    "This will permanently delete the log file from disk. Are you sure?",
+                    "Delete log file",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (res != MessageBoxResult.Yes) return;
+
+                File.Delete(path);
+
+                Ui(() =>
+                {
+                    try
+                    {
+                        UpdateLogFileSizeLabelFromBytes(0);
+                        if (LogText != null)
+                        {
+                            LogText.Text = "(no logs)";
+                            ScrollLogToEnd(force: true);
+                        }
+                    }
+                    catch { }
+                });
+
+                AppendLog("Log file deleted from disk.");
+            }
+            catch (Exception ex)
+            {
+                AppendLog("Delete log file failed: " + ex.Message);
+            }
+        }
+
         private void StartLogRefreshLoop()
         {
             // Cancel any previous
@@ -648,14 +714,21 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                         await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
 
+                        var bytes = TryGetLogFileSizeBytes();
+                        UpdateLogFileSizeLabelFromBytes(bytes);
+
                         LogText.Text = string.IsNullOrEmpty(content)
                             ? "(no logs)"
                             : content;
+
+                        ScrollLogToEnd(force: false);
                     }
                     catch
                     {
                         await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+                        UpdateLogFileSizeLabelFromBytes(0);
                         LogText.Text = "(unable to read logs)";
+                        ScrollLogToEnd(force: false);
                     }
 
                     try { await Task.Delay(2000, ct); } catch { }
@@ -1045,6 +1118,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     {
                         AppendLog("[VERBOSE] RenderResponse: start; len=" + (display?.Length ?? 0));
                         ResponseJsonText.Document = RenderResponseToDocument(display);
+                        ScrollResponseToEnd();
                         AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
                     }
                     catch (Exception exRender)
@@ -1692,7 +1766,18 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch { }
         }
 
-        // UI-thread marshal helper (safe to call from background threads)
+        
+        private void ScrollResponseToEnd()
+        {
+            try
+            {
+                if (ResponseJsonText == null) return;
+                ResponseJsonText.ScrollToEnd();
+            }
+            catch { }
+        }
+
+// UI-thread marshal helper (safe to call from background threads)
         private void Ui(Action action)
         {
             try
@@ -1752,7 +1837,86 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // Logging file helpers
+        
+        private void ScrollLogToEnd(bool force)
+        {
+            try
+            {
+                if (LogText == null) return;
+
+                // Requirement: scroll to end at least once on startup.
+                if (force || !_logScrollInitialized)
+                {
+                    _logScrollInitialized = true;
+                    LogText.ScrollToEnd();
+                }
+                else
+                {
+                    // Keep simplest behavior: always follow tail.
+                    LogText.ScrollToEnd();
+                }
+            }
+            catch { }
+        }
+
+        private void UpdateLogFileSizeLabelFromBytes(long bytes)
+        {
+            try { LogFileSizeLabel = FormatFileSizeLabel(bytes); } catch { LogFileSizeLabel = "0 K"; }
+        }
+
+        private static long TryGetLogFileSizeBytes()
+        {
+            try
+            {
+                var path = GetLogFilePath();
+                if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return 0;
+                return new FileInfo(path).Length;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private static string FormatFileSizeLabel(long bytes)
+        {
+            try
+            {
+                if (bytes <= 0) return "0 K";
+
+                const long KB = 1024;
+                const long MB = 1024 * KB;
+                const long GB = 1024 * MB;
+
+                long value;
+                string unit;
+
+                if (bytes < MB)
+                {
+                    value = (bytes + KB - 1) / KB;
+                    unit = "K";
+                }
+                else if (bytes < GB)
+                {
+                    value = (bytes + MB - 1) / MB;
+                    unit = "Mb";
+                }
+                else
+                {
+                    value = (bytes + GB - 1) / GB;
+                    unit = "GB";
+                }
+
+                if (value > 9999) value = 9999;
+                return value.ToString() + " " + unit;
+            }
+            catch
+            {
+                return "0 K";
+            }
+        }
+
+// Logging file helpers
         private static string GetLogFilePath()
         {
             try
@@ -1829,7 +1993,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                 {
                     if (LogText != null)
                     {
-                        LogText.Text = line + "\n" + (LogText.Text ?? string.Empty);
+                        // Keep file order (append) and keep view on tail.
+                        LogText.Text = (LogText.Text ?? string.Empty) + line + "\n";
+                        ScrollLogToEnd(force: false);
                     }
                 }
                 catch { }
@@ -1851,6 +2017,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                 {
                     try
                     {
+                        var bytes = TryGetLogFileSizeBytes();
+                        UpdateLogFileSizeLabelFromBytes(bytes);
+
                         if (string.IsNullOrEmpty(content))
                         {
                             LogText.Text = "(no logs)";
@@ -1859,6 +2028,8 @@ namespace AgenteIALocalVSIX.ToolWindows
                         {
                             LogText.Text = content;
                         }
+
+                        ScrollLogToEnd(force: false);
                     }
                     catch { }
                 });
@@ -1867,7 +2038,13 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 Ui(() =>
                 {
-                    try { LogText.Text = "(unable to read logs)"; } catch { }
+                    try
+                    {
+                        UpdateLogFileSizeLabelFromBytes(0);
+                        LogText.Text = "(unable to read logs)";
+                        ScrollLogToEnd(force: false);
+                    }
+                    catch { }
                 });
             }
         }
