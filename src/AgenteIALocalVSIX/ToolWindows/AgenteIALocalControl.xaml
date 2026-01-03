@@ -483,7 +483,7 @@
         <RowDefinition Height="*" MinHeight="0" />
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
-        <RowDefinition Height="0" />
+        <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
 
       <!-- CHAT TOOLBAR (Items 7–9) -->
@@ -1441,10 +1441,201 @@
         </Border>
       </Grid>
 
-      <!-- HIDDEN LOG OUTPUT (kept for functionality) -->
-      <TextBox x:Name="LogText"
-               Grid.Row="4"
-               Visibility="Collapsed" />
+            <!-- LOG ACCORDION -->
+      <Expander Grid.Row="4"
+                Margin="12,8,12,12"
+                BorderThickness="1"
+                BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
+                Background="{StaticResource Brush.ChangesBg}"
+                IsExpanded="False">
+        <Expander.Style>
+          <Style TargetType="{x:Type Expander}">
+            <Setter Property="Template">
+              <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Expander}">
+                  <Border BorderThickness="{TemplateBinding BorderThickness}"
+                          BorderBrush="{TemplateBinding BorderBrush}"
+                          Background="{TemplateBinding Background}"
+                          CornerRadius="4"
+                          SnapsToDevicePixels="True">
+                    <Grid>
+                      <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                      </Grid.RowDefinitions>
+
+                      <!-- HEADER: Toggle SOLO en la zona izquierda -->
+                      <Grid Grid.Row="0" Height="36">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="Auto"/>
+                          <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Zona izquierda clickable -->
+                        <ToggleButton Grid.Column="0"
+                                      IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      Padding="0"
+                                      Focusable="False"
+                                      FocusVisualStyle="{x:Null}">
+                          <ToggleButton.Template>
+                            <ControlTemplate TargetType="{x:Type ToggleButton}">
+                              <!-- No triggers: never paint accent -->
+                              <Border Background="Transparent"
+                                      BorderThickness="0"
+                                      Padding="0"
+                                      SnapsToDevicePixels="True">
+                                <ContentPresenter/>
+                              </Border>
+                            </ControlTemplate>
+                          </ToggleButton.Template>
+                          <ContentPresenter ContentSource="Header"/>
+                        </ToggleButton>
+
+                        <!-- Zona derecha (botones) NO clickable -->
+                        <ContentPresenter Grid.Column="1"
+                                          Content="{TemplateBinding Tag}"
+                                          HorizontalAlignment="Right"
+                                          VerticalAlignment="Center"/>
+                      </Grid>
+
+                      <!-- CONTENT con background distinto + separador -->
+                      <Border x:Name="ContentHost"
+                              Grid.Row="1"
+                              Background="{StaticResource Brush.LayoutBg}"
+                              BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
+                              BorderThickness="0,1,0,0"
+                              Visibility="Collapsed">
+                        <ContentPresenter ContentSource="Content"/>
+                      </Border>
+                    </Grid>
+                  </Border>
+
+                  <ControlTemplate.Triggers>
+                    <Trigger Property="IsExpanded" Value="True">
+                      <Setter TargetName="ContentHost" Property="Visibility" Value="Visible"/>
+                    </Trigger>
+                  </ControlTemplate.Triggers>
+                </ControlTemplate>
+              </Setter.Value>
+            </Setter>
+          </Style>
+        </Expander.Style>
+
+        <Expander.Tag>
+          <StackPanel Orientation="Horizontal"
+                      VerticalAlignment="Center">
+            <ToggleButton Width="28" Height="28"
+                          Background="Transparent"
+                          BorderBrush="Transparent"
+                          BorderThickness="0"
+                          IsChecked="{Binding IsLogAutoScrollEnabled, Mode=TwoWay}"
+                          ToolTip="Autoscroll">
+              <md:PackIcon Kind="ArrowDownBold"
+                           Width="14"
+                           Height="14">
+                <md:PackIcon.Style>
+                  <Style TargetType="{x:Type md:PackIcon}">
+                    <Setter Property="Foreground" Value="{StaticResource HeaderMediumEmphasisBrush}" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                        <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </md:PackIcon.Style>
+              </md:PackIcon>
+            </ToggleButton>
+
+            
+            <Button Width="28" Height="28"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    BorderThickness="0"
+                    ToolTip="Copy log to clipboard"
+                    Click="CopyLogToClipboardButton_Click">
+              <md:PackIcon Kind="ContentCopy"
+                           Width="14"
+                           Height="14"
+                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                           Style="{StaticResource IconHoverZoomPackIconStrongStyle}" />
+            </Button>
+
+<Button Width="28" Height="28" Margin="8,0,0,0"
+                    Style="{StaticResource IconButtonChromeStyle}"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    BorderThickness="0"
+                    ToolTip="Open log file"
+                    Click="OpenLogFileButton_Click">
+              <md:PackIcon Kind="OpenInNew"
+                           Width="14"
+                           Height="14"
+                           Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                           Style="{StaticResource IconHoverZoomPackIconStrongStyle}" />
+            </Button>
+          </StackPanel>
+        </Expander.Tag>
+
+        <Expander.Header>
+          <Grid x:Name="LogAccordionHeaderGrid"
+                Height="36"
+                VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="12" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <md:PackIcon Grid.Column="0"
+                         Kind="ChevronDown"
+                         Width="14"
+                         Height="14"
+                         VerticalAlignment="Center"
+                         Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                         Margin="6,0,0,0">
+              <md:PackIcon.RenderTransform>
+                <RotateTransform Angle="0" CenterX="7" CenterY="7"/>
+              </md:PackIcon.RenderTransform>
+              <md:PackIcon.Style>
+                <Style TargetType="{x:Type md:PackIcon}">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsExpanded, RelativeSource={RelativeSource AncestorType=Expander}}" Value="True">
+                      <Setter Property="RenderTransform">
+                        <Setter.Value>
+                          <RotateTransform Angle="180" CenterX="7" CenterY="7"/>
+                        </Setter.Value>
+                      </Setter>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </md:PackIcon.Style>
+            </md:PackIcon>
+
+            <TextBlock Grid.Column="2"
+                       Text="Log"
+                       VerticalAlignment="Center"
+                       Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                       Style="{StaticResource Text.Subtitle}" />
+          </Grid>
+        </Expander.Header>
+
+        <Grid>
+          <TextBox x:Name="LogText"
+                   IsReadOnly="True"
+                   AcceptsReturn="True"
+                   VerticalScrollBarVisibility="Auto"
+                   HorizontalScrollBarVisibility="Auto"
+                   TextWrapping="NoWrap"
+                   FontFamily="Consolas"
+                   Background="{StaticResource Brush.LayoutBg}"
+                   Foreground="{StaticResource HeaderHighEmphasisBrush}"
+                   BorderThickness="0"
+                   Padding="12,8,12,8"
+                   MinHeight="160" />
+        </Grid>
+      </Expander>
     </Grid>
   </Grid>
 </UserControl>

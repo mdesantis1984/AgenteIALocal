@@ -65,6 +65,20 @@ namespace AgenteIALocalVSIX.ToolWindows
         private bool isChangesExpanded = false;
         public bool IsChangesExpanded { get { return isChangesExpanded; } set { if (isChangesExpanded == value) return; isChangesExpanded = value; RaisePropertyChanged(nameof(IsChangesExpanded)); } }
 
+        // Log panel state
+        private bool isLogAutoScrollEnabled = true;
+        public bool IsLogAutoScrollEnabled
+        {
+            get { return isLogAutoScrollEnabled; }
+            set
+            {
+                if (isLogAutoScrollEnabled == value) return;
+                isLogAutoScrollEnabled = value;
+                RaisePropertyChanged(nameof(IsLogAutoScrollEnabled));
+            }
+        }
+
+
         public ExecutionState CurrentExecutionState
         {
             get => currentExecutionState;
@@ -599,6 +613,17 @@ namespace AgenteIALocalVSIX.ToolWindows
                         LogText.Text = string.IsNullOrEmpty(content)
                             ? "(no logs)"
                             : content;
+
+                        try
+                        {
+                            if (IsLogAutoScrollEnabled)
+                            {
+                                LogText.CaretIndex = LogText.Text?.Length ?? 0;
+                                LogText.ScrollToEnd();
+                            }
+                        }
+                        catch { }
+
                     }
                     catch
                     {
@@ -1732,7 +1757,53 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // Logging file helpers
+        
+        private void OpenLogFileButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var path = GetLogFilePath();
+                var dir = Path.GetDirectoryName(path);
+                if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+
+                if (!File.Exists(path))
+                {
+                    File.WriteAllText(path, string.Empty, Encoding.UTF8);
+                }
+
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            }
+            catch
+            {
+                // UI must never throw
+            }
+        }
+
+        private void CopyLogToClipboardButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ThreadHelper.ThrowIfNotOnUIThread();
+
+                var text = LogText?.Text ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    return;
+                }
+
+                Clipboard.SetText(text);
+            }
+            catch
+            {
+                // no-op (UI must not throw)
+            }
+        }
+
+
+// Logging file helpers
         private static string GetLogFilePath()
         {
             try
@@ -1809,7 +1880,16 @@ namespace AgenteIALocalVSIX.ToolWindows
                 {
                     if (LogText != null)
                     {
-                        LogText.Text = line + "\n" + (LogText.Text ?? string.Empty);
+                        LogText.Text = (LogText.Text ?? string.Empty) + line + Environment.NewLine;
+                        try
+                        {
+                            if (IsLogAutoScrollEnabled)
+                            {
+                                LogText.CaretIndex = LogText.Text?.Length ?? 0;
+                                LogText.ScrollToEnd();
+                            }
+                        }
+                        catch { }
                     }
                 }
                 catch { }
@@ -1834,10 +1914,30 @@ namespace AgenteIALocalVSIX.ToolWindows
                         if (string.IsNullOrEmpty(content))
                         {
                             LogText.Text = "(no logs)";
+                        try
+                        {
+                            if (IsLogAutoScrollEnabled)
+                            {
+                                LogText.CaretIndex = LogText.Text?.Length ?? 0;
+                                LogText.ScrollToEnd();
+                            }
+                        }
+                        catch { }
+
                         }
                         else
                         {
                             LogText.Text = content;
+                        try
+                        {
+                            if (IsLogAutoScrollEnabled)
+                            {
+                                LogText.CaretIndex = LogText.Text?.Length ?? 0;
+                                LogText.ScrollToEnd();
+                            }
+                        }
+                        catch { }
+
                         }
                     }
                     catch { }
