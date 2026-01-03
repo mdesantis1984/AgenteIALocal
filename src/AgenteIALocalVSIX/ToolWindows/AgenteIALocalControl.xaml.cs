@@ -951,12 +951,17 @@ namespace AgenteIALocalVSIX.ToolWindows
                     }
                 });
 
-                // If Stop is requested, return immediately and ignore late results.
+                // If Stop is requested, stop waiting and ignore late results.
                 var completed = await Task.WhenAny(execTask, Task.Delay(Timeout.Infinite, ct));
                 if (completed != execTask)
                 {
-                    // Ensure background exception is observed even if we stop waiting.
-                    _ = execTask.ContinueWith(t => { _ = t.Exception; }, TaskContinuationOptions.OnlyOnFaulted);
+                    // Observe background exception (VSTHRD105: specify scheduler explicitly)
+                    _ = execTask.ContinueWith(
+                        t => { _ = t.Exception; },
+                        CancellationToken.None,
+                        TaskContinuationOptions.OnlyOnFaulted,
+                        TaskScheduler.Default);
+
                     return;
                 }
 
@@ -1043,6 +1048,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 });
             }
         }
+
 
 
         // Response format enum (Phase 1 + Markdown)
