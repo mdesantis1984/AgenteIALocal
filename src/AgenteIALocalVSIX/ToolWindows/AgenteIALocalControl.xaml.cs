@@ -262,61 +262,20 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var msg = Activator.CreateInstance(msgType);
                 var tsUtc = DateTime.UtcNow;
 
-                // Set Timestamp explicitly using a stable UTC representation when the property is a string.
-                try
-                {
-                    var pTs = msg.GetType().GetProperty("Timestamp", BindingFlags.Public | BindingFlags.Instance);
-                    if (pTs != null && pTs.CanWrite)
-                    {
-                        if (pTs.PropertyType == typeof(string))
-                        {
-                            pTs.SetValue(msg, tsUtc.ToString("o"), null);
-                        }
-                        else if (pTs.PropertyType == typeof(DateTime))
-                        {
-                            pTs.SetValue(msg, tsUtc, null);
-                        }
-                        else if (pTs.PropertyType == typeof(DateTimeOffset))
-                        {
-                            pTs.SetValue(msg, new DateTimeOffset(tsUtc), null);
-                        }
-                        else
-                        {
-                            TrySetProp(msg, "Timestamp", tsUtc);
-                        }
-                    }
-                    else
-                    {
-                        TrySetProp(msg, "Timestamp", tsUtc);
-                    }
-                }
-                catch { TrySetProp(msg, "Timestamp", tsUtc); }
-
+                TrySetProp(msg, "Timestamp", tsUtc);
                 TrySetProp(msg, "Sender", sender ?? string.Empty);
                 TrySetProp(msg, "Content", content ?? string.Empty);
-
-                // Persist Tokens property on the message before adding so saved JSON includes it
-                try
-                {
-                    if (tokens.HasValue)
-                    {
-                        var pTok = msg.GetType().GetProperty("Tokens", BindingFlags.Public | BindingFlags.Instance);
-                        if (pTok != null && pTok.CanWrite && pTok.PropertyType == typeof(int?))
-                        {
-                            pTok.SetValue(msg, tokens, null);
-                        }
-                        else
-                        {
-                            TrySetProp(msg, "Tokens", tokens.Value);
-                        }
-                    }
-                }
-                catch { }
 
                 list.Add(msg);
 
                 if (tokens.HasValue && tokens.Value >= 0)
                 {
+                    // Persist tokens on the message itself when supported by the message type.
+                    // This reduces dependence on UiState key matching across sessions.
+                    TrySetProp(msg, "Tokens", tokens.Value);
+                    TrySetProp(msg, "TokenCount", tokens.Value);
+                    TrySetProp(msg, "TotalTokens", tokens.Value);
+
                     TrySetTokensForMessage(chat.Id, tsUtc, sender ?? string.Empty, content ?? string.Empty, tokens.Value);
                 }
 
@@ -581,6 +540,173 @@ namespace AgenteIALocalVSIX.ToolWindows
             return null;
         }
 
+        // Extract OpenAI/LM Studio style usage tokens from the response object (preferred) or raw JSON.
+        // This is used to:
+        // - Update the last USER bubble with prompt_tokens
+        // - Render the AI bubble with completion_tokens (fallback to total_tokens)
+        private static void TryExtractUsageTokens(object response, out int? promptTokens, out int? completionTokens, out int? totalTokens)
+        {
+            promptTokens = null;
+            completionTokens = null;
+            totalTokens = null;
+
+            // 1) Direct properties on the response object
+            try
+            {
+                if (response != null)
+                {
+                    promptTokens = TryReadIntProp(response, "PromptTokens", "prompt_tokens", "PromptTokenCount");
+                    completionTokens = TryReadIntProp(response, "CompletionTokens", "completion_tokens", "CompletionTokenCount");
+                    totalTokens = TryReadIntProp(response, "TotalTokens", "total_tokens", "Tokens", "TokensUsed", "TotalTokenCount", "TokenCount");
+                    if (promptTokens.HasValue || completionTokens.HasValue || totalTokens.HasValue) return;
+                }
+            }
+            catch { }
+
+            // 2) Parse from raw JSON stored on the response object
+            try
+            {
+                if (response != null)
+                {
+                    string raw = null;
+                    foreach (var propName in new[] { "RawResponse", "RawResponseJson", "RawJson", "ResponseJson", "ResponseText", "Body", "Json", "Payload", "Raw" })
+                    {
+                        var p = response.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+                        if (p == null) continue;
+                        var v = p.GetValue(response, null);
+                        if (v is string s && !string.IsNullOrWhiteSpace(s)) { raw = s; break; }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(raw))
+                    {
+                        TryExtractUsageTokensFromJson(raw, out promptTokens, out completionTokens, out totalTokens);
+                        if (promptTokens.HasValue || completionTokens.HasValue || totalTokens.HasValue) return;
+                    }
+                }
+            }
+            catch { }
+
+            // 3) Fallback: if Output itself contains raw JSON (some providers return the full envelope)
+            try
+            {
+                if (response != null)
+                {
+                    var outStr = TryReadStringProp(response, "Output", "Body", "Json", "Response");
+                    if (!string.IsNullOrWhiteSpace(outStr))
+                    {
+                        TryExtractUsageTokensFromJson(outStr, out promptTokens, out completionTokens, out totalTokens);
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private static string TryReadStringProp(object obj, params string[] propNames)
+        {
+            try
+            {
+                if (obj == null) return null;
+                if (propNames == null || propNames.Length == 0) return null;
+
+                foreach (var name in propNames)
+                {
+                    var p = obj.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
+                    if (p == null) continue;
+                    var v = p.GetValue(obj, null);
+                    if (v is string s) return s;
+                    if (v != null) return v.ToString();
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private static void TryExtractUsageTokensFromJson(string json, out int? promptTokens, out int? completionTokens, out int? totalTokens)
+        {
+            promptTokens = null;
+            completionTokens = null;
+            totalTokens = null;
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(json)) return;
+                var trimmed = json.Trim();
+                if (!(trimmed.StartsWith("{") || trimmed.StartsWith("["))) return;
+
+                var tok = JToken.Parse(trimmed);
+                var usage = tok["usage"] ?? tok.SelectToken("usage");
+                if (usage == null) return;
+
+                var p = usage["prompt_tokens"] ?? usage["promptTokens"] ?? usage["PromptTokens"];
+                var c = usage["completion_tokens"] ?? usage["completionTokens"] ?? usage["CompletionTokens"];
+                var t = usage["total_tokens"] ?? usage["totalTokens"] ?? usage["TotalTokens"];
+
+                if (p != null && int.TryParse(p.ToString(), out var pi)) promptTokens = pi;
+                if (c != null && int.TryParse(c.ToString(), out var ci)) completionTokens = ci;
+                if (t != null && int.TryParse(t.ToString(), out var ti)) totalTokens = ti;
+            }
+            catch { }
+        }
+
+        private static int? TryReadIntProp(object obj, params string[] propNames)
+        {
+            try
+            {
+                if (obj == null) return null;
+                if (propNames == null || propNames.Length == 0) return null;
+
+                foreach (var name in propNames)
+                {
+                    var p = obj.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
+                    if (p == null) continue;
+                    var v = p.GetValue(obj, null);
+                    if (v is int i) return i;
+                    if (v is long l)
+                    {
+                        if (l > int.MaxValue) return int.MaxValue;
+                        if (l < int.MinValue) return int.MinValue;
+                        return (int)l;
+                    }
+                    if (v != null && int.TryParse(v.ToString(), out var pi)) return pi;
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private void TryUpdateLastUserBubbleTokens(ChatSession chat, int tokens)
+        {
+            try
+            {
+                if (chat == null || chat.Messages == null) return;
+                var list = chat.Messages as System.Collections.IList;
+                if (list == null || list.Count == 0) return;
+
+                for (int i = list.Count - 1; i >= 0; i--)
+                {
+                    var m = list[i];
+                    if (m == null) continue;
+
+                    var sender = TryGetStringProp(m, "Sender");
+                    var sLower = (sender ?? string.Empty).Trim().ToLowerInvariant();
+                    var isUser = (sLower == "tú" || sLower == "tu" || sLower == "user" || sLower == "you");
+                    if (!isUser) continue;
+
+                    var content = TryGetStringProp(m, "Content") ?? string.Empty;
+                    var ts = TryGetDateTimeProp(m, "Timestamp");
+
+                    // Persist tokens on the message object (if supported) and in UiState.
+                    TrySetProp(m, "Tokens", tokens);
+                    TrySetProp(m, "TokenCount", tokens);
+                    TrySetProp(m, "PromptTokens", tokens);
+                    TrySetTokensForMessage(chat.Id, ts, sender ?? string.Empty, content, tokens);
+                    TryPersistChat(chat);
+                    return;
+                }
+            }
+            catch { }
+        }
+
         private void RenderActiveChatToUi()
         {
             try
@@ -617,30 +743,27 @@ namespace AgenteIALocalVSIX.ToolWindows
                     var sLower = (sender ?? string.Empty).Trim().ToLowerInvariant();
                     if (sLower == "tú" || sLower == "tu" || sLower == "user" || sLower == "you") isUser = true;
 
-                    // Tokens (only typically for AI messages)
+                    // Tokens (persisted either in UiState.MessageTokens or directly on the message object)
                     int? tokens = null;
                     try
                     {
-                        // Prefer Tokens property persisted on the message object (saved JSON)
+                        tokens = TryGetTokensForMessage(chat.Id, ts, sender ?? string.Empty, content ?? string.Empty);
+                    }
+                    catch { }
+
+                    // Fallback: read from message properties if present (more stable across sessions)
+                    if (!tokens.HasValue)
+                    {
                         try
                         {
-                            var pTok = m.GetType().GetProperty("Tokens", BindingFlags.Public | BindingFlags.Instance);
-                            if (pTok != null)
+                            tokens = TryReadIntProp(m, "Tokens", "TokenCount", "TotalTokens", "PromptTokens", "CompletionTokens");
+                            if (tokens.HasValue && tokens.Value >= 0)
                             {
-                                var v = pTok.GetValue(m, null);
-                                if (v is int vi) tokens = vi;
-                                else if (v != null && int.TryParse(v.ToString(), out var pi)) tokens = pi;
+                                TrySetTokensForMessage(chat.Id, ts, sender ?? string.Empty, content ?? string.Empty, tokens.Value);
                             }
                         }
                         catch { }
-
-                        // Fallback to UI persisted token map (computed at insertion time)
-                        if (!tokens.HasValue)
-                        {
-                            tokens = TryGetTokensForMessage(chat.Id, ts, sender ?? string.Empty, content ?? string.Empty);
-                        }
                     }
-                    catch { }
 
                     fd.Blocks.Add(CreateBubbleBlock(isUser, content ?? string.Empty, ts, tokens));
                 }
@@ -750,7 +873,12 @@ namespace AgenteIALocalVSIX.ToolWindows
             // Meta line (always): short date/time + tokens (if unknown, show '-')
             try
             {
-                var tsLocal = DateTime.SpecifyKind(tsUtc, DateTimeKind.Utc).ToLocalTime();
+                // Timestamp: chat stores UTC, but be defensive for older persisted data.
+                DateTime tsLocal;
+                if (tsUtc.Kind == DateTimeKind.Utc) tsLocal = tsUtc.ToLocalTime();
+                else if (tsUtc.Kind == DateTimeKind.Local) tsLocal = tsUtc;
+                else tsLocal = DateTime.SpecifyKind(tsUtc, DateTimeKind.Local);
+
                 var dtText = tsLocal.ToString("g", System.Globalization.CultureInfo.CurrentCulture);
                 var tokText = (tokens.HasValue && tokens.Value >= 0) ? tokens.Value.ToString() : "-";
 
@@ -760,8 +888,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                     Margin = new Thickness(0, 8, 0, 0),
                     HorizontalAlignment = HorizontalAlignment.Right,
                     Foreground = boneBrush,
-                    FontSize = 12,
-                    Opacity = 0.90
+                    FontSize = 13,
+                    FontWeight = FontWeights.SemiBold,
+                    Opacity = 1.0
                 };
 
                 stack.Children.Add(meta);
@@ -1933,27 +2062,20 @@ bubble.Child = stack;
                         var ok200 = false;
                         try { ok200 = TryIsHttp200(response); } catch { }
 
-                        // Append AI response as a bubble, show tokens (prefer usage fields propagated from AgentHostResponse)
+                        // Append AI response as a bubble and attach usage tokens.
+                        // - USER bubble (already added) is updated with prompt_tokens.
+                        // - AI bubble is added with completion_tokens (fallback total_tokens).
                         try
                         {
-                            int? pTok = null, cTok = null, tTok = null;
-                            try { pTok = response?.PromptTokens; } catch { }
-                            try { cTok = response?.CompletionTokens; } catch { }
-                            try { tTok = response?.TotalTokens; } catch { }
+                            TryExtractUsageTokens(response, out var promptTokens, out var completionTokens, out var totalTokens);
 
-                            // If none present, try parse raw JSON payload
-                            if (!pTok.HasValue && !cTok.HasValue && !tTok.HasValue && !string.IsNullOrWhiteSpace(response?.RawResponse))
+                            if (promptTokens.HasValue)
                             {
-                                try { TryParseUsageTokensFromRaw(response.RawResponse, out pTok, out cTok, out tTok); } catch { }
+                                TryUpdateLastUserBubbleTokens(activeChat, promptTokens.Value);
                             }
 
-                            // Update last user bubble with prompt tokens if present
-                            try { if (pTok.HasValue) TryUpdateLastUserBubbleTokens(activeChat, pTok.Value); } catch { }
-
-                            // AI bubble shows completion_tokens if available, otherwise total_tokens
-                            var aiTok = cTok ?? tTok;
-
-                            AddChatMessage(activeChat, "IA", display, aiTok);
+                            var aiTokens = completionTokens ?? totalTokens;
+                            AddChatMessage(activeChat, "IA", display, aiTokens);
 
                             RenderActiveChatToUi();
                         }
@@ -2654,7 +2776,7 @@ AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
             catch { }
         }
 
-        // UI-thread marshal helper (safe to call from background threads)
+// UI-thread marshal helper (safe to call from background threads)
         private void Ui(Action action)
         {
             try
@@ -2933,61 +3055,6 @@ AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
                 var cb = sender as ComboBox;
                 var selected = cb?.SelectedItem as string ?? cb?.SelectedItem?.ToString() ?? string.Empty;
                 AppendLog($"[VERBOSE] ServerLLM selection changed -> {selected}");
-            }
-            catch { }
-        }
-
-        // Update last user bubble in chat with prompt tokens (if chat message model exposes a field)
-        private static void TryUpdateLastUserBubbleTokens(AgenteIALocalVSIX.Chats.ChatSession chat, int tokens)
-        {
-            try
-            {
-                if (chat == null || chat.Messages == null || chat.Messages.Count == 0) return;
-                for (int i = chat.Messages.Count - 1; i >= 0; i--)
-                {
-                    var m = chat.Messages[i];
-                    if (m == null) continue;
-
-                    var pSender = m.GetType().GetProperty("Sender", BindingFlags.Public | BindingFlags.Instance);
-                    if (pSender == null) continue;
-                    var s = pSender.GetValue(m, null)?.ToString() ?? string.Empty;
-                    var sLower = s.Trim().ToLowerInvariant();
-                    if (sLower == "tú" || sLower == "tu" || sLower == "user" || sLower == "you")
-                    {
-                        var pTok = m.GetType().GetProperty("Tokens", BindingFlags.Public | BindingFlags.Instance)
-                                   ?? m.GetType().GetProperty("TotalTokens", BindingFlags.Public | BindingFlags.Instance)
-                                   ?? m.GetType().GetProperty("PromptTokens", BindingFlags.Public | BindingFlags.Instance);
-                        if (pTok != null && pTok.CanWrite)
-                        {
-                            try { pTok.SetValue(m, tokens, null); } catch { }
-                        }
-                        break;
-                    }
-                }
-            }
-            catch { }
-        }
-
-        // Fallback parser using Newtonsoft.Json to extract usage.* tokens from raw JSON (duplicate safe inside class)
-        private static void TryParseUsageTokensFromRaw(string raw, out int? prompt, out int? completion, out int? total)
-        {
-            prompt = completion = total = null;
-            if (string.IsNullOrWhiteSpace(raw)) return;
-            try
-            {
-                var tok = JToken.Parse(raw);
-                var usage = tok["usage"] ?? tok.SelectToken("usage");
-                if (usage != null)
-                {
-                    var p = usage["prompt_tokens"] ?? usage["promptTokens"] ?? usage["PromptTokens"];
-                    if (p != null && int.TryParse(p.ToString(), out var pv)) prompt = pv;
-
-                    var c = usage["completion_tokens"] ?? usage["completionTokens"] ?? usage["CompletionTokens"];
-                    if (c != null && int.TryParse(c.ToString(), out var cv)) completion = cv;
-
-                    var t = usage["total_tokens"] ?? usage["totalTokens"] ?? usage["TotalTokens"];
-                    if (t != null && int.TryParse(t.ToString(), out var tv)) total = tv;
-                }
             }
             catch { }
         }

@@ -118,15 +118,22 @@ namespace AgenteIALocal.Infrastructure.Agents
                             var promptTokens = ExtractIntField(text, "prompt_tokens");
                             var completionTokens = ExtractIntField(text, "completion_tokens");
 
+                            // Prefer direct properties (these exist in sprint-012-commit-08). Keep reflection fallbacks for robustness.
                             var ar = new AgentResponse
                             {
                                 IsSuccess = true,
                                 Content = extracted,
-                                TotalTokens = totalTokens,
                                 PromptTokens = promptTokens,
                                 CompletionTokens = completionTokens,
+                                TotalTokens = totalTokens,
                                 RawResponse = text
                             };
+
+                            // Reflection fallbacks (no harm if properties already set)
+                            TrySetIntAny(ar, totalTokens, "TotalTokens", "Tokens", "TokensUsed", "TotalTokenCount", "TokenCount");
+                            TrySetIntAny(ar, promptTokens, "PromptTokens", "PromptTokenCount");
+                            TrySetIntAny(ar, completionTokens, "CompletionTokens", "CompletionTokenCount");
+                            TrySetStringAny(ar, text, "RawResponse", "RawJson", "RawResponseJson", "ResponseJson", "ResponseText", "Body", "Json");
 
                             return ar;
                         }
