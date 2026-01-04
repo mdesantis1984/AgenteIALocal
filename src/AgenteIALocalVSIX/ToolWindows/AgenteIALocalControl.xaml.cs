@@ -1933,12 +1933,27 @@ bubble.Child = stack;
                         var ok200 = false;
                         try { ok200 = TryIsHttp200(response); } catch { }
 
-                        // Append AI response as a bubble, show tokens
+                        // Append AI response as a bubble, show tokens (prefer usage fields propagated from AgentHostResponse)
                         try
                         {
-                            var tokens = TryExtractTotalTokens(response, display);
+                            int? pTok = null, cTok = null, tTok = null;
+                            try { pTok = response?.PromptTokens; } catch { }
+                            try { cTok = response?.CompletionTokens; } catch { }
+                            try { tTok = response?.TotalTokens; } catch { }
 
-                            AddChatMessage(activeChat, "IA", display, tokens);
+                            // If none present, try parse raw JSON payload
+                            if (!pTok.HasValue && !cTok.HasValue && !tTok.HasValue && !string.IsNullOrWhiteSpace(response?.RawResponse))
+                            {
+                                try { TryParseUsageTokensFromRaw(response.RawResponse, out pTok, out cTok, out tTok); } catch { }
+                            }
+
+                            // Update last user bubble with prompt tokens if present
+                            try { if (pTok.HasValue) TryUpdateLastUserBubbleTokens(activeChat, pTok.Value); } catch { }
+
+                            // AI bubble shows completion_tokens if available, otherwise total_tokens
+                            var aiTok = cTok ?? tTok;
+
+                            AddChatMessage(activeChat, "IA", display, aiTok);
 
                             RenderActiveChatToUi();
                         }
@@ -2918,6 +2933,61 @@ AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
                 var cb = sender as ComboBox;
                 var selected = cb?.SelectedItem as string ?? cb?.SelectedItem?.ToString() ?? string.Empty;
                 AppendLog($"[VERBOSE] ServerLLM selection changed -> {selected}");
+            }
+            catch { }
+        }
+
+        // Update last user bubble in chat with prompt tokens (if chat message model exposes a field)
+        private static void TryUpdateLastUserBubbleTokens(AgenteIALocalVSIX.Chats.ChatSession chat, int tokens)
+        {
+            try
+            {
+                if (chat == null || chat.Messages == null || chat.Messages.Count == 0) return;
+                for (int i = chat.Messages.Count - 1; i >= 0; i--)
+                {
+                    var m = chat.Messages[i];
+                    if (m == null) continue;
+
+                    var pSender = m.GetType().GetProperty("Sender", BindingFlags.Public | BindingFlags.Instance);
+                    if (pSender == null) continue;
+                    var s = pSender.GetValue(m, null)?.ToString() ?? string.Empty;
+                    var sLower = s.Trim().ToLowerInvariant();
+                    if (sLower == "tú" || sLower == "tu" || sLower == "user" || sLower == "you")
+                    {
+                        var pTok = m.GetType().GetProperty("Tokens", BindingFlags.Public | BindingFlags.Instance)
+                                   ?? m.GetType().GetProperty("TotalTokens", BindingFlags.Public | BindingFlags.Instance)
+                                   ?? m.GetType().GetProperty("PromptTokens", BindingFlags.Public | BindingFlags.Instance);
+                        if (pTok != null && pTok.CanWrite)
+                        {
+                            try { pTok.SetValue(m, tokens, null); } catch { }
+                        }
+                        break;
+                    }
+                }
+            }
+            catch { }
+        }
+
+        // Fallback parser using Newtonsoft.Json to extract usage.* tokens from raw JSON (duplicate safe inside class)
+        private static void TryParseUsageTokensFromRaw(string raw, out int? prompt, out int? completion, out int? total)
+        {
+            prompt = completion = total = null;
+            if (string.IsNullOrWhiteSpace(raw)) return;
+            try
+            {
+                var tok = JToken.Parse(raw);
+                var usage = tok["usage"] ?? tok.SelectToken("usage");
+                if (usage != null)
+                {
+                    var p = usage["prompt_tokens"] ?? usage["promptTokens"] ?? usage["PromptTokens"];
+                    if (p != null && int.TryParse(p.ToString(), out var pv)) prompt = pv;
+
+                    var c = usage["completion_tokens"] ?? usage["completionTokens"] ?? usage["CompletionTokens"];
+                    if (c != null && int.TryParse(c.ToString(), out var cv)) completion = cv;
+
+                    var t = usage["total_tokens"] ?? usage["totalTokens"] ?? usage["TotalTokens"];
+                    if (t != null && int.TryParse(t.ToString(), out var tv)) total = tv;
+                }
             }
             catch { }
         }

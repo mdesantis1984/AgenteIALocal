@@ -278,11 +278,11 @@ namespace AgenteIALocalVSIX
                     Output = agentResp.Content,
                     Error = agentResp.Error,
                     Timestamp = DateTime.UtcNow.ToString("o"),
-                    // propagate token usage/raw payload when available
-                    PromptTokens = AgentCompositionHelpers.TryGetPropInt(agentResp, "PromptTokens"),
-                    CompletionTokens = AgentCompositionHelpers.TryGetPropInt(agentResp, "CompletionTokens"),
-                    TotalTokens = AgentCompositionHelpers.TryGetPropInt(agentResp, "TotalTokens"),
-                    RawResponse = AgentCompositionHelpers.TryGetPropString(agentResp, "RawResponse")
+                    // propagate token usage/raw payload when available (direct copy)
+                    PromptTokens = agentResp.PromptTokens,
+                    CompletionTokens = agentResp.CompletionTokens,
+                    TotalTokens = agentResp.TotalTokens,
+                    RawResponse = agentResp.RawResponse
                 };
             }
             catch (Exception ex)
