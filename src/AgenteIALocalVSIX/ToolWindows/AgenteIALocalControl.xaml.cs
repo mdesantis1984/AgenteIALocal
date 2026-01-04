@@ -368,39 +368,60 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 if (response == null) return false;
 
-                // int StatusCode
-                var p = response.GetType().GetProperty("StatusCode", BindingFlags.Public | BindingFlags.Instance);
-                if (p != null)
+                // If an Error property exists and has content, treat as non-OK even if status is 200.
+                try
                 {
+                    var pErr = response.GetType().GetProperty("Error", BindingFlags.Public | BindingFlags.Instance);
+                    if (pErr != null)
+                    {
+                        var err = pErr.GetValue(response, null)?.ToString();
+                        if (!string.IsNullOrWhiteSpace(err)) return false;
+                    }
+                }
+                catch { }
+
+                // Numeric status codes (preferred)
+                foreach (var propName in new[] { "StatusCode", "HttpStatusCode", "Code", "HttpCode", "ResponseCode", "ResultCode" })
+                {
+                    var p = response.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+                    if (p == null) continue;
+
                     var v = p.GetValue(response, null);
                     if (v is int i) return i == 200;
                     if (v is System.Net.HttpStatusCode h) return (int)h == 200;
                     if (v != null && int.TryParse(v.ToString(), out var pi)) return pi == 200;
                 }
 
-                // HttpResponseMessage-style
-                p = response.GetType().GetProperty("HttpStatusCode", BindingFlags.Public | BindingFlags.Instance);
-                if (p != null)
+                // String status (fallback)
+                foreach (var propName in new[] { "Status", "ReasonPhrase", "Message", "Result", "State" })
                 {
-                    var v = p.GetValue(response, null);
-                    if (v is int i2) return i2 == 200;
-                    if (v is System.Net.HttpStatusCode h2) return (int)h2 == 200;
-                    if (v != null && int.TryParse(v.ToString(), out var pi2)) return pi2 == 200;
+                    var p = response.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+                    if (p == null) continue;
+
+                    var s = p.GetValue(response, null)?.ToString();
+                    if (string.IsNullOrWhiteSpace(s)) continue;
+
+                    var t = s.Trim();
+                    if (string.Equals(t, "OK", StringComparison.OrdinalIgnoreCase)) return true;
+                    if (string.Equals(t, "200", StringComparison.OrdinalIgnoreCase)) return true;
+                    if (string.Equals(t, "200 OK", StringComparison.OrdinalIgnoreCase)) return true;
+                    if (t.StartsWith("200 ", StringComparison.OrdinalIgnoreCase)) return true;
+                    if (t.Contains("200")) return true;
                 }
 
-                p = response.GetType().GetProperty("IsSuccessStatusCode", BindingFlags.Public | BindingFlags.Instance);
-                if (p != null)
+                // Boolean success flags (last resort when no explicit code exists)
+                foreach (var propName in new[] { "Ok", "Success", "IsSuccess", "Succeeded", "IsSuccessStatusCode" })
                 {
+                    var p = response.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+                    if (p == null) continue;
+
                     var v = p.GetValue(response, null);
-                    if (v is bool b && b)
-                    {
-                        // success is not necessarily 200; keep strictness
-                        // If a StatusCode property exists, it was handled above.
-                        return false;
-                    }
+                    if (v is bool b) return b;
+                    if (v != null && bool.TryParse(v.ToString(), out var pb)) return pb;
                 }
             }
             catch { }
+
             return false;
         }
 
@@ -1798,18 +1819,15 @@ namespace AgenteIALocalVSIX.ToolWindows
                     {
                         AppendLog("[VERBOSE] RenderResponse: start; len=" + (display?.Length ?? 0));
                         
-                        // Append AI response as a bubble, show tokens, and clear prompt ONLY on 200 OK
+                        var ok200 = false;
+                        try { ok200 = TryIsHttp200(response); } catch { }
+
+                        // Append AI response as a bubble, show tokens
                         try
                         {
-                            var ok200 = TryIsHttp200(response);
                             var tokens = TryExtractTotalTokens(response, display);
 
                             AddChatMessage(activeChat, "IA", display, tokens);
-
-                            if (ok200)
-                            {
-                                PromptTextBox.Text = string.Empty;
-                            }
 
                             RenderActiveChatToUi();
                         }
@@ -1820,6 +1838,17 @@ namespace AgenteIALocalVSIX.ToolWindows
                             {
                                 ResponseJsonText.Document = RenderResponseToDocument(display);
                                 ScrollResponseToEnd();
+                            }
+                            catch { }
+                        }
+
+                        // Clear prompt ONLY on 200 OK (cancel is already guarded above)
+                        if (ok200)
+                        {
+                            try
+                            {
+                                PromptTextBox.Text = string.Empty;
+                                PromptTextBox.Focus();
                             }
                             catch { }
                         }

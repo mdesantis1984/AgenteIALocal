@@ -363,7 +363,7 @@
 
     <!-- HEADER SECTION -->
     <Grid x:Name="HeaderContainer" Grid.Row="0" Height="64">
-      <Border Margin="12,0,12,0"
+      <Border Margin="0,0,0,0"
               Padding="16,0,16,0"
               Background="{StaticResource HeaderBackgroundBrush}"
               BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
@@ -489,7 +489,7 @@
       </Grid.RowDefinitions>
 
       <!-- CHAT TOOLBAR (Items 7–9) -->
-      <Grid x:Name="ChatToolbarGrid" Grid.Row="0" Height="48" Margin="12,0,12,8">
+      <Grid x:Name="ChatToolbarGrid" Grid.Row="0" Height="48" Margin="12,0,12,0">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="*" />
@@ -509,6 +509,8 @@
                   VerticalAlignment="Center"
                   HorizontalAlignment="Stretch"
                   Style="{StaticResource DarkFlatComboBoxStyle}"
+                  BorderThickness="1"
+                  BorderBrush="{StaticResource HeaderMediumEmphasisBrush}"
                   SelectionChanged="ChatComboBox_SelectionChanged" />
 
         <Button x:Name="NewChatButton"
