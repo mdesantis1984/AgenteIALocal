@@ -277,13 +277,51 @@ namespace AgenteIALocalVSIX
                     Success = agentResp.IsSuccess,
                     Output = agentResp.Content,
                     Error = agentResp.Error,
-                    Timestamp = DateTime.UtcNow.ToString("o")
+                    Timestamp = DateTime.UtcNow.ToString("o"),
+                    // propagate token usage/raw payload when available
+                    PromptTokens = AgentCompositionHelpers.TryGetPropInt(agentResp, "PromptTokens"),
+                    CompletionTokens = AgentCompositionHelpers.TryGetPropInt(agentResp, "CompletionTokens"),
+                    TotalTokens = AgentCompositionHelpers.TryGetPropInt(agentResp, "TotalTokens"),
+                    RawResponse = AgentCompositionHelpers.TryGetPropString(agentResp, "RawResponse")
                 };
             }
             catch (Exception ex)
             {
                 return new AgentHostResponse { RequestId = req?.RequestId, Success = false, Output = null, Error = ex.Message, Timestamp = DateTime.UtcNow.ToString("o") };
             }
+        }
+    }
+
+    internal static class AgentCompositionHelpers
+    {
+        // Small helpers to avoid adding direct compile-time dependency on AgentResponse shape
+        internal static int? TryGetPropInt(object obj, string propName)
+        {
+            try
+            {
+                if (obj == null) return null;
+                var p = obj.GetType().GetProperty(propName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                if (p == null) return null;
+                var v = p.GetValue(obj, null);
+                if (v is int i) return i;
+                if (v != null && int.TryParse(v.ToString(), out var pi)) return pi;
+            }
+            catch { }
+            return null;
+        }
+
+        internal static string TryGetPropString(object obj, string propName)
+        {
+            try
+            {
+                if (obj == null) return null;
+                var p = obj.GetType().GetProperty(propName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                if (p == null) return null;
+                var v = p.GetValue(obj, null);
+                return v?.ToString();
+            }
+            catch { }
+            return null;
         }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AgenteIALocal.Core.Agents;
@@ -111,7 +112,23 @@ namespace AgenteIALocal.Infrastructure.Agents
                         try
                         {
                             var extracted = ExtractFirstChoiceContent(text);
-                            return new AgentResponse { IsSuccess = true, Content = extracted };
+
+                            // Token usage (best-effort): usage.prompt_tokens / usage.completion_tokens / usage.total_tokens
+                            var totalTokens = ExtractIntField(text, "total_tokens");
+                            var promptTokens = ExtractIntField(text, "prompt_tokens");
+                            var completionTokens = ExtractIntField(text, "completion_tokens");
+
+                            var ar = new AgentResponse
+                            {
+                                IsSuccess = true,
+                                Content = extracted,
+                                TotalTokens = totalTokens,
+                                PromptTokens = promptTokens,
+                                CompletionTokens = completionTokens,
+                                RawResponse = text
+                            };
+
+                            return ar;
                         }
                         catch (Exception ex)
                         {
@@ -153,6 +170,90 @@ namespace AgenteIALocal.Infrastructure.Agents
                     return new AgentResponse { IsSuccess = false, Error = ex.Message };
                 }
             }, cancellationToken);
+        }
+
+        private static int? ExtractIntField(string json, string fieldName)
+        {
+            if (string.IsNullOrEmpty(json) || string.IsNullOrEmpty(fieldName)) return null;
+
+            // Best-effort scan for: "fieldName" : 123
+            var key = "\"" + fieldName + "\"";
+            var i = json.IndexOf(key, StringComparison.OrdinalIgnoreCase);
+            if (i < 0) return null;
+
+            i = json.IndexOf(':', i);
+            if (i < 0) return null;
+            i++;
+
+            while (i < json.Length && char.IsWhiteSpace(json[i])) i++;
+
+            var start = i;
+            while (i < json.Length && char.IsDigit(json[i])) i++;
+
+            if (i <= start) return null;
+
+            if (int.TryParse(json.Substring(start, i - start), out var val)) return val;
+            return null;
+        }
+
+        private static void TrySetIntAny(object target, int? value, params string[] propNames)
+        {
+            if (target == null) return;
+            if (!value.HasValue) return;
+            if (propNames == null || propNames.Length == 0) return;
+
+            foreach (var name in propNames)
+            {
+                try
+                {
+                    var p = target.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
+                    if (p == null || !p.CanWrite) continue;
+
+                    var t = Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType;
+
+                    if (t == typeof(int))
+                    {
+                        p.SetValue(target, value.Value, null);
+                        return;
+                    }
+
+                    if (t == typeof(long))
+                    {
+                        p.SetValue(target, (long)value.Value, null);
+                        return;
+                    }
+
+                    if (t == typeof(string))
+                    {
+                        p.SetValue(target, value.Value.ToString(), null);
+                        return;
+                    }
+                }
+                catch { }
+            }
+        }
+
+        private static void TrySetStringAny(object target, string value, params string[] propNames)
+        {
+            if (target == null) return;
+            if (string.IsNullOrEmpty(value)) return;
+            if (propNames == null || propNames.Length == 0) return;
+
+            foreach (var name in propNames)
+            {
+                try
+                {
+                    var p = target.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
+                    if (p == null || !p.CanWrite) continue;
+
+                    if (p.PropertyType == typeof(string))
+                    {
+                        p.SetValue(target, value, null);
+                        return;
+                    }
+                }
+                catch { }
+            }
         }
 
         private static string EscapeJson(string s)

@@ -8,6 +8,8 @@ namespace AgenteIALocalVSIX.Chats
         public string Sender { get; set; }
         public string Content { get; set; }
         public string Timestamp { get; set; }
+        // Optional token count associated to this message (nullable)
+        public int? Tokens { get; set; }
     }
 
     public class ChatSession

@@ -262,9 +262,56 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var msg = Activator.CreateInstance(msgType);
                 var tsUtc = DateTime.UtcNow;
 
-                TrySetProp(msg, "Timestamp", tsUtc);
+                // Set Timestamp explicitly using a stable UTC representation when the property is a string.
+                try
+                {
+                    var pTs = msg.GetType().GetProperty("Timestamp", BindingFlags.Public | BindingFlags.Instance);
+                    if (pTs != null && pTs.CanWrite)
+                    {
+                        if (pTs.PropertyType == typeof(string))
+                        {
+                            pTs.SetValue(msg, tsUtc.ToString("o"), null);
+                        }
+                        else if (pTs.PropertyType == typeof(DateTime))
+                        {
+                            pTs.SetValue(msg, tsUtc, null);
+                        }
+                        else if (pTs.PropertyType == typeof(DateTimeOffset))
+                        {
+                            pTs.SetValue(msg, new DateTimeOffset(tsUtc), null);
+                        }
+                        else
+                        {
+                            TrySetProp(msg, "Timestamp", tsUtc);
+                        }
+                    }
+                    else
+                    {
+                        TrySetProp(msg, "Timestamp", tsUtc);
+                    }
+                }
+                catch { TrySetProp(msg, "Timestamp", tsUtc); }
+
                 TrySetProp(msg, "Sender", sender ?? string.Empty);
                 TrySetProp(msg, "Content", content ?? string.Empty);
+
+                // Persist Tokens property on the message before adding so saved JSON includes it
+                try
+                {
+                    if (tokens.HasValue)
+                    {
+                        var pTok = msg.GetType().GetProperty("Tokens", BindingFlags.Public | BindingFlags.Instance);
+                        if (pTok != null && pTok.CanWrite && pTok.PropertyType == typeof(int?))
+                        {
+                            pTok.SetValue(msg, tokens, null);
+                        }
+                        else
+                        {
+                            TrySetProp(msg, "Tokens", tokens.Value);
+                        }
+                    }
+                }
+                catch { }
 
                 list.Add(msg);
 
@@ -462,6 +509,48 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch { }
 
+            
+
+            // Try parse from raw JSON on the response object (if present)
+            try
+            {
+                if (response != null)
+                {
+                    string raw = null;
+                    foreach (var propName in new[] { "RawResponse", "RawResponseJson", "RawJson", "ResponseJson", "ResponseText", "Body", "Json", "Payload", "Raw" })
+                    {
+                        var p = response.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+                        if (p == null) continue;
+                        var v = p.GetValue(response, null);
+                        if (v is string s && !string.IsNullOrWhiteSpace(s)) { raw = s; break; }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(raw))
+                    {
+                        var trimmedRaw = raw.Trim();
+                        if (trimmedRaw.StartsWith("{") || trimmedRaw.StartsWith("["))
+                        {
+                            var tokRaw = JToken.Parse(trimmedRaw);
+
+                            var usageRaw = tokRaw["usage"] ?? tokRaw.SelectToken("usage");
+                            if (usageRaw != null)
+                            {
+                                var totalRaw = usageRaw["total_tokens"] ?? usageRaw["totalTokens"] ?? usageRaw["TotalTokens"];
+                                if (totalRaw != null && int.TryParse(totalRaw.ToString(), out var tiRaw)) return tiRaw;
+                            }
+
+                            var metaRaw = tokRaw["meta"] ?? tokRaw.SelectToken("meta");
+                            if (metaRaw != null)
+                            {
+                                var tRaw = metaRaw["tokens"] ?? metaRaw["total_tokens"] ?? metaRaw["totalTokens"];
+                                if (tRaw != null && int.TryParse(tRaw.ToString(), out var ti2Raw)) return ti2Raw;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
             // Try parse from output JSON (LM Studio / OpenAI style usage object)
             try
             {
@@ -532,11 +621,28 @@ namespace AgenteIALocalVSIX.ToolWindows
                     int? tokens = null;
                     try
                     {
-                        tokens = TryGetTokensForMessage(chat.Id, ts, sender ?? string.Empty, content ?? string.Empty);
+                        // Prefer Tokens property persisted on the message object (saved JSON)
+                        try
+                        {
+                            var pTok = m.GetType().GetProperty("Tokens", BindingFlags.Public | BindingFlags.Instance);
+                            if (pTok != null)
+                            {
+                                var v = pTok.GetValue(m, null);
+                                if (v is int vi) tokens = vi;
+                                else if (v != null && int.TryParse(v.ToString(), out var pi)) tokens = pi;
+                            }
+                        }
+                        catch { }
+
+                        // Fallback to UI persisted token map (computed at insertion time)
+                        if (!tokens.HasValue)
+                        {
+                            tokens = TryGetTokensForMessage(chat.Id, ts, sender ?? string.Empty, content ?? string.Empty);
+                        }
                     }
                     catch { }
 
-                    fd.Blocks.Add(CreateBubbleBlock(isUser, content ?? string.Empty, tokens));
+                    fd.Blocks.Add(CreateBubbleBlock(isUser, content ?? string.Empty, ts, tokens));
                 }
             }
             catch
@@ -559,7 +665,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        private BlockUIContainer CreateBubbleBlock(bool isUser, string text, int? tokens)
+        private BlockUIContainer CreateBubbleBlock(bool isUser, string text, DateTime tsUtc, int? tokens)
         {
             // Brushes from resources (fallback to reasonable dark defaults)
             Brush surfaceBg = TryFindResource("Brush.LayoutBg") as Brush ?? new SolidColorBrush(Color.FromRgb(40, 40, 40));
@@ -641,22 +747,27 @@ namespace AgenteIALocalVSIX.ToolWindows
             viewer.PreviewMouseWheel += BubbleViewer_PreviewMouseWheel;
 
             stack.Children.Add(viewer);
-
-            if (tokens.HasValue && tokens.Value >= 0)
+            // Meta line (always): short date/time + tokens (if unknown, show '-')
+            try
             {
+                var tsLocal = DateTime.SpecifyKind(tsUtc, DateTimeKind.Utc).ToLocalTime();
+                var dtText = tsLocal.ToString("g", System.Globalization.CultureInfo.CurrentCulture);
+                var tokText = (tokens.HasValue && tokens.Value >= 0) ? tokens.Value.ToString() : "-";
+
                 var meta = new TextBlock
                 {
-                    Text = "Tokens: " + tokens.Value.ToString(),
-                    Margin = new Thickness(0, 6, 0, 0),
+                    Text = dtText + " · Tokens: " + tokText,
+                    Margin = new Thickness(0, 8, 0, 0),
                     HorizontalAlignment = HorizontalAlignment.Right,
                     Foreground = boneBrush,
                     FontSize = 12,
-                    Opacity = 0.9
+                    Opacity = 0.90
                 };
+
                 stack.Children.Add(meta);
             }
-
-            bubble.Child = stack;
+            catch { }
+bubble.Child = stack;
 
             // Layout order: AI (icon left, bubble right). User (bubble left, icon right).
             if (!isUser)
@@ -2528,7 +2639,7 @@ AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
             catch { }
         }
 
-// UI-thread marshal helper (safe to call from background threads)
+        // UI-thread marshal helper (safe to call from background threads)
         private void Ui(Action action)
         {
             try
