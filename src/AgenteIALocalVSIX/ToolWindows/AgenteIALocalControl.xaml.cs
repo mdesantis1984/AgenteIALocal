@@ -545,6 +545,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             Brush borderBrush = TryFindResource("HeaderMediumEmphasisBrush") as Brush ?? new SolidColorBrush(Color.FromRgb(66, 66, 66));
             Brush textBrush = TryFindResource("HeaderHighEmphasisBrush") as Brush ?? Brushes.White;
             Brush boneBrush = TryFindResource("HeaderBoneEmphasisBrush") as Brush ?? Brushes.Bisque;
+            Brush aiIconBrush = TryFindResource("HeaderCyanHoverBrush") as Brush ?? new SolidColorBrush(Color.FromRgb(0, 188, 212));
             Brush bubbleBgUser = TryFindResource("Brush.FooterBg") as Brush ?? new SolidColorBrush(Color.FromRgb(56, 56, 56));
             Brush bubbleBgAi = TryFindResource("HeaderBackgroundBrush") as Brush ?? new SolidColorBrush(Color.FromRgb(30, 30, 34));
 
@@ -564,7 +565,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 Height = 18,
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(0, 8, 8, 0),
-                Foreground = boneBrush,
+                Foreground = isUser ? boneBrush : aiIconBrush,
                 Kind = isUser ? ParseIconKindOrFallback("AccountOutline", PackIconKind.Send) : ParseIconKindOrFallback("RobotOutline", PackIconKind.CogOutline)
             };
 
@@ -615,6 +616,8 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             // ensure default foreground
             viewer.Foreground = textBrush;
+
+            viewer.PreviewMouseWheel += BubbleViewer_PreviewMouseWheel;
 
             stack.Children.Add(viewer);
 
@@ -2468,6 +2471,24 @@ AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
         }
 
         
+
+        private void BubbleViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            try
+            {
+                if (ResponseJsonText == null) return;
+
+                e.Handled = true;
+                var evt = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+                {
+                    RoutedEvent = UIElement.MouseWheelEvent,
+                    Source = sender
+                };
+                ResponseJsonText.RaiseEvent(evt);
+            }
+            catch { }
+        }
+
         private void ScrollResponseToEnd()
         {
             try
