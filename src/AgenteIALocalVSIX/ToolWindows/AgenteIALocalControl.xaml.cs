@@ -70,6 +70,597 @@ namespace AgenteIALocalVSIX.ToolWindows
         private List<ChatSession> chats = new List<ChatSession>();
         private ChatSession activeChat = null;
 
+        // UI state persisted locally (last chat + token usage map)
+        private sealed class UiState
+        {
+            public string LastChatId { get; set; }
+            public Dictionary<string, int> MessageTokens { get; set; } = new Dictionary<string, int>(StringComparer.Ordinal);
+        }
+
+        private readonly object _uiStateGate = new object();
+        private UiState _uiState = new UiState();
+        private bool _isSyncingChatCombo;
+
+        private static string UiStateFilePath()
+        {
+            try
+            {
+                var dir = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "AgenteIALocal");
+                System.IO.Directory.CreateDirectory(dir);
+                return System.IO.Path.Combine(dir, "ui_state.json");
+            }
+            catch
+            {
+                return System.IO.Path.Combine(System.IO.Path.GetTempPath(), "AgenteIALocal.ui_state.json");
+            }
+        }
+
+        private void LoadUiStateSafe()
+        {
+            lock (_uiStateGate)
+            {
+                try
+                {
+                    var path = UiStateFilePath();
+                    if (!System.IO.File.Exists(path))
+                    {
+                        _uiState = new UiState();
+                        return;
+                    }
+
+                    var json = System.IO.File.ReadAllText(path);
+                    var st = JsonConvert.DeserializeObject<UiState>(json);
+                    _uiState = st ?? new UiState();
+                    if (_uiState.MessageTokens == null)
+                    {
+                        _uiState.MessageTokens = new Dictionary<string, int>(StringComparer.Ordinal);
+                    }
+                }
+                catch
+                {
+                    _uiState = new UiState();
+                }
+            }
+        }
+
+        private void SaveUiStateSafe()
+        {
+            lock (_uiStateGate)
+            {
+                try
+                {
+                    var path = UiStateFilePath();
+                    var json = JsonConvert.SerializeObject(_uiState, Formatting.Indented);
+                    System.IO.File.WriteAllText(path, json);
+                }
+                catch
+                {
+                    // ignore persistence errors
+                }
+            }
+        }
+
+        private static string TruncateWithEllipsis(string s, int maxChars)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return "New chat";
+            s = s.Trim();
+            if (s.Length <= maxChars) return s;
+            return s.Substring(0, maxChars) + "...";
+        }
+
+        private static string ComputeMd5Hex(string text)
+        {
+            try
+            {
+                var bytes = System.Text.Encoding.UTF8.GetBytes(text ?? string.Empty);
+                using (var md5 = System.Security.Cryptography.MD5.Create())
+                {
+                    var hash = md5.ComputeHash(bytes);
+                    return BitConverter.ToString(hash).Replace("-", string.Empty);
+                }
+            }
+            catch
+            {
+                return (text ?? string.Empty).Length.ToString();
+            }
+        }
+
+        private static string ComputeMessageTokenKey(string chatId, DateTime timestampUtc, string sender, string content)
+        {
+            // Stable key across sessions: chat + timestamp + sender + content hash
+            var ticks = timestampUtc.ToUniversalTime().Ticks;
+            return (chatId ?? string.Empty) + "|" + ticks.ToString() + "|" + (sender ?? string.Empty) + "|" + ComputeMd5Hex(content ?? string.Empty);
+        }
+
+        private int? TryGetTokensForMessage(string chatId, DateTime timestampUtc, string sender, string content)
+        {
+            try
+            {
+                var key = ComputeMessageTokenKey(chatId, timestampUtc, sender, content);
+                lock (_uiStateGate)
+                {
+                    if (_uiState != null && _uiState.MessageTokens != null && _uiState.MessageTokens.TryGetValue(key, out var v))
+                    {
+                        return v;
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private void TrySetTokensForMessage(string chatId, DateTime timestampUtc, string sender, string content, int tokens)
+        {
+            try
+            {
+                var key = ComputeMessageTokenKey(chatId, timestampUtc, sender, content);
+                lock (_uiStateGate)
+                {
+                    if (_uiState == null) _uiState = new UiState();
+                    if (_uiState.MessageTokens == null) _uiState.MessageTokens = new Dictionary<string, int>(StringComparer.Ordinal);
+                    _uiState.MessageTokens[key] = tokens;
+                }
+                SaveUiStateSafe();
+            }
+            catch { }
+        }
+
+        private void TryPersistChat(ChatSession chat)
+        {
+            try
+            {
+                if (chat == null) return;
+
+                var t = typeof(ChatStore);
+                var mi =
+                    t.GetMethod("Save", BindingFlags.Public | BindingFlags.Static) ??
+                    t.GetMethod("Update", BindingFlags.Public | BindingFlags.Static) ??
+                    t.GetMethod("Upsert", BindingFlags.Public | BindingFlags.Static);
+
+                if (mi == null) return;
+                mi.Invoke(null, new object[] { chat });
+            }
+            catch
+            {
+                // ignore persistence failures
+            }
+        }
+
+        private void EnsureActiveChatExists()
+        {
+            try
+            {
+                if (activeChat != null) return;
+                activeChat = ChatStore.CreateNew();
+                chats.Add(activeChat);
+                _uiState.LastChatId = activeChat.Id;
+                SaveUiStateSafe();
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private void AddChatMessage(ChatSession chat, string sender, string content, int? tokens)
+        {
+            try
+            {
+                if (chat == null) return;
+                var listObj = chat.Messages;
+                if (listObj == null) return;
+
+                var list = listObj as System.Collections.IList;
+                if (list == null) return;
+
+                var msgType = listObj.GetType().IsGenericType
+                    ? listObj.GetType().GetGenericArguments()[0]
+                    : typeof(object);
+
+                var msg = Activator.CreateInstance(msgType);
+                var tsUtc = DateTime.UtcNow;
+
+                TrySetProp(msg, "Timestamp", tsUtc);
+                TrySetProp(msg, "Sender", sender ?? string.Empty);
+                TrySetProp(msg, "Content", content ?? string.Empty);
+
+                list.Add(msg);
+
+                if (tokens.HasValue && tokens.Value >= 0)
+                {
+                    TrySetTokensForMessage(chat.Id, tsUtc, sender ?? string.Empty, content ?? string.Empty, tokens.Value);
+                }
+
+                TryPersistChat(chat);
+            }
+            catch
+            {
+                // never throw from UI
+            }
+        }
+
+        private static void TrySetProp(object obj, string propName, object value)
+        {
+            try
+            {
+                if (obj == null) return;
+                var p = obj.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+                if (p == null || !p.CanWrite) return;
+
+                if (value == null)
+                {
+                    p.SetValue(obj, null, null);
+                    return;
+                }
+
+                var targetType = p.PropertyType;
+                if (targetType.IsAssignableFrom(value.GetType()))
+                {
+                    p.SetValue(obj, value, null);
+                    return;
+                }
+
+                // try common conversion (DateTimeOffset -> DateTime)
+                if (targetType == typeof(DateTime) && value is DateTimeOffset dto)
+                {
+                    p.SetValue(obj, dto.UtcDateTime, null);
+                    return;
+                }
+
+                if (targetType.IsEnum && value is string s)
+                {
+                    try
+                    {
+                        var enumValue = Enum.Parse(targetType, s, ignoreCase: true);
+                        p.SetValue(obj, enumValue, null);
+                    }
+                    catch { }
+                    return;
+                }
+
+                try
+                {
+                    var converted = Convert.ChangeType(value, targetType);
+                    p.SetValue(obj, converted, null);
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+            catch { }
+        }
+
+        private static string TryGetStringProp(object obj, string propName)
+        {
+            try
+            {
+                if (obj == null) return string.Empty;
+                var p = obj.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+                if (p == null) return string.Empty;
+                var v = p.GetValue(obj, null);
+                return v != null ? v.ToString() : string.Empty;
+            }
+            catch { return string.Empty; }
+        }
+
+        private static DateTime TryGetDateTimeProp(object obj, string propName)
+        {
+            try
+            {
+                if (obj == null) return DateTime.UtcNow;
+                var p = obj.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+                if (p == null) return DateTime.UtcNow;
+                var v = p.GetValue(obj, null);
+                if (v is DateTime dt) return dt;
+                if (v is DateTimeOffset dto) return dto.UtcDateTime;
+                if (v != null && DateTime.TryParse(v.ToString(), out var parsed)) return parsed;
+            }
+            catch { }
+            return DateTime.UtcNow;
+        }
+
+        private static bool TryIsHttp200(object response)
+        {
+            try
+            {
+                if (response == null) return false;
+
+                // int StatusCode
+                var p = response.GetType().GetProperty("StatusCode", BindingFlags.Public | BindingFlags.Instance);
+                if (p != null)
+                {
+                    var v = p.GetValue(response, null);
+                    if (v is int i) return i == 200;
+                    if (v is System.Net.HttpStatusCode h) return (int)h == 200;
+                    if (v != null && int.TryParse(v.ToString(), out var pi)) return pi == 200;
+                }
+
+                // HttpResponseMessage-style
+                p = response.GetType().GetProperty("HttpStatusCode", BindingFlags.Public | BindingFlags.Instance);
+                if (p != null)
+                {
+                    var v = p.GetValue(response, null);
+                    if (v is int i2) return i2 == 200;
+                    if (v is System.Net.HttpStatusCode h2) return (int)h2 == 200;
+                    if (v != null && int.TryParse(v.ToString(), out var pi2)) return pi2 == 200;
+                }
+
+                p = response.GetType().GetProperty("IsSuccessStatusCode", BindingFlags.Public | BindingFlags.Instance);
+                if (p != null)
+                {
+                    var v = p.GetValue(response, null);
+                    if (v is bool b && b)
+                    {
+                        // success is not necessarily 200; keep strictness
+                        // If a StatusCode property exists, it was handled above.
+                        return false;
+                    }
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        private static int? TryExtractTotalTokens(object response, string outputText)
+        {
+            try
+            {
+                if (response != null)
+                {
+                    // direct properties
+                    foreach (var propName in new[] { "TotalTokens", "Tokens", "TokensUsed", "PromptTokens", "CompletionTokens" })
+                    {
+                        var p = response.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+                        if (p == null) continue;
+                        var v = p.GetValue(response, null);
+                        if (v is int i) return i;
+                        if (v != null && int.TryParse(v.ToString(), out var pi)) return pi;
+                    }
+
+                    // Usage object
+                    var u = response.GetType().GetProperty("Usage", BindingFlags.Public | BindingFlags.Instance);
+                    if (u != null)
+                    {
+                        var usage = u.GetValue(response, null);
+                        if (usage != null)
+                        {
+                            var pTotal = usage.GetType().GetProperty("TotalTokens", BindingFlags.Public | BindingFlags.Instance)
+                                ?? usage.GetType().GetProperty("total_tokens", BindingFlags.Public | BindingFlags.Instance);
+                            if (pTotal != null)
+                            {
+                                var v = pTotal.GetValue(usage, null);
+                                if (v is int i2) return i2;
+                                if (v != null && int.TryParse(v.ToString(), out var pi2)) return pi2;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            // Try parse from output JSON (LM Studio / OpenAI style usage object)
+            try
+            {
+                if (string.IsNullOrWhiteSpace(outputText)) return null;
+                var trimmed = outputText.Trim();
+                if (!(trimmed.StartsWith("{") || trimmed.StartsWith("["))) return null;
+
+                var tok = JToken.Parse(trimmed);
+
+                // { usage: { total_tokens: 123 } }
+                var usage = tok["usage"] ?? tok.SelectToken("usage");
+                if (usage != null)
+                {
+                    var total = usage["total_tokens"] ?? usage["totalTokens"] ?? usage["TotalTokens"];
+                    if (total != null && int.TryParse(total.ToString(), out var ti)) return ti;
+                }
+
+                // some providers: { meta: { tokens: 123 } }
+                var meta = tok["meta"] ?? tok.SelectToken("meta");
+                if (meta != null)
+                {
+                    var t = meta["tokens"] ?? meta["total_tokens"] ?? meta["totalTokens"];
+                    if (t != null && int.TryParse(t.ToString(), out var ti2)) return ti2;
+                }
+            }
+            catch { }
+
+            return null;
+        }
+
+        private void RenderActiveChatToUi()
+        {
+            try
+            {
+                if (activeChat == null)
+                {
+                    ResponseJsonText.Document = CreatePlainDocument(string.Empty);
+                    return;
+                }
+
+                ResponseJsonText.Document = RenderChatSessionToDocument(activeChat);
+                ScrollResponseToEnd();
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private FlowDocument RenderChatSessionToDocument(ChatSession chat)
+        {
+            var fd = new FlowDocument { PagePadding = new Thickness(0) };
+            try
+            {
+                if (chat == null || chat.Messages == null) return fd;
+
+                foreach (var m in chat.Messages)
+                {
+                    var sender = TryGetStringProp(m, "Sender");
+                    var content = TryGetStringProp(m, "Content");
+                    var ts = TryGetDateTimeProp(m, "Timestamp");
+
+                    var isUser = false;
+                    var sLower = (sender ?? string.Empty).Trim().ToLowerInvariant();
+                    if (sLower == "tú" || sLower == "tu" || sLower == "user" || sLower == "you") isUser = true;
+
+                    // Tokens (only typically for AI messages)
+                    int? tokens = null;
+                    try
+                    {
+                        tokens = TryGetTokensForMessage(chat.Id, ts, sender ?? string.Empty, content ?? string.Empty);
+                    }
+                    catch { }
+
+                    fd.Blocks.Add(CreateBubbleBlock(isUser, content ?? string.Empty, tokens));
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+            return fd;
+        }
+
+        private static PackIconKind ParseIconKindOrFallback(string name, PackIconKind fallback)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(name)) return fallback;
+                return (PackIconKind)Enum.Parse(typeof(PackIconKind), name, ignoreCase: true);
+            }
+            catch
+            {
+                return fallback;
+            }
+        }
+
+        private BlockUIContainer CreateBubbleBlock(bool isUser, string text, int? tokens)
+        {
+            // Brushes from resources (fallback to reasonable dark defaults)
+            Brush surfaceBg = TryFindResource("Brush.LayoutBg") as Brush ?? new SolidColorBrush(Color.FromRgb(40, 40, 40));
+            Brush borderBrush = TryFindResource("HeaderMediumEmphasisBrush") as Brush ?? new SolidColorBrush(Color.FromRgb(66, 66, 66));
+            Brush textBrush = TryFindResource("HeaderHighEmphasisBrush") as Brush ?? Brushes.White;
+            Brush boneBrush = TryFindResource("HeaderBoneEmphasisBrush") as Brush ?? Brushes.Bisque;
+            Brush bubbleBgUser = TryFindResource("Brush.FooterBg") as Brush ?? new SolidColorBrush(Color.FromRgb(56, 56, 56));
+            Brush bubbleBgAi = TryFindResource("HeaderBackgroundBrush") as Brush ?? new SolidColorBrush(Color.FromRgb(30, 30, 34));
+
+            var block = new BlockUIContainer();
+            var outer = new Grid
+            {
+                Margin = new Thickness(0, 6, 0, 6),
+                HorizontalAlignment = isUser ? HorizontalAlignment.Right : HorizontalAlignment.Left
+            };
+
+            outer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            outer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var icon = new PackIcon
+            {
+                Width = 18,
+                Height = 18,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 8, 8, 0),
+                Foreground = boneBrush,
+                Kind = isUser ? ParseIconKindOrFallback("AccountOutline", PackIconKind.Send) : ParseIconKindOrFallback("RobotOutline", PackIconKind.CogOutline)
+            };
+
+            var bubble = new Border
+            {
+                Background = isUser ? bubbleBgUser : bubbleBgAi,
+                BorderBrush = borderBrush,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(12, 10, 12, 8),
+                MaxWidth = 980
+            };
+
+            var stack = new StackPanel { Orientation = Orientation.Vertical };
+
+            // content renderer (reuse existing preprocessing + renderer pipeline)
+            FlowDocument doc;
+            try
+            {
+                var _prevCorr = activeCorrelationId;
+                try
+                {
+                    if (string.IsNullOrEmpty(activeCorrelationId)) activeCorrelationId = "-";
+                    doc = RenderResponseToDocument(text ?? string.Empty);
+                }
+                finally
+                {
+                    activeCorrelationId = _prevCorr;
+                }
+            }
+            catch
+            {
+                doc = CreatePlainDocument(text ?? string.Empty);
+            }
+
+            try { doc.PagePadding = new Thickness(0); } catch { }
+
+            var viewer = new FlowDocumentScrollViewer
+            {
+                Document = doc,
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                IsToolBarVisible = false,
+                Focusable = false
+            };
+
+            // ensure default foreground
+            viewer.Foreground = textBrush;
+
+            stack.Children.Add(viewer);
+
+            if (tokens.HasValue && tokens.Value >= 0)
+            {
+                var meta = new TextBlock
+                {
+                    Text = "Tokens: " + tokens.Value.ToString(),
+                    Margin = new Thickness(0, 6, 0, 0),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    Foreground = boneBrush,
+                    FontSize = 12,
+                    Opacity = 0.9
+                };
+                stack.Children.Add(meta);
+            }
+
+            bubble.Child = stack;
+
+            // Layout order: AI (icon left, bubble right). User (bubble left, icon right).
+            if (!isUser)
+            {
+                Grid.SetColumn(icon, 0);
+                Grid.SetColumn(bubble, 1);
+                outer.Children.Add(icon);
+                outer.Children.Add(bubble);
+            }
+            else
+            {
+                // swap positions
+                outer.ColumnDefinitions.Clear();
+                outer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                outer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                icon.Margin = new Thickness(8, 8, 0, 0);
+
+                Grid.SetColumn(bubble, 0);
+                Grid.SetColumn(icon, 1);
+                outer.Children.Add(bubble);
+                outer.Children.Add(icon);
+            }
+
+            block.Child = outer;
+            return block;
+        }
+
         // Mock modified files
         public List<string> ModifiedFiles { get; private set; } = new List<string> { "ProjectA/File1.cs", "ProjectB/Helper.cs", "Shared/Utils.cs" };
         private bool isChangesExpanded = false;
@@ -195,10 +786,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                 UpdateUiState(CurrentExecutionState);
             }
             catch { }
-
             // Load chats
             try
             {
+                LoadUiStateSafe();
+
                 chats = ChatStore.LoadAll().ToList();
                 if (chats.Count == 0)
                 {
@@ -207,9 +799,30 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 else
                 {
-                    // select last active (first in sorted list)
-                    activeChat = chats[0];
+                    // prefer last active chat id from ui state
+                    var desiredId = _uiState != null ? _uiState.LastChatId : null;
+                    if (!string.IsNullOrEmpty(desiredId))
+                    {
+                        activeChat = chats.FirstOrDefault(c => c != null && string.Equals(c.Id, desiredId, StringComparison.Ordinal));
+                    }
+
+                    if (activeChat == null)
+                    {
+                        // fallback to first in sorted list
+                        activeChat = chats[0];
+                    }
                 }
+
+                try
+                {
+                    lock (_uiStateGate)
+                    {
+                        if (_uiState == null) _uiState = new UiState();
+                        _uiState.LastChatId = activeChat != null ? activeChat.Id : null;
+                    }
+                    SaveUiStateSafe();
+                }
+                catch { }
 
                 RefreshChatCombo();
                 LoadActiveChatToUi();
@@ -218,8 +831,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 // ignore chat errors
             }
-
-            // Ensure mock modified files are available for binding
+// Ensure mock modified files are available for binding
             RaisePropertyChanged(nameof(ModifiedFiles));
             RaisePropertyChanged(nameof(ModifiedFilesCount));
 
@@ -276,59 +888,67 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
+        
         private void RefreshChatCombo()
         {
             try
             {
+                _isSyncingChatCombo = true;
+
                 ChatComboBox.Items.Clear();
                 foreach (var c in chats)
                 {
-                    var tb = new System.Windows.Controls.TextBlock { Text = c.Title };
-                    ChatComboBox.Items.Add(new ComboBoxItem { Content = c.Title, Tag = c.Id });
+                    if (c == null) continue;
+                    ChatComboBox.Items.Add(new ComboBoxItem
+                    {
+                        Content = c.Title,
+                        Tag = c.Id
+                    });
                 }
 
                 // select active
-                if (activeChat != null)
+                var desiredId = activeChat != null ? activeChat.Id : (_uiState != null ? _uiState.LastChatId : null);
+
+                if (!string.IsNullOrEmpty(desiredId))
                 {
-                    for (int i = 0; i < ChatComboBox.Items.Count; i++)
+                    foreach (var it in ChatComboBox.Items.OfType<ComboBoxItem>())
                     {
-                        var item = (ComboBoxItem)ChatComboBox.Items[i];
-                        if ((string)item.Tag == activeChat.Id)
+                        if (string.Equals(it.Tag as string, desiredId, StringComparison.Ordinal))
                         {
-                            ChatComboBox.SelectedIndex = i;
+                            ChatComboBox.SelectedItem = it;
                             break;
                         }
                     }
+                }
+                else if (ChatComboBox.Items.Count > 0)
+                {
+                    ChatComboBox.SelectedIndex = 0;
                 }
             }
             catch
             {
                 // ignore
             }
+            finally
+            {
+                _isSyncingChatCombo = false;
+            }
         }
 
+
+        
         private void LoadActiveChatToUi()
         {
             try
             {
                 if (activeChat == null)
                 {
-                    PromptTextBox.Text = string.Empty;
                     ResponseJsonText.Document = CreatePlainDocument(string.Empty);
                     ScrollResponseToEnd();
                     return;
                 }
 
-                // For simplicity in this sprint, show messages concatenated in Response area and keep request empty
-                var sb = new StringBuilder();
-                foreach (var m in activeChat.Messages)
-                {
-                    sb.AppendLine($"[{m.Timestamp}] {m.Sender}: {m.Content}");
-                }
-
-                ResponseJsonText.Document = CreatePlainDocument(sb.ToString());
-                ScrollResponseToEnd();
-                PromptTextBox.Text = string.Empty;
+                RenderActiveChatToUi();
             }
             catch
             {
@@ -336,23 +956,31 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
+
+        
         private void ChatComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_isSyncingChatCombo) return;
+
             try
             {
-                var cb = sender as ComboBox;
-                if (cb == null) return;
-                var item = cb.SelectedItem as ComboBoxItem;
-                if (item == null) return;
-                var id = item.Tag as string;
+                var selected = ChatComboBox.SelectedItem as ComboBoxItem;
+                var id = selected != null ? selected.Tag as string : null;
                 if (string.IsNullOrEmpty(id)) return;
 
-                var s = ChatStore.Load(id);
-                if (s != null)
+                var found = chats.FirstOrDefault(c => string.Equals(c.Id, id, StringComparison.Ordinal));
+                if (found == null) return;
+
+                activeChat = found;
+
+                lock (_uiStateGate)
                 {
-                    activeChat = s;
-                    LoadActiveChatToUi();
+                    if (_uiState == null) _uiState = new UiState();
+                    _uiState.LastChatId = activeChat.Id;
                 }
+                SaveUiStateSafe();
+
+                LoadActiveChatToUi();
             }
             catch
             {
@@ -360,16 +988,29 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        private void NewChatButton_Click(object sender, System.Windows.RoutedEventArgs e)
+
+        
+        private void NewChatButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                var res = System.Windows.MessageBox.Show("You are creating a new chat. Are you sure? Yes / No", "Confirm", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
-                if (res != System.Windows.MessageBoxResult.Yes) return;
+                var c = ChatStore.CreateNew();
+                if (c == null) return;
 
-                var s = ChatStore.CreateNew();
-                chats.Insert(0, s);
-                activeChat = s;
+                // make it the active chat
+                activeChat = c;
+
+                // ensure it appears first
+                chats.RemoveAll(x => x != null && string.Equals(x.Id, c.Id, StringComparison.Ordinal));
+                chats.Insert(0, c);
+
+                lock (_uiStateGate)
+                {
+                    if (_uiState == null) _uiState = new UiState();
+                    _uiState.LastChatId = activeChat.Id;
+                }
+                SaveUiStateSafe();
+
                 RefreshChatCombo();
                 LoadActiveChatToUi();
             }
@@ -379,16 +1020,17 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        private void DeleteChatButton_Click(object sender, System.Windows.RoutedEventArgs e)
+
+        
+        private void DeleteChatButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 if (activeChat == null) return;
-                var res = System.Windows.MessageBox.Show("Are you sure you want to delete this chat? Yes / No", "Confirm", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
-                if (res != System.Windows.MessageBoxResult.Yes) return;
 
-                ChatStore.Delete(activeChat.Id);
-                chats.RemoveAll(c => c.Id == activeChat.Id);
+                try { ChatStore.Delete(activeChat.Id); } catch { }
+
+                chats.RemoveAll(c => c != null && string.Equals(c.Id, activeChat.Id, StringComparison.Ordinal));
 
                 if (chats.Count > 0)
                 {
@@ -397,8 +1039,15 @@ namespace AgenteIALocalVSIX.ToolWindows
                 else
                 {
                     activeChat = ChatStore.CreateNew();
-                    chats.Add(activeChat);
+                    if (activeChat != null) chats.Add(activeChat);
                 }
+
+                lock (_uiStateGate)
+                {
+                    if (_uiState == null) _uiState = new UiState();
+                    _uiState.LastChatId = activeChat != null ? activeChat.Id : null;
+                }
+                SaveUiStateSafe();
 
                 RefreshChatCombo();
                 LoadActiveChatToUi();
@@ -408,6 +1057,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 // ignore
             }
         }
+
 
         private T GetElement<T>(string name) where T : class
         {
@@ -1019,6 +1669,50 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                 var userInput = PromptTextBox.Text ?? string.Empty;
 
+                if (string.IsNullOrWhiteSpace(userInput))
+                {
+                    return;
+                }
+
+                // Ensure we have an active chat and remember it
+                EnsureActiveChatExists();
+
+                try
+                {
+                    lock (_uiStateGate)
+                    {
+                        if (_uiState == null) _uiState = new UiState();
+                        _uiState.LastChatId = activeChat != null ? activeChat.Id : null;
+                    }
+                    SaveUiStateSafe();
+                }
+                catch { }
+
+                // If chat has default title, name it from the first prompt (truncate 200 chars + ...)
+                try
+                {
+                    if (activeChat != null)
+                    {
+                        var title = activeChat.Title ?? string.Empty;
+                        if (string.IsNullOrWhiteSpace(title) || string.Equals(title.Trim(), "New chat", StringComparison.OrdinalIgnoreCase))
+                        {
+                            activeChat.Title = TruncateWithEllipsis(userInput, 200);
+                            TryPersistChat(activeChat);
+                            RefreshChatCombo();
+                        }
+                    }
+                }
+                catch { }
+
+                // Append user message as a bubble immediately
+                try
+                {
+                    AddChatMessage(activeChat, "Tú", userInput, null);
+                    RenderActiveChatToUi();
+                }
+                catch { }
+
+
                 var req = new AgentHostRequest
                 {
                     RequestId = myCorrelationId,
@@ -1100,9 +1794,33 @@ namespace AgenteIALocalVSIX.ToolWindows
                     try
                     {
                         AppendLog("[VERBOSE] RenderResponse: start; len=" + (display?.Length ?? 0));
-                        ResponseJsonText.Document = RenderResponseToDocument(display);
-                        ScrollResponseToEnd();
-                        AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
+                        
+                        // Append AI response as a bubble, show tokens, and clear prompt ONLY on 200 OK
+                        try
+                        {
+                            var ok200 = TryIsHttp200(response);
+                            var tokens = TryExtractTotalTokens(response, display);
+
+                            AddChatMessage(activeChat, "IA", display, tokens);
+
+                            if (ok200)
+                            {
+                                PromptTextBox.Text = string.Empty;
+                            }
+
+                            RenderActiveChatToUi();
+                        }
+                        catch
+                        {
+                            // fallback to previous rendering
+                            try
+                            {
+                                ResponseJsonText.Document = RenderResponseToDocument(display);
+                                ScrollResponseToEnd();
+                            }
+                            catch { }
+                        }
+AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
                     }
                     catch (Exception exRender)
                     {
