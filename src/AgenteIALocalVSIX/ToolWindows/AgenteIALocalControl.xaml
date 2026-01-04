@@ -5,7 +5,7 @@
               xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
               xmlns:iconPacks="clr-namespace:MahApps.Metro.IconPacks;assembly=MahApps.Metro.IconPacks.Material"
               xmlns:sys="clr-namespace:System;assembly=mscorlib"
-              xmlns:local="clr-namespace:AgenteIALocalVSIX.ToolWindows">
+              xmlns:local="clr-namespace:AgenteIALocalVSIX.ToolWindows" Loaded="UserControl_Loaded">
 
   <UserControl.Resources>
     <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FF1E1E22" />

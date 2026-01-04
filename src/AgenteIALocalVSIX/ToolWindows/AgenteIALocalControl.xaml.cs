@@ -1,4 +1,3 @@
-using AgenteIALocal.Core.Logging;
 using AgenteIALocal.Core.Models.Agent;
 using AgenteIALocalVSIX.Chats;
 using AgenteIALocalVSIX.Execution;
@@ -33,7 +32,12 @@ namespace AgenteIALocalVSIX.ToolWindows
         public enum ExecutionState { Idle, Running, Completed, Error }
 
         private ExecutionState currentExecutionState = ExecutionState.Idle;
-
+        private CancellationTokenSource logRefreshCts;
+        private static bool _mahAppsResolveHooked;
+        // Active correlation id for the current Run execution (used by logging in this control)
+        private string activeCorrelationId = null;
+        private CancellationTokenSource _runCts;
+        private int _runVersion;
         // Bindable properties for UI (icon, color, text)
         public PackIconKind StateIconKind { get; private set; }
         public Brush StateColor { get; private set; }
@@ -431,119 +435,120 @@ namespace AgenteIALocalVSIX.ToolWindows
             return false;
         }
 
-        private static int? TryExtractTotalTokens(object response, string outputText)
-        {
-            try
-            {
-                if (response != null)
-                {
-                    // direct properties
-                    foreach (var propName in new[] { "TotalTokens", "Tokens", "TokensUsed", "PromptTokens", "CompletionTokens" })
-                    {
-                        var p = response.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
-                        if (p == null) continue;
-                        var v = p.GetValue(response, null);
-                        if (v is int i) return i;
-                        if (v != null && int.TryParse(v.ToString(), out var pi)) return pi;
-                    }
+        //private static int? TryExtractTotalTokens(object response, string outputText)
+        //{
+        //    try
+        //    {
+        //        if (response != null)
+        //        {
+        //            // direct properties
+        //            foreach (var propName in new[] { "TotalTokens", "Tokens", "TokensUsed", "PromptTokens", "CompletionTokens" })
+        //            {
+        //                var p = response.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+        //                if (p == null) continue;
+        //                var v = p.GetValue(response, null);
+        //                if (v is int i) return i;
+        //                if (v != null && int.TryParse(v.ToString(), out var pi)) return pi;
+        //            }
 
-                    // Usage object
-                    var u = response.GetType().GetProperty("Usage", BindingFlags.Public | BindingFlags.Instance);
-                    if (u != null)
-                    {
-                        var usage = u.GetValue(response, null);
-                        if (usage != null)
-                        {
-                            var pTotal = usage.GetType().GetProperty("TotalTokens", BindingFlags.Public | BindingFlags.Instance)
-                                ?? usage.GetType().GetProperty("total_tokens", BindingFlags.Public | BindingFlags.Instance);
-                            if (pTotal != null)
-                            {
-                                var v = pTotal.GetValue(usage, null);
-                                if (v is int i2) return i2;
-                                if (v != null && int.TryParse(v.ToString(), out var pi2)) return pi2;
-                            }
-                        }
-                    }
-                }
-            }
-            catch { }
+        //            // Usage object
+        //            var u = response.GetType().GetProperty("Usage", BindingFlags.Public | BindingFlags.Instance);
+        //            if (u != null)
+        //            {
+        //                var usage = u.GetValue(response, null);
+        //                if (usage != null)
+        //                {
+        //                    var pTotal = usage.GetType().GetProperty("TotalTokens", BindingFlags.Public | BindingFlags.Instance)
+        //                        ?? usage.GetType().GetProperty("total_tokens", BindingFlags.Public | BindingFlags.Instance);
+        //                    if (pTotal != null)
+        //                    {
+        //                        var v = pTotal.GetValue(usage, null);
+        //                        if (v is int i2) return i2;
+        //                        if (v != null && int.TryParse(v.ToString(), out var pi2)) return pi2;
+        //                    }
+        //                }
+        //            }
+        //        }
+        //    }
+        //    catch { }
 
-            
 
-            // Try parse from raw JSON on the response object (if present)
-            try
-            {
-                if (response != null)
-                {
-                    string raw = null;
-                    foreach (var propName in new[] { "RawResponse", "RawResponseJson", "RawJson", "ResponseJson", "ResponseText", "Body", "Json", "Payload", "Raw" })
-                    {
-                        var p = response.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
-                        if (p == null) continue;
-                        var v = p.GetValue(response, null);
-                        if (v is string s && !string.IsNullOrWhiteSpace(s)) { raw = s; break; }
-                    }
 
-                    if (!string.IsNullOrWhiteSpace(raw))
-                    {
-                        var trimmedRaw = raw.Trim();
-                        if (trimmedRaw.StartsWith("{") || trimmedRaw.StartsWith("["))
-                        {
-                            var tokRaw = JToken.Parse(trimmedRaw);
+        //    // Try parse from raw JSON on the response object (if present)
+        //    try
+        //    {
+        //        if (response != null)
+        //        {
+        //            string raw = null;
+        //            foreach (var propName in new[] { "RawResponse", "RawResponseJson", "RawJson", "ResponseJson", "ResponseText", "Body", "Json", "Payload", "Raw" })
+        //            {
+        //                var p = response.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+        //                if (p == null) continue;
+        //                var v = p.GetValue(response, null);
+        //                if (v is string s && !string.IsNullOrWhiteSpace(s)) { raw = s; break; }
+        //            }
 
-                            var usageRaw = tokRaw["usage"] ?? tokRaw.SelectToken("usage");
-                            if (usageRaw != null)
-                            {
-                                var totalRaw = usageRaw["total_tokens"] ?? usageRaw["totalTokens"] ?? usageRaw["TotalTokens"];
-                                if (totalRaw != null && int.TryParse(totalRaw.ToString(), out var tiRaw)) return tiRaw;
-                            }
+        //            if (!string.IsNullOrWhiteSpace(raw))
+        //            {
+        //                var trimmedRaw = raw.Trim();
+        //                if (trimmedRaw.StartsWith("{") || trimmedRaw.StartsWith("["))
+        //                {
+        //                    var tokRaw = JToken.Parse(trimmedRaw);
 
-                            var metaRaw = tokRaw["meta"] ?? tokRaw.SelectToken("meta");
-                            if (metaRaw != null)
-                            {
-                                var tRaw = metaRaw["tokens"] ?? metaRaw["total_tokens"] ?? metaRaw["totalTokens"];
-                                if (tRaw != null && int.TryParse(tRaw.ToString(), out var ti2Raw)) return ti2Raw;
-                            }
-                        }
-                    }
-                }
-            }
-            catch { }
+        //                    var usageRaw = tokRaw["usage"] ?? tokRaw.SelectToken("usage");
+        //                    if (usageRaw != null)
+        //                    {
+        //                        var totalRaw = usageRaw["total_tokens"] ?? usageRaw["totalTokens"] ?? usageRaw["TotalTokens"];
+        //                        if (totalRaw != null && int.TryParse(totalRaw.ToString(), out var tiRaw)) return tiRaw;
+        //                    }
 
-            // Try parse from output JSON (LM Studio / OpenAI style usage object)
-            try
-            {
-                if (string.IsNullOrWhiteSpace(outputText)) return null;
-                var trimmed = outputText.Trim();
-                if (!(trimmed.StartsWith("{") || trimmed.StartsWith("["))) return null;
+        //                    var metaRaw = tokRaw["meta"] ?? tokRaw.SelectToken("meta");
+        //                    if (metaRaw != null)
+        //                    {
+        //                        var tRaw = metaRaw["tokens"] ?? metaRaw["total_tokens"] ?? metaRaw["totalTokens"];
+        //                        if (tRaw != null && int.TryParse(tRaw.ToString(), out var ti2Raw)) return ti2Raw;
+        //                    }
+        //                }
+        //            }
+        //        }
+        //    }
+        //    catch { }
 
-                var tok = JToken.Parse(trimmed);
+        //    // Try parse from output JSON (LM Studio / OpenAI style usage object)
+        //    try
+        //    {
+        //        if (string.IsNullOrWhiteSpace(outputText)) return null;
+        //        var trimmed = outputText.Trim();
+        //        if (!(trimmed.StartsWith("{") || trimmed.StartsWith("["))) return null;
 
-                // { usage: { total_tokens: 123 } }
-                var usage = tok["usage"] ?? tok.SelectToken("usage");
-                if (usage != null)
-                {
-                    var total = usage["total_tokens"] ?? usage["totalTokens"] ?? usage["TotalTokens"];
-                    if (total != null && int.TryParse(total.ToString(), out var ti)) return ti;
-                }
+        //        var tok = JToken.Parse(trimmed);
 
-                // some providers: { meta: { tokens: 123 } }
-                var meta = tok["meta"] ?? tok.SelectToken("meta");
-                if (meta != null)
-                {
-                    var t = meta["tokens"] ?? meta["total_tokens"] ?? meta["totalTokens"];
-                    if (t != null && int.TryParse(t.ToString(), out var ti2)) return ti2;
-                }
-            }
-            catch { }
+        //        // { usage: { total_tokens: 123 } }
+        //        var usage = tok["usage"] ?? tok.SelectToken("usage");
+        //        if (usage != null)
+        //        {
+        //            var total = usage["total_tokens"] ?? usage["totalTokens"] ?? usage["TotalTokens"];
+        //            if (total != null && int.TryParse(total.ToString(), out var ti)) return ti;
+        //        }
 
-            return null;
-        }
+        //        // some providers: { meta: { tokens: 123 } }
+        //        var meta = tok["meta"] ?? tok.SelectToken("meta");
+        //        if (meta != null)
+        //        {
+        //            var t = meta["tokens"] ?? meta["total_tokens"] ?? meta["totalTokens"];
+        //            if (t != null && int.TryParse(t.ToString(), out var ti2)) return ti2;
+        //        }
+        //    }
+        //    catch { }
+
+        //    return null;
+        //}
 
         // Extract OpenAI/LM Studio style usage tokens from the response object (preferred) or raw JSON.
         // This is used to:
         // - Update the last USER bubble with prompt_tokens
         // - Render the AI bubble with completion_tokens (fallback to total_tokens)
+
         private static void TryExtractUsageTokens(object response, out int? promptTokens, out int? completionTokens, out int? totalTokens)
         {
             promptTokens = null;
@@ -709,22 +714,27 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         private void RenderActiveChatToUi()
         {
-            try
+            Ui(() =>
             {
-                if (activeChat == null)
+                try
                 {
-                    ResponseJsonText.Document = CreatePlainDocument(string.Empty);
-                    return;
-                }
+                    if (activeChat == null)
+                    {
+                        ResponseJsonText.Document = CreatePlainDocument(string.Empty);
+                        ScrollResponseToEnd();
+                        return;
+                    }
 
-                ResponseJsonText.Document = RenderChatSessionToDocument(activeChat);
-                ScrollResponseToEnd();
-            }
-            catch
-            {
-                // ignore
-            }
+                    ResponseJsonText.Document = RenderChatSessionToDocument(activeChat);
+                    ScrollResponseToEnd();
+                }
+                catch
+                {
+                    // ignore
+                }
+            });
         }
+
 
         private FlowDocument RenderChatSessionToDocument(ChatSession chat)
         {
@@ -896,7 +906,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 stack.Children.Add(meta);
             }
             catch { }
-bubble.Child = stack;
+            bubble.Child = stack;
 
             // Layout order: AI (icon left, bubble right). User (bubble left, icon right).
             if (!isUser)
@@ -942,14 +952,7 @@ bubble.Child = stack;
             }
         }
 
-        private CancellationTokenSource logRefreshCts;
 
-        private static bool _mahAppsResolveHooked;
-
-        // Active correlation id for the current Run execution (used by logging in this control)
-        private string activeCorrelationId = null;
-        private CancellationTokenSource _runCts;
-        private int _runVersion;
 
         private static void EnsureMahAppsIconPacksLoaded()
         {
@@ -1095,7 +1098,7 @@ bubble.Child = stack;
             {
                 // ignore chat errors
             }
-// Ensure mock modified files are available for binding
+            // Ensure mock modified files are available for binding
             RaisePropertyChanged(nameof(ModifiedFiles));
             RaisePropertyChanged(nameof(ModifiedFilesCount));
 
@@ -1152,7 +1155,7 @@ bubble.Child = stack;
             }
         }
 
-        
+
         private void RefreshChatCombo()
         {
             try
@@ -1200,7 +1203,7 @@ bubble.Child = stack;
         }
 
 
-        
+
         private void LoadActiveChatToUi()
         {
             try
@@ -1221,7 +1224,7 @@ bubble.Child = stack;
         }
 
 
-        
+
         private void ChatComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_isSyncingChatCombo) return;
@@ -1253,7 +1256,7 @@ bubble.Child = stack;
         }
 
 
-        
+
         private void NewChatButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1285,7 +1288,7 @@ bubble.Child = stack;
         }
 
 
-        
+
         private void DeleteChatButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1634,19 +1637,6 @@ bubble.Child = stack;
             }, ct);
         }
 
-        private void StopLogRefreshLoop()
-        {
-            try
-            {
-                if (logRefreshCts != null)
-                {
-                    logRefreshCts.Cancel();
-                }
-                logRefreshCts = null;
-            }
-            catch { }
-        }
-
         public void SetSolutionInfo(string solutionName, int projectCount)
         {
             try
@@ -1906,8 +1896,6 @@ bubble.Child = stack;
             });
         }
 
-
-
         private async System.Threading.Tasks.Task RunButton_ClickAsync(object sender, RoutedEventArgs e)
         {
             if (CurrentExecutionState == ExecutionState.Running) return;
@@ -2058,7 +2046,7 @@ bubble.Child = stack;
                     try
                     {
                         AppendLog("[VERBOSE] RenderResponse: start; len=" + (display?.Length ?? 0));
-                        
+
                         var ok200 = false;
                         try { ok200 = TryIsHttp200(response); } catch { }
 
@@ -2100,7 +2088,7 @@ bubble.Child = stack;
                             }
                             catch { }
                         }
-AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
+                        AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
                     }
                     catch (Exception exRender)
                     {
@@ -2159,8 +2147,6 @@ AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
                 });
             }
         }
-
-
 
         // Response format enum (Phase 1 + Markdown)
         private enum ResponseFormat { PlainText, Json, Markdown }
@@ -2747,8 +2733,6 @@ AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
             catch { }
         }
 
-        
-
         private void BubbleViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
             try
@@ -2768,15 +2752,18 @@ AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
 
         private void ScrollResponseToEnd()
         {
-            try
+            Ui(() =>
             {
-                if (ResponseJsonText == null) return;
-                ResponseJsonText.ScrollToEnd();
-            }
-            catch { }
+                try
+                {
+                    if (ResponseJsonText == null) return;
+                    ResponseJsonText.ScrollToEnd();
+                }
+                catch { }
+            });
         }
 
-// UI-thread marshal helper (safe to call from background threads)
+        // UI-thread marshal helper (safe to call from background threads)
         private void Ui(Action action)
         {
             try
@@ -2836,7 +2823,6 @@ AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
             }
         }
 
-        
         private void ScrollLogToEnd(bool force)
         {
             try
@@ -2915,7 +2901,7 @@ AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
             }
         }
 
-// Logging file helpers
+        // Logging file helpers
         private static string GetLogFilePath()
         {
             try
@@ -2956,26 +2942,6 @@ AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
                 Directory.CreateDirectory(dir);
                 var line = DateTime.UtcNow.ToString("o") + " - " + (message ?? string.Empty) + Environment.NewLine;
                 File.AppendAllText(path, line, Encoding.UTF8);
-            }
-            catch { }
-        }
-
-        private static void ClearLogFile()
-        {
-            try
-            {
-                var path = GetLogFilePath();
-                var dir = Path.GetDirectoryName(path);
-                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-
-                if (File.Exists(path))
-                {
-                    using (var fs = new FileStream(path, FileMode.Truncate, FileAccess.Write)) { }
-                }
-                else
-                {
-                    using (var fs = new FileStream(path, FileMode.CreateNew)) { }
-                }
             }
             catch { }
         }
@@ -3057,6 +3023,11 @@ AppendLog("[VERBOSE] RenderResponse: done; len=" + (display?.Length ?? 0));
                 AppendLog($"[VERBOSE] ServerLLM selection changed -> {selected}");
             }
             catch { }
+        }
+
+        private void UserControl_Loaded(object sender, RoutedEventArgs e)
+        {
+            ScrollResponseToEnd();
         }
     }
 }
