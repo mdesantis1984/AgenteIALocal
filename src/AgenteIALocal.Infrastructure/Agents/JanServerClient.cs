@@ -18,12 +18,33 @@ namespace AgenteIALocal.Infrastructure.Agents
 
         public Task<AgentResponse> ExecuteAsync(AgentRequest request, CancellationToken cancellationToken)
         {
-            // include request.CorrelationId in returned data only as metadata if needed by caller
-            return Task.FromResult(new AgentResponse
+            return Task.Run(() =>
             {
-                IsSuccess = true,
-                Content = "[JanServer stub response] " + (request?.Prompt ?? string.Empty)
-            });
+                var final = "[JanServer stub response] " + (request?.Prompt ?? string.Empty);
+
+                // Optional streaming simulation for UI wiring validation
+                if (request != null && request.Stream && request.OnDelta != null)
+                {
+                    try
+                    {
+                        const int chunkSize = 16;
+                        for (var i = 0; i < final.Length; i += chunkSize)
+                        {
+                            if (cancellationToken.IsCancellationRequested) break;
+                            var len = Math.Min(chunkSize, final.Length - i);
+                            var chunk = final.Substring(i, len);
+                            try { request.OnDelta(chunk); } catch { }
+                        }
+                    }
+                    catch { }
+                }
+
+                return new AgentResponse
+                {
+                    IsSuccess = true,
+                    Content = final
+                };
+            }, cancellationToken);
         }
     }
 }

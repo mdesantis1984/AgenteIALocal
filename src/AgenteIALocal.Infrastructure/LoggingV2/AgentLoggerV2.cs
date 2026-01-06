@@ -10,7 +10,24 @@ namespace AgenteIALocal.Infrastructure.LoggingV2
         private readonly ILogSink sink;
         private readonly string assemblyName;
 
-        public AgentLoggerV2(ILogSink sink)
+        
+        private static readonly LogLevel MinimumLevel = ResolveMinimumLevel();
+
+        private static LogLevel ResolveMinimumLevel()
+        {
+            try
+            {
+                var v = Environment.GetEnvironmentVariable("AGENTEIA_LOG_MIN_LEVEL");
+                if (string.IsNullOrWhiteSpace(v)) return LogLevel.Warning;
+                if (Enum.TryParse<LogLevel>(v.Trim(), ignoreCase: true, out var lvl)) return lvl;
+                return LogLevel.Warning;
+            }
+            catch
+            {
+                return LogLevel.Warning;
+            }
+        }
+public AgentLoggerV2(ILogSink sink)
         {
             this.sink = sink ?? throw new ArgumentNullException(nameof(sink));
             try { assemblyName = typeof(AgentLoggerV2).Assembly.GetName().Name; } catch { assemblyName = string.Empty; }
@@ -23,7 +40,8 @@ namespace AgenteIALocal.Infrastructure.LoggingV2
 
         private void Write(LogLevel level, string correlationId, LogEventId eventId, string message, Exception ex, IReadOnlyDictionary<string,string> ctx, string ns, string type, string assembly, string member, string file, int? line)
         {
-            var corr = string.IsNullOrEmpty(correlationId) ? "-" : correlationId;
+                        if (level < MinimumLevel) return;
+var corr = string.IsNullOrEmpty(correlationId) ? "-" : correlationId;
             var asm = string.IsNullOrEmpty(assembly) ? assemblyName : assembly;
             var src = CallerInfo.Create(asm, ns, type, member, file, line);
             var entry = new LogEntry(DateTime.UtcNow, level, corr, eventId, message, ex, src, ctx);

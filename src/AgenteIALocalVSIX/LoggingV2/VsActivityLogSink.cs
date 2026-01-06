@@ -15,17 +15,26 @@ namespace AgenteIALocalVSIX.LoggingV2
 
                 if (entry == null) return;
 
+                // Persist only warnings/errors (and Critical as error)
+                if (entry.Level != LogLevel.Warning && entry.Level != LogLevel.Error && entry.Level != LogLevel.Critical) return;
+
                 IServiceProvider serviceProvider = ServiceProvider.GlobalProvider;
                 if (serviceProvider == null) return;
 
                 var log = serviceProvider.GetService(typeof(SVsActivityLog)) as IVsActivityLog;
                 if (log == null) return;
 
-                // Use the canonical formatter from Core to produce the exact string to send to ActivityLog
                 var message = AgenteIALocal.Core.Logging.LogEntryTextFormatter.Format(entry) ?? string.Empty;
 
-                uint kind = (entry.Level == LogLevel.Error || entry.Level == LogLevel.Critical) ?
-                    (uint)__ACTIVITYLOG_ENTRYTYPE.ALE_ERROR : (uint)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION;
+                uint kind;
+                if (entry.Level == LogLevel.Warning)
+                {
+                    kind = (uint)__ACTIVITYLOG_ENTRYTYPE.ALE_WARNING;
+                }
+                else
+                {
+                    kind = (uint)__ACTIVITYLOG_ENTRYTYPE.ALE_ERROR;
+                }
 
                 try
                 {

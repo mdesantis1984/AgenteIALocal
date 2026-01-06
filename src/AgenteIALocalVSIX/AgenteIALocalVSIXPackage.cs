@@ -88,23 +88,10 @@ namespace AgenteIALocalVSIX
             {
                 try
                 {
-                    var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    var logDir = Path.Combine(local ?? string.Empty, "AgenteIALocal", "logs");
-                    Directory.CreateDirectory(logDir);
-                    var logPath = Path.Combine(logDir, "AgenteIALocal.log");
+                    var entry = new LogEntry(DateTime.UtcNow, LogLevel.Error, "-", new LogEventId(9000, "VSIX.Startup"),
+                        "[AgenteIALocalVSIXPackage] Agent composition threw: " + ex, ex, null, null);
 
-
-                    // Create a structured LogEntry and format it via canonical formatter to avoid legacy lines
-                    try
-                    {
-                        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Error, "-", new LogEventId(9000, "VSIX.Startup"), "[AgenteIALocalVSIXPackage] Agent composition threw: " + ex.ToString(), ex, null, null);
-                        var formatted = LogEntryTextFormatter.Format(entry);
-                        File.AppendAllText(logPath, formatted + Environment.NewLine, Encoding.UTF8);
-                    }
-                    catch
-                    {
-                        // Do NOT persist any non-formatted fallback line to ensure all persisted lines go through formatter.
-                    }
+                    new VsixFileLogSink("AgenteIALocal").Write(entry);
                 }
                 catch { }
             }

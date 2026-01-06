@@ -12,5 +12,11 @@ namespace AgenteIALocal.Core.Models.Agent
         public int ProjectCount { get; set; }
         // Correlation id propagated from VSIX execution
         public string CorrelationId { get; set; }
+
+        // Optional streaming controls used by VSIX chat UI.
+        public bool Stream { get; set; }
+
+        // Called with delta text chunks when Stream=true and provider supports SSE.
+        public Action<string> OnDelta { get; set; }
     }
 }

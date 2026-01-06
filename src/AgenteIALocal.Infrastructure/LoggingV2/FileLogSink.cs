@@ -26,11 +26,18 @@ namespace AgenteIALocal.Infrastructure.LoggingV2
         {
             try
             {
+                if (entry == null) return;
+
+                // Persist only warnings/errors (and Critical as error)
+                if (entry.Level != LogLevel.Warning && entry.Level != LogLevel.Error && entry.Level != LogLevel.Critical) return;
+
                 var line = LogEntryTextFormatter.Format(entry);
+
                 lock (fileLock)
                 {
                     try
                     {
+                        LogFileRolling.EnsureRolled(path, LogFileRolling.MaxBytesDefault);
                         File.AppendAllText(path, line + Environment.NewLine, Encoding.UTF8);
                     }
                     catch { }

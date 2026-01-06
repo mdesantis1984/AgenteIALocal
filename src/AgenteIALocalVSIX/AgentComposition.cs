@@ -260,7 +260,13 @@ namespace AgenteIALocalVSIX
             {
                 var prompt = (req?.Action ?? string.Empty) + " " + (req?.SolutionName ?? string.Empty);
                 // Build Core AgentRequest and propagate correlation id
-                var agentReq = new AgenteIALocal.Core.Agents.AgentRequest { Prompt = prompt, CorrelationId = req?.CorrelationId };
+                var agentReq = new AgenteIALocal.Core.Agents.AgentRequest
+                {
+                    Prompt = prompt,
+                    CorrelationId = req?.CorrelationId,
+                    Stream = req != null && req.Stream,
+                    OnDelta = req?.OnDelta
+                };
                 var agentResp = Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.Run(
                     () => appService.RunAsync(agentReq, System.Threading.CancellationToken.None)
                     );

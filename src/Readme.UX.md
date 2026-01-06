@@ -118,8 +118,8 @@
 ### 7) Log output (hidden)
 
 - `TextBox x:Name="LogText"` existe en la UI con `Visibility="Collapsed"`.
-- Se actualiza periódicamente desde archivo (verificable en code-behind):
-  - Refresco aproximado cada 2 segundos (`Task.Delay(2000, ct)`).
+- Se actualiza por cambios en archivo (verificable en code-behind):
+  - Sin polling: usa FileSystemWatcher + debounce (~150ms).
   - Lectura del archivo: `%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal.log`.
 - Se usa como buffer de diagnóstico durante ejecución (prepending de mensajes en `Log(...)`).
 

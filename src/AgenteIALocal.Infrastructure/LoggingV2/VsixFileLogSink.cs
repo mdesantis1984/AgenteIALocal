@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using AgenteIALocal.Core.Logging;
@@ -34,11 +33,19 @@ namespace AgenteIALocal.Infrastructure.LoggingV2
             {
                 if (string.IsNullOrEmpty(logFilePath) || entry == null) return;
 
+                // Persist only warnings/errors (and Critical as error)
+                if (entry.Level != LogLevel.Warning && entry.Level != LogLevel.Error && entry.Level != LogLevel.Critical) return;
+
                 var line = AgenteIALocal.Core.Logging.LogEntryTextFormatter.Format(entry);
 
                 lock (gate)
                 {
-                    try { File.AppendAllText(logFilePath, line + Environment.NewLine, Encoding.UTF8); } catch { }
+                    try
+                    {
+                        LogFileRolling.EnsureRolled(logFilePath, LogFileRolling.MaxBytesDefault);
+                        File.AppendAllText(logFilePath, line + Environment.NewLine, Encoding.UTF8);
+                    }
+                    catch { }
                 }
             }
             catch
