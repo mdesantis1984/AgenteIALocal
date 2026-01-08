@@ -27,14 +27,21 @@ namespace AgenteIALocal.Infrastructure.LoggingV2
             }
         }
 
+        private static bool IsStreamingV2(LogEventId id)
+        {
+            var v = id.Id;
+            return v >= 9150 && v <= 9153;
+        }
+
         public void Write(LogEntry entry)
         {
             try
             {
                 if (string.IsNullOrEmpty(logFilePath) || entry == null) return;
 
-                // Persist only warnings/errors (and Critical as error)
-                if (entry.Level != LogLevel.Warning && entry.Level != LogLevel.Error && entry.Level != LogLevel.Critical) return;
+                var isStreaming = IsStreamingV2(entry.EventId);
+                var isPersistable = entry.Level == LogLevel.Warning || entry.Level == LogLevel.Error || entry.Level == LogLevel.Critical || (isStreaming && entry.Level == LogLevel.Info);
+                if (!isPersistable) return;
 
                 var line = AgenteIALocal.Core.Logging.LogEntryTextFormatter.Format(entry);
 

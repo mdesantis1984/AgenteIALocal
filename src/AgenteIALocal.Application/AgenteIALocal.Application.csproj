@@ -6,6 +6,14 @@
     <PackageIcon>favicon-128.png</PackageIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="LoggingV2\**" />
+    <Compile Remove="Logging\**" />
+    <EmbeddedResource Remove="LoggingV2\**" />
+    <EmbeddedResource Remove="Logging\**" />
+    <None Remove="LoggingV2\**" />
+    <None Remove="Logging\**" />
+  </ItemGroup>
+  <ItemGroup>
     <None Include="..\AgenteIALocalVSIX\favicon-128.png">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
@@ -14,10 +22,5 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AgenteIALocal.Core\AgenteIALocal.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="LoggingV2\" />
-    <Folder Include="Logging\" />
   </ItemGroup>
 </Project>

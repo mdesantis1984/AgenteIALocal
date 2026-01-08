@@ -22,7 +22,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
+
 namespace AgenteIALocalVSIX.ToolWindows
 {
     public partial class AgenteIALocalControl : UserControl, INotifyPropertyChanged
@@ -33,17 +33,6 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         private ExecutionState currentExecutionState = ExecutionState.Idle;
         private CancellationTokenSource logRefreshCts;
-        private FileSystemWatcher logWatcher;
-        private DispatcherTimer logDebounceTimer;
-        private int logRefreshPending;
-
-
-        // PERF: suspend log refresh while streaming to avoid UI thread contention.
-        private int _suspendLogRefresh;
-
-        // PERF: streaming bubble incremental update (avoid full RenderActiveChatToUi() per delta)
-        private FlowDocumentScrollViewer _streamingAiViewer;
-        private Paragraph _streamingAiParagraph;
         private static bool _mahAppsResolveHooked;
         // Active correlation id for the current Run execution (used by logging in this control)
         private string activeCorrelationId = null;
@@ -301,51 +290,6 @@ namespace AgenteIALocalVSIX.ToolWindows
                 // never throw from UI
             }
         }
-
-        private object TryGetLastChatMessage(ChatSession chat)
-        {
-            try
-            {
-                if (chat == null) return null;
-                var listObj = chat.Messages;
-                var list = listObj as System.Collections.IList;
-                if (list == null || list.Count == 0) return null;
-                return list[list.Count - 1];
-            }
-            catch { return null; }
-        }
-
-        private void UpdateChatMessageContent(ChatSession chat, object msg, string content, int? tokens)
-        {
-            try
-            {
-                if (chat == null) return;
-                if (msg == null) return;
-
-                var safeContent = content ?? string.Empty;
-                TrySetProp(msg, "Content", safeContent);
-
-                if (tokens.HasValue && tokens.Value >= 0)
-                {
-                    TrySetProp(msg, "Tokens", tokens.Value);
-                    TrySetProp(msg, "TokenCount", tokens.Value);
-                    TrySetProp(msg, "TotalTokens", tokens.Value);
-
-                    var ts = TryGetDateTimeProp(msg, "Timestamp");
-                    var sender = TryGetStringProp(msg, "Sender");
-
-                    if (ts != DateTime.MinValue)
-                    {
-                        var tsUtc = ts.Kind == DateTimeKind.Utc ? ts : ts.ToUniversalTime();
-                        TrySetTokensForMessage(chat.Id, tsUtc, sender ?? string.Empty, safeContent, tokens.Value);
-                    }
-                }
-
-                TryPersistChat(chat);
-            }
-            catch { }
-        }
-
 
         private static void TrySetProp(object obj, string propName, object value)
         {
@@ -1582,7 +1526,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 // Ensure the file exists so Explorer can select it.
                 if (!File.Exists(path))
                 {
-                    try { EnsureLogFileExists(); } catch { }
+                    try { AppendLogFileLine("(log file created)"); } catch { }
                 }
 
                 Process.Start(new ProcessStartInfo
@@ -1651,130 +1595,46 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         private void StartLogRefreshLoop()
         {
-            try
+            // Cancel any previous
+            if (logRefreshCts != null)
             {
-                // Stop previous watcher/timer
-                try { logRefreshCts?.Cancel(); } catch { }
-                logRefreshCts = new CancellationTokenSource();
-
-                try
-                {
-                    if (logDebounceTimer != null)
-                    {
-                        logDebounceTimer.Stop();
-                        logDebounceTimer.Tick -= LogDebounceTimer_Tick;
-                    }
-                }
-                catch { }
-
-                try { logWatcher?.Dispose(); } catch { }
-                logWatcher = null;
-
-                logRefreshPending = 0;
-
-                logDebounceTimer = new DispatcherTimer(DispatcherPriority.Background);
-                logDebounceTimer.Interval = TimeSpan.FromMilliseconds(150);
-                logDebounceTimer.Tick += LogDebounceTimer_Tick;
-
-                // Watch log file changes instead of polling with Task.Delay
-                var path = GetLogFilePath();
-                var dir = Path.GetDirectoryName(path);
-                var file = Path.GetFileName(path);
-
-                if (!string.IsNullOrWhiteSpace(dir) && !string.IsNullOrWhiteSpace(file))
-                {
-                    try { Directory.CreateDirectory(dir); } catch { }
-
-                    logWatcher = new FileSystemWatcher(dir, file)
-                    {
-                        NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName,
-                        EnableRaisingEvents = true
-                    };
-
-                    logWatcher.Changed += (_, __) => ScheduleLogRefresh();
-                    logWatcher.Created += (_, __) => ScheduleLogRefresh();
-                    logWatcher.Renamed += (_, __) => ScheduleLogRefresh();
-                    logWatcher.Deleted += (_, __) => ScheduleLogRefresh();
-                }
-
-                // Initial refresh
-                ScheduleLogRefresh();
+                logRefreshCts.Cancel();
             }
-            catch
-            {
-                // ignore
-            }
-        }
-
-        private void ScheduleLogRefresh()
-        {
-            try
-            {
-                if (logRefreshCts == null || logRefreshCts.IsCancellationRequested) return;
-
-                
-                if (Volatile.Read(ref _suspendLogRefresh) != 0) return;
-Interlocked.Exchange(ref logRefreshPending, 1);
-
-                Ui(() =>
-                {
-                    try
-                    {
-                        if (logDebounceTimer == null) return;
-                        logDebounceTimer.Stop();
-                        logDebounceTimer.Start();
-                    }
-                    catch { }
-                });
-            }
-            catch { }
-        }
-
-        private void LogDebounceTimer_Tick(object sender, EventArgs e)
-        {
-            try
-            {
-                if (logDebounceTimer != null) logDebounceTimer.Stop();
-            }
-            catch { }
-
-            if (logRefreshCts == null) return;
+            logRefreshCts = new CancellationTokenSource();
             var ct = logRefreshCts.Token;
-            if (ct.IsCancellationRequested) return;
 
-            if (Interlocked.Exchange(ref logRefreshPending, 0) == 0) return;
-
-            _ = Task.Run(() =>
+            // Start a background task that refreshes the log every 2 seconds without blocking the UI
+            _ = Task.Run(async () =>
             {
-                try { return ReadLogFileTail(); }
-                catch { return null; }
-            }, ct).ContinueWith(async t =>
-            {
-                try
-                {
-                    if (ct.IsCancellationRequested) return;
-
-                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
-
-                    var bytes = TryGetLogFileSizeBytes();
-                    UpdateLogFileSizeLabelFromBytes(bytes);
-
-                    var content = t?.Result;
-                    LogText.Text = string.IsNullOrEmpty(content) ? "(no logs)" : content;
-                    ScrollLogToEnd(force: false);
-                }
-                catch
+                while (!ct.IsCancellationRequested)
                 {
                     try
+                    {
+                        var content = await Task.Run(() => ReadLogFile());
+
+                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+
+                        var bytes = TryGetLogFileSizeBytes();
+                        UpdateLogFileSizeLabelFromBytes(bytes);
+
+                        LogText.Text = string.IsNullOrEmpty(content)
+                            ? "(no logs)"
+                            : content;
+
+                        ScrollLogToEnd(force: false);
+                    }
+                    catch
                     {
                         await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
                         UpdateLogFileSizeLabelFromBytes(0);
                         LogText.Text = "(unable to read logs)";
                         ScrollLogToEnd(force: false);
                     }
-                    catch { }
+
+                    try { await Task.Delay(2000, ct); } catch { }
                 }
-            }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+
+            }, ct);
         }
 
         public void SetSolutionInfo(string solutionName, int projectCount)
@@ -1999,6 +1859,299 @@ Interlocked.Exchange(ref logRefreshPending, 1);
             }
         }
 
+
+        private bool TryGetActiveLmStudioServer(out AgenteIALocalVSIX.ServerConfig server)
+        {
+            server = null;
+            try
+            {
+                var settings = AgenteIALocalVSIX.AgentSettingsStore.Load();
+                if (settings == null) return false;
+
+                var activeId = settings.ActiveServerId;
+                if (string.IsNullOrEmpty(activeId) || settings.Servers == null) return false;
+
+                var srv = settings.Servers.Find(s => string.Equals(s.Id, activeId, StringComparison.OrdinalIgnoreCase));
+                if (srv == null) return false;
+
+                if (string.IsNullOrEmpty(srv.Provider) || !srv.Provider.Equals("lmstudio", StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                if (string.IsNullOrWhiteSpace(srv.BaseUrl) || string.IsNullOrWhiteSpace(srv.Model))
+                    return false;
+
+                server = srv;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string BuildLmStudioPrompt(AgentHostRequest req)
+        {
+            if (req == null) return string.Empty;
+
+            var action = req.Action ?? string.Empty;
+            var sol = req.SolutionName ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(action)) return sol;
+            if (string.IsNullOrWhiteSpace(sol)) return action;
+
+            return action + " " + sol;
+        }
+
+        private void TryRemoveEmptyAiBubble(ChatSession chat, ChatMessage aiBubble)
+        {
+            try
+            {
+                if (chat == null || aiBubble == null) return;
+                if (!string.IsNullOrWhiteSpace(aiBubble.Content)) return;
+
+                chat.Messages?.Remove(aiBubble);
+                TryPersistChat(chat);
+                RenderActiveChatToUi();
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private async System.Threading.Tasks.Task<AgentHostResponse> ExecuteLmStudioStreamingAsync(
+            AgentHostRequest req,
+            AgenteIALocalVSIX.ServerConfig server,
+            ChatSession chat,
+            ChatMessage aiBubble,
+            CancellationToken ct)
+        {
+            var respObj = new AgentHostResponse
+            {
+                RequestId = req?.RequestId,
+                Success = false,
+                Timestamp = DateTime.UtcNow.ToString("o")
+            };
+
+            try
+            {
+                if (server == null) return respObj;
+
+                var baseUrl = (server.BaseUrl ?? string.Empty).TrimEnd('/');
+                var url = baseUrl + "/v1/chat/completions";
+
+                var payload = new JObject();
+                if (!string.IsNullOrWhiteSpace(server.Model))
+                    payload["model"] = server.Model;
+
+                payload["stream"] = true;
+                payload["messages"] = new JArray(new JObject
+                {
+                    ["role"] = "user",
+                    ["content"] = BuildLmStudioPrompt(req)
+                });
+
+                using (var client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromMinutes(10);
+
+                    using (var httpReq = new HttpRequestMessage(HttpMethod.Post, url))
+                    {
+                        httpReq.Headers.Accept.Clear();
+                        try
+                        {
+                            httpReq.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream"));
+                        }
+                        catch { }
+
+                        if (!string.IsNullOrWhiteSpace(server.ApiKey))
+                        {
+                            try
+                            {
+                                httpReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", server.ApiKey);
+                            }
+                            catch { }
+                        }
+
+                        httpReq.Content = new StringContent(payload.ToString(Formatting.None), Encoding.UTF8, "application/json");
+
+                        using (var httpResp = await client.SendAsync(httpReq, HttpCompletionOption.ResponseHeadersRead, ct))
+                        {
+                            if (!httpResp.IsSuccessStatusCode)
+                            {
+                                string body = string.Empty;
+                                try { body = await httpResp.Content.ReadAsStringAsync(); } catch { }
+
+                                var sample = body ?? string.Empty;
+                                if (sample.Length > 600) sample = sample.Substring(0, 600) + "...";
+
+                                respObj.Error = "LM Studio HTTP " + (int)httpResp.StatusCode + " " + httpResp.ReasonPhrase + (string.IsNullOrEmpty(sample) ? string.Empty : (": " + sample));
+                                return respObj;
+                            }
+
+                                                        var sb = new StringBuilder();
+                            int? promptTokens = null;
+                            int? completionTokens = null;
+                            int? totalTokens = null;
+
+                            // Coalesced UI renders (no sleeps/delays). Only one pending render at a time.
+                            int renderPending = 0;
+                            void QueueRender()
+                            {
+                                try
+                                {
+                                    if (ct.IsCancellationRequested) return;
+                                    if (Interlocked.Exchange(ref renderPending, 1) != 0) return;
+
+                                    var dispatcher = this.Dispatcher;
+                                    if (dispatcher == null)
+                                    {
+                                        try { RenderActiveChatToUi(); }
+                                        finally { Interlocked.Exchange(ref renderPending, 0); }
+                                        return;
+                                    }
+
+                                    dispatcher.BeginInvoke(
+                                        System.Windows.Threading.DispatcherPriority.Background,
+                                        new Action(() =>
+                                        {
+                                            try
+                                            {
+                                                if (ct.IsCancellationRequested) return;
+                                                RenderActiveChatToUi();
+                                            }
+                                            catch { }
+                                            finally
+                                            {
+                                                Interlocked.Exchange(ref renderPending, 0);
+                                            }
+                                        }));
+                                }
+                                catch
+                                {
+                                    try { Interlocked.Exchange(ref renderPending, 0); } catch { }
+                                }
+                            }
+
+                            // Allow Stop to interrupt a blocked ReadLineAsync without Task.Delay/WhenAny.
+                            CancellationTokenRegistration cancelReg = default(CancellationTokenRegistration);
+                            try
+                            {
+                                cancelReg = ct.Register(() =>
+                                {
+                                    try { httpResp.Dispose(); } catch { }
+                                });
+
+                                using (var stream = await httpResp.Content.ReadAsStreamAsync().ConfigureAwait(false))
+                                using (var reader = new StreamReader(stream))
+                                {
+                                    while (!ct.IsCancellationRequested)
+                                    {
+                                        string line = null;
+                                        try { line = await reader.ReadLineAsync().ConfigureAwait(false); }
+                                        catch { break; }
+
+                                        if (line == null) break;
+
+                                        if (string.IsNullOrWhiteSpace(line))
+                                            continue;
+
+                                        if (!line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                                            continue;
+
+                                        var data = line.Substring(5).Trim();
+
+                                        if (string.Equals(data, "[DONE]", StringComparison.OrdinalIgnoreCase))
+                                            break;
+
+                                        if (string.IsNullOrEmpty(data))
+                                            continue;
+
+                                        try
+                                        {
+                                            var j = JObject.Parse(data);
+
+                                            // Optional usage (depends on server settings)
+                                            var u = j["usage"] as JObject;
+                                            if (u != null)
+                                            {
+                                                promptTokens = promptTokens ?? u.Value<int?>("prompt_tokens");
+                                                completionTokens = completionTokens ?? u.Value<int?>("completion_tokens");
+                                                totalTokens = totalTokens ?? u.Value<int?>("total_tokens");
+                                            }
+
+                                            var chunk =
+                                                j.SelectToken("choices[0].delta.content")?.ToString() ??
+                                                j.SelectToken("choices[0].message.content")?.ToString() ??
+                                                j.SelectToken("choices[0].text")?.ToString();
+
+                                            if (string.IsNullOrEmpty(chunk))
+                                                continue;
+
+                                            sb.Append(chunk);
+
+                                            try
+                                            {
+                                                if (aiBubble != null) aiBubble.Content = sb.ToString();
+                                            }
+                                            catch { }
+
+                                            QueueRender();
+                                        }
+                                        catch
+                                        {
+                                            // ignore malformed chunks
+                                        }
+                                    }
+                                }
+                            }
+                            finally
+                            {
+                                try { cancelReg.Dispose(); } catch { }
+                            }
+
+var finalText = sb.ToString();
+
+                            try
+                            {
+                                if (aiBubble != null) aiBubble.Content = finalText;
+                            }
+                            catch { }
+
+                            if (ct.IsCancellationRequested)
+                            {
+                                respObj.Error = "Cancelled";
+                                return respObj;
+                            }
+
+
+                            // Persist only once at the end (avoid disk IO per chunk)
+                            TryPersistChat(chat);
+
+                            RenderActiveChatToUi();
+
+                            respObj.Success = true;
+                            respObj.Output = finalText;
+                            respObj.PromptTokens = promptTokens;
+                            respObj.CompletionTokens = completionTokens;
+                            respObj.TotalTokens = totalTokens;
+                            return respObj;
+                        }
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                respObj.Error = "Cancelled";
+                return respObj;
+            }
+            catch (Exception ex)
+            {
+                respObj.Error = ex.Message;
+                return respObj;
+            }
+        }
+
         private void RunButton_Click(object sender, RoutedEventArgs e)
         {
             // Fire-and-forget wrapper to avoid async void (VSTHRD100).
@@ -2096,23 +2249,32 @@ Interlocked.Exchange(ref logRefreshPending, 1);
                 }
                 catch { }
 
-                object aiMsgObj = null;
-                var aiDeltaAccumulator = new StringBuilder();
-                var aiDeltaPending = new StringBuilder();
-                var aiDeltaThrottle = Stopwatch.StartNew();
-                long lastDeltaUiMs = -1;
-
-                // Add user bubble and prepare assistant placeholder
+                // Append user message as a bubble immediately
                 try
                 {
                     AddChatMessage(activeChat, "Tú", userInput, null);
-                    AddChatMessage(activeChat, "IA", string.Empty, null);
-                    aiMsgObj = TryGetLastChatMessage(activeChat);
                     RenderActiveChatToUi();
-                    Interlocked.Exchange(ref _suspendLogRefresh, 1);
-                    PrepareStreamingAiBubble();
                 }
                 catch { }
+
+                // Append AI bubble immediately (placeholder) so streaming can render inside the same bubble
+                ChatMessage aiBubble = null;
+                DateTime aiBubbleTsUtc = DateTime.UtcNow;
+                try
+                {
+                    AddChatMessage(activeChat, "IA", string.Empty, null);
+                    aiBubble = activeChat != null && activeChat.Messages != null ? activeChat.Messages.LastOrDefault() : null;
+                    var ts = TryGetDateTimeProp(aiBubble, "Timestamp");
+                    // TryGetDateTimeProp returns a non-nullable DateTime (fallbacks to UtcNow).
+                    // Keep a stable timestamp for token mapping.
+                    aiBubbleTsUtc = ts;
+                    RenderActiveChatToUi();
+                }
+                catch
+                {
+                    // ignore (fallback path will still render ResponseJsonText)
+                }
+
 
 
                 var req = new AgentHostRequest
@@ -2122,109 +2284,75 @@ Interlocked.Exchange(ref logRefreshPending, 1);
                     Action = userInput,
                     Timestamp = DateTime.UtcNow.ToString("o"),
                     SolutionName = SolutionNameText.Text ?? string.Empty,
-                    ProjectCount = int.TryParse(ProjectCountText.Text, out var pc) ? pc : 0,
-                    Stream = true,
-                    OnDelta = delta =>
-                    {
-                        try
-                        {
-                            if (string.IsNullOrEmpty(delta)) return;
-                            if (ct.IsCancellationRequested) return;
-                            if (myVersion != _runVersion) return;
-                            if (!string.Equals(activeCorrelationId, myCorrelationId, StringComparison.Ordinal)) return;
-
-                            aiDeltaAccumulator.Append(delta);
-                            aiDeltaPending.Append(delta);
-
-                            var nowMs = aiDeltaThrottle.ElapsedMilliseconds;
-                            if (lastDeltaUiMs >= 0 && (nowMs - lastDeltaUiMs) < 50) return;
-                            lastDeltaUiMs = nowMs;
-
-                            var chunk = aiDeltaPending.ToString();
-                            aiDeltaPending.Clear();
-                            if (string.IsNullOrEmpty(chunk)) return;
-
-                            Ui(() =>
-                            {
-                                if (ct.IsCancellationRequested) return;
-                                if (myVersion != _runVersion) return;
-                                if (!string.Equals(activeCorrelationId, myCorrelationId, StringComparison.Ordinal)) return;
-
-                                try
-                                {
-                                    if (_streamingAiParagraph != null)
-                                    {
-                                        _streamingAiParagraph.Inlines.Add(new Run(chunk));
-                                        ScrollResponseToEnd();
-                                    }
-                                    else
-                                    {
-                                        // Fallback: avoid full re-render; keep UI responsive.
-                                        ResponseJsonText.Document = CreatePlainDocument(aiDeltaAccumulator.ToString());
-                                        ScrollResponseToEnd();
-                                    }
-                                }
-                                catch { }
-                            });
-}
-                        catch { }
-                    }
+                    ProjectCount = int.TryParse(ProjectCountText.Text, out var pc) ? pc : 0
                 };
 
-                var execTask = Task.Run(() =>
+                AgentHostResponse response = null;
+
+                // Prefer LM Studio streaming (bubble is already created above). Fallback to the composed agent adapter.
+                AgenteIALocalVSIX.ServerConfig lmServer = null;
+                var canStreamLmStudio = TryGetActiveLmStudioServer(out lmServer);
+
+                if (canStreamLmStudio)
                 {
-                    try
+                    response = await ExecuteLmStudioStreamingAsync(req, lmServer, activeChat, aiBubble, ct);
+                }
+                else
+                {
+                    var execTask = Task.Run(() =>
                     {
-                        if (AgentComposition.AgentService != null)
-                        {
-                            return AgentComposition.AgentService.Execute(req);
-                        }
-
-                        AppendLog("AgentService not composed; using MockAgentExecutor fallback.");
-                        return MockAgentExecutor.Execute(req);
-                    }
-                    catch (Exception ex)
-                    {
-                        var corr =
-                            !string.IsNullOrEmpty(req?.CorrelationId) ? req.CorrelationId :
-                            !string.IsNullOrEmpty(req?.RequestId) ? req.RequestId :
-                            "-";
-
                         try
                         {
-                            AgentComposition.Error(
-                                corr,
-                                new AgenteIALocal.Core.Logging.LogEventId(9102, "VSIX.UI.Exception"),
-                                "[AgenteIALocalControl] Execution exception in background task: " + ex.Message,
-                                ex);
+                            if (AgentComposition.AgentService != null)
+                            {
+                                return AgentComposition.AgentService.Execute(req);
+                            }
+
+                            AppendLog("AgentService not composed; using MockAgentExecutor fallback.");
+                            return MockAgentExecutor.Execute(req);
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            var corr =
+                                !string.IsNullOrEmpty(req?.CorrelationId) ? req.CorrelationId :
+                                !string.IsNullOrEmpty(req?.RequestId) ? req.RequestId : "-";
+                            try
+                            {
+                                AgentComposition.Error(
+                                    corr,
+                                    AgenteIALocal.Core.Logging.LogEvents.Vsix_UI,
+                                    "[AgenteIALocalControl] Execution exception in background task: " + ex.Message,
+                                    ex);
+                            }
+                            catch { }
 
-                        AppendLog("Execution exception in background task: " + ex.Message);
-                        throw;
+                            AppendLog("Execution exception in background task: " + ex.Message);
+                            throw;
+                        }
+                    });
+
+                    // If Stop is requested, stop waiting and ignore late results.
+                    var completed = await Task.WhenAny(execTask, Task.Delay(Timeout.Infinite, ct));
+                    if (completed != execTask)
+                    {
+                        // Observe background exception (VSTHRD105: specify scheduler explicitly)
+                        _ = execTask.ContinueWith(
+                            t => { _ = t.Exception; },
+                            CancellationToken.None,
+                            TaskContinuationOptions.OnlyOnFaulted,
+                            TaskScheduler.Default);
+
+                        TryRemoveEmptyAiBubble(activeChat, aiBubble);
+                        return;
                     }
-                });
 
-                // If Stop is requested, stop waiting and ignore late results.
-                var completed = await Task.WhenAny(execTask, Task.Delay(Timeout.Infinite, ct));
-                if (completed != execTask)
-                {
-                    // Observe background exception (VSTHRD105: specify scheduler explicitly)
-                    _ = execTask.ContinueWith(
-                        t => { _ = t.Exception; },
-                        CancellationToken.None,
-                        TaskContinuationOptions.OnlyOnFaulted,
-                        TaskScheduler.Default);
-
-                    return;
+                    response = await execTask;
                 }
 
-                var response = await execTask;
-
                 // Ignore stale/canceled completions
-                if (ct.IsCancellationRequested) return;
-                if (myVersion != _runVersion) return;
-                if (!string.Equals(activeCorrelationId, myCorrelationId, StringComparison.Ordinal)) return;
+                if (ct.IsCancellationRequested) { TryRemoveEmptyAiBubble(activeChat, aiBubble); return; }
+                if (myVersion != _runVersion) { TryRemoveEmptyAiBubble(activeChat, aiBubble); return; }
+                if (!string.Equals(activeCorrelationId, myCorrelationId, StringComparison.Ordinal)) { TryRemoveEmptyAiBubble(activeChat, aiBubble); return; }
 
                 string display;
                 if (response == null) display = "(no response)";
@@ -2259,14 +2387,27 @@ Interlocked.Exchange(ref logRefreshPending, 1);
                             }
 
                             var aiTokens = completionTokens ?? totalTokens;
-                            if (aiMsgObj != null)
+
+                            try
                             {
-                                UpdateChatMessageContent(activeChat, aiMsgObj, display, aiTokens);
+                                if (aiBubble != null)
+                                {
+                                    aiBubble.Content = display;
+
+                                    if (aiTokens.HasValue)
+                                    {
+                                        try { aiBubble.Tokens = aiTokens.Value; } catch { }
+                                        TrySetTokensForMessage(activeChat.Id, aiBubbleTsUtc, "IA", display, aiTokens.Value);
+                                    }
+
+                                    TryPersistChat(activeChat);
+                                }
+                                else
+                                {
+                                    AddChatMessage(activeChat, "IA", display, aiTokens);
+                                }
                             }
-                            else
-                            {
-                                AddChatMessage(activeChat, "IA", display, aiTokens);
-                            }
+                            catch { }
 
                             RenderActiveChatToUi();
                         }
@@ -2306,9 +2447,6 @@ Interlocked.Exchange(ref logRefreshPending, 1);
 
                     try { _runCts?.Dispose(); } catch { }
                     _runCts = null;
-
-                    Interlocked.Exchange(ref _suspendLogRefresh, 0);
-                    ClearStreamingAiBubble();
 
                     try { RefreshLogFromFile(); } catch { }
                 });
@@ -2956,67 +3094,7 @@ Interlocked.Exchange(ref logRefreshPending, 1);
             catch { }
         }
 
-   
-        private FlowDocumentScrollViewer TryGetLastBubbleViewer()
-        {
-            try
-            {
-                var doc = ResponseJsonText?.Document;
-                if (doc == null) return null;
-
-                var last = doc.Blocks.LastBlock as BlockUIContainer;
-                if (last?.Child is Border border && border.Child is StackPanel stack)
-                {
-                    foreach (var child in stack.Children)
-                    {
-                        if (child is FlowDocumentScrollViewer v) return v;
-                    }
-                }
-
-                return null;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private void PrepareStreamingAiBubble()
-        {
-            Ui(() =>
-            {
-                try
-                {
-                    _streamingAiViewer = null;
-                    _streamingAiParagraph = null;
-
-                    var viewer = TryGetLastBubbleViewer();
-                    if (viewer == null) return;
-
-                    var fd = new FlowDocument { PagePadding = new Thickness(0) };
-                    var p = new Paragraph { Margin = new Thickness(0) };
-                    fd.Blocks.Add(p);
-
-                    viewer.Document = fd;
-
-                    _streamingAiViewer = viewer;
-                    _streamingAiParagraph = p;
-                }
-                catch { }
-            });
-        }
-
-        private void ClearStreamingAiBubble()
-        {
-            try
-            {
-                _streamingAiViewer = null;
-                _streamingAiParagraph = null;
-            }
-            catch { }
-        }
-
-void ScrollResponseToEnd()
+        private void ScrollResponseToEnd()
         {
             Ui(() =>
             {
@@ -3183,25 +3261,7 @@ void ScrollResponseToEnd()
             }
         }
 
-        private static void EnsureLogFileExists()
-        {
-            try
-            {
-                var path = GetLogFilePath();
-                var dir = Path.GetDirectoryName(path);
-                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-                if (!File.Exists(path)) File.WriteAllText(path, string.Empty, Encoding.UTF8);
-            }
-            catch { }
-        }
-
         private static string ReadLogFile()
-        {
-            // For UI, read only the tail to keep the UI responsive.
-            return ReadLogFileTail();
-        }
-
-        private static string ReadLogFileTail(int maxBytes = 256 * 1024)
         {
             try
             {
@@ -3209,28 +3269,7 @@ void ScrollResponseToEnd()
                 var dir = Path.GetDirectoryName(path);
                 if (!Directory.Exists(dir)) return string.Empty;
                 if (!File.Exists(path)) return string.Empty;
-
-                var fi = new FileInfo(path);
-                if (!fi.Exists || fi.Length <= 0) return string.Empty;
-
-                long start = 0;
-                if (fi.Length > maxBytes) start = fi.Length - maxBytes;
-
-                using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    fs.Seek(start, SeekOrigin.Begin);
-                    using (var sr = new StreamReader(fs, Encoding.UTF8, true))
-                    {
-                        var text = sr.ReadToEnd() ?? string.Empty;
-                        if (start > 0)
-                        {
-                            // Drop partial first line (we might have started mid-file)
-                            var idx = text.IndexOf('\n');
-                            if (idx >= 0 && idx + 1 < text.Length) text = text.Substring(idx + 1);
-                        }
-                        return text;
-                    }
-                }
+                return File.ReadAllText(path, Encoding.UTF8);
             }
             catch
             {
@@ -3238,7 +3277,20 @@ void ScrollResponseToEnd()
             }
         }
 
-        // Append to UI log (UI only; persistent logs handled by LoggerV2 sinks)
+        private static void AppendLogFileLine(string message)
+        {
+            try
+            {
+                var path = GetLogFilePath();
+                var dir = Path.GetDirectoryName(path);
+                Directory.CreateDirectory(dir);
+                var line = DateTime.UtcNow.ToString("o") + " - " + (message ?? string.Empty) + Environment.NewLine;
+                File.AppendAllText(path, line, Encoding.UTF8);
+            }
+            catch { }
+        }
+
+        // Append to UI log and persistent storage
         private void AppendLog(string message)
         {
             var ts = DateTime.UtcNow.ToString("o");
@@ -3261,6 +3313,7 @@ void ScrollResponseToEnd()
             try
             {
                 try { AgentComposition.Info(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] " + (message ?? string.Empty)); } catch { }
+                AppendLogFileLine("[AgenteIALocalControl] " + (message ?? string.Empty));
             }
             catch { }
         }

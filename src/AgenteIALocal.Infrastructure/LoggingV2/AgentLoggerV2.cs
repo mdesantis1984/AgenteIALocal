@@ -38,10 +38,19 @@ public AgentLoggerV2(ILogSink sink)
             try { sink.Write(entry); } catch { }
         }
 
+        private static bool IsStreamingV2(LogEventId id)
+        {
+            var v = id.Id;
+            return v >= 9150 && v <= 9153;
+        }
+
         private void Write(LogLevel level, string correlationId, LogEventId eventId, string message, Exception ex, IReadOnlyDictionary<string,string> ctx, string ns, string type, string assembly, string member, string file, int? line)
         {
-                        if (level < MinimumLevel) return;
-var corr = string.IsNullOrEmpty(correlationId) ? "-" : correlationId;
+            if (level < MinimumLevel)
+            {
+                if (!(level == LogLevel.Info && IsStreamingV2(eventId))) return;
+            }
+            var corr = string.IsNullOrEmpty(correlationId) ? "-" : correlationId;
             var asm = string.IsNullOrEmpty(assembly) ? assemblyName : assembly;
             var src = CallerInfo.Create(asm, ns, type, member, file, line);
             var entry = new LogEntry(DateTime.UtcNow, level, corr, eventId, message, ex, src, ctx);

@@ -497,11 +497,12 @@
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0"
+        <Border Grid.Column="0"
                 Height="36"
                 VerticalAlignment="Center"
                 Margin="0,0,0,0" >
-                </Border>
+        
+        </Border>
 
         <ComboBox x:Name="ChatComboBox"
                   Grid.Column="1"
@@ -1355,8 +1356,8 @@
                     </ComboBox.Items>
                   </ComboBox>
                 </Grid>
-                                <!-- Inicio -->
-                                <Button Grid.Column="1"
+
+                <Button Grid.Column="1"
                         Margin="12,0,0,0"
                         VerticalAlignment="Center"
                         HorizontalAlignment="Right"
@@ -1365,66 +1366,66 @@
                         BorderThickness="0"
                         IsEnabled="{Binding RunButtonEnabled}"
                         Click="RunButton_Click">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource IconButtonChromeStyle}">
+                  <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource IconButtonChromeStyle}">
 
-                                            <!-- Default (Idle): Send icon (mantiene el estilo/zoom del ícono) -->
-                                            <Setter Property="Content">
-                                                <Setter.Value>
-                                                    <md:PackIcon Kind="Send"
-                     Width="16"
-                     Height="16"
-                     Style="{StaticResource IconHoverZoomPackIconStrongStyle}"
-                     Foreground="LimeGreen" />
-                                                </Setter.Value>
-                                            </Setter>
+                      <!-- Default (Idle): Send icon (mantiene el estilo/zoom del ícono) -->
+                      <Setter Property="Content">
+                        <Setter.Value>
+                          <md:PackIcon Kind="Send"
+                                       Width="16"
+                                       Height="16"
+                                       Style="{StaticResource IconHoverZoomPackIconStrongStyle}"
+                                       Foreground="LimeGreen" />
+                        </Setter.Value>
+                      </Setter>
 
-                                            <Style.Triggers>
+                      <Style.Triggers>
 
-                                                <!-- Running: Stop grande + mismo efecto que Play -->
-                                                <DataTrigger Binding="{Binding StateLabel}" Value="Running">
+                        <!-- Running: Stop grande + mismo efecto que Play -->
+                        <DataTrigger Binding="{Binding StateLabel}" Value="Running">
 
-                                                    <!-- Stop icon -->
-                                                    <Setter Property="Content">
-                                                        <Setter.Value>
-                                                            <md:PackIcon Kind="Stop"
-                         Width="16"
-                         Height="16"
-                         Style="{StaticResource IconHoverZoomPackIconStrongStyle}"
-                         Foreground="IndianRed" />
-                                                        </Setter.Value>
-                                                    </Setter>
+                          <!-- Stop icon -->
+                          <Setter Property="Content">
+                            <Setter.Value>
+                              <md:PackIcon Kind="Stop"
+                                           Width="16"
+                                           Height="16"
+                                           Style="{StaticResource IconHoverZoomPackIconStrongStyle}"
+                                           Foreground="IndianRed" />
+                            </Setter.Value>
+                          </Setter>
 
-                                                    <!-- Template igual al base, pero con Viewbox grande (3x: 18*3=54) -->
-                                                    <Setter Property="Template">
-                                                        <Setter.Value>
-                                                            <ControlTemplate TargetType="Button">
-                                                                <Border Background="{TemplateBinding Background}"
-                      BorderBrush="{TemplateBinding BorderBrush}"
-                      BorderThickness="{TemplateBinding BorderThickness}"
-                      Padding="{TemplateBinding Padding}"
-                      SnapsToDevicePixels="True">
-                                                                    <Viewbox Stretch="Uniform" Width="30" Height="30">
-                                                                        <ContentPresenter HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    RecognizesAccessKey="True" />
-                                                                    </Viewbox>
-                                                                </Border>
-                                                            </ControlTemplate>
-                                                        </Setter.Value>
-                                                    </Setter>
+                          <!-- Template igual al base, pero con Viewbox grande (3x: 18*3=54) -->
+                          <Setter Property="Template">
+                            <Setter.Value>
+                              <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        Padding="{TemplateBinding Padding}"
+                                        SnapsToDevicePixels="True">
+                                  <Viewbox Stretch="Uniform" Width="30" Height="30">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      RecognizesAccessKey="True" />
+                                  </Viewbox>
+                                </Border>
+                              </ControlTemplate>
+                            </Setter.Value>
+                          </Setter>
 
-                                                </DataTrigger>
+                        </DataTrigger>
 
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
+                      </Style.Triggers>
+                    </Style>
+                  </Button.Style>
 
 
-                                </Button>
+                </Button>
 
-                                <!-- Fin -->
-                            </Grid>
+                <!-- Fin -->
+              </Grid>
             </Border>
           </Grid>
         </Border>
