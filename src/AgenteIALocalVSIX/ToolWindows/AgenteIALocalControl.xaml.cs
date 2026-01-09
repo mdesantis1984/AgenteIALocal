@@ -1996,17 +1996,41 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                             // Coalesced UI renders (no sleeps/delays). Only one pending render at a time.
                             int renderPending = 0;
-                            void QueueRender()
+                            long lastRenderTick = 0;
+                            int lastRenderedLen = 0;
+
+                            void QueueRender(bool force = false)
                             {
                                 try
                                 {
                                     if (ct.IsCancellationRequested) return;
+
+                                    // Cap renders to avoid CPU spikes. No delay/sleep: only suppression.
+                                    var now = Stopwatch.GetTimestamp();
+                                    if (!force)
+                                    {
+                                        var last = Interlocked.Read(ref lastRenderTick);
+                                        if (last != 0 && (now - last) < 33)
+                                            return;
+                                    }
+
                                     if (Interlocked.Exchange(ref renderPending, 1) != 0) return;
+                                    Interlocked.Exchange(ref lastRenderTick, now);
 
                                     var dispatcher = this.Dispatcher;
                                     if (dispatcher == null)
                                     {
-                                        try { RenderActiveChatToUi(); }
+                                        try
+                                        {
+                                            var currentLen = 0;
+                                            try { currentLen = aiBubble?.Content?.Length ?? 0; } catch { }
+
+                                            if (force || currentLen != lastRenderedLen)
+                                            {
+                                                lastRenderedLen = currentLen;
+                                                RenderActiveChatToUi();
+                                            }
+                                        }
                                         finally { Interlocked.Exchange(ref renderPending, 0); }
                                         return;
                                     }
@@ -2018,7 +2042,15 @@ namespace AgenteIALocalVSIX.ToolWindows
                                             try
                                             {
                                                 if (ct.IsCancellationRequested) return;
-                                                RenderActiveChatToUi();
+
+                                                var currentLen = 0;
+                                                try { currentLen = aiBubble?.Content?.Length ?? 0; } catch { }
+
+                                                if (force || currentLen != lastRenderedLen)
+                                                {
+                                                    lastRenderedLen = currentLen;
+                                                    RenderActiveChatToUi();
+                                                }
                                             }
                                             catch { }
                                             finally
@@ -2117,6 +2149,8 @@ var finalText = sb.ToString();
                                 if (aiBubble != null) aiBubble.Content = finalText;
                             }
                             catch { }
+
+                            QueueRender(force: true);
 
                             if (ct.IsCancellationRequested)
                             {

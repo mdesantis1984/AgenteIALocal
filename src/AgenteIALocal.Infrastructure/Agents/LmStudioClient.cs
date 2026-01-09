@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Net;
 using System.Text;
-using System.Diagnostics;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,8 +34,6 @@ namespace AgenteIALocal.Infrastructure.Agents
                 // H1: ensure authorization header present; default to 'lm-studio' if empty
                 if (string.IsNullOrEmpty(apiKey)) apiKey = "lm-studio";
 
-                var useStream = request.Stream;
-
                 var uri = endpointResolver.GetChatCompletionsEndpoint();
                 if (uri == null)
                 {
@@ -58,9 +55,7 @@ namespace AgenteIALocal.Infrastructure.Agents
 
                     // H3: stable payload additions
                     if (wroteField) sb.Append(',');
-                    sb.Append("\"stream\":"); sb.Append(useStream ? "true" : "false"); sb.Append(',');
-                    sb.Append("\"max_tokens\":512,");
-
+                    sb.Append("\"stream\":false,");
                     sb.Append("\"messages\":[{");
                     sb.Append("\"role\":\"user\",\"content\":\"");
                     sb.Append(EscapeJson(request.Prompt ?? string.Empty));
@@ -76,7 +71,7 @@ namespace AgenteIALocal.Infrastructure.Agents
                     req.Method = "POST";
                     req.ContentType = "application/json"; // Content-Type header
                     // H2: Accept header
-                    req.Accept = useStream ? "text/event-stream" : "application/json";
+                    req.Accept = "application/json";
                     // H1: Authorization: Bearer <apiKey>
                     req.Headers[HttpRequestHeader.Authorization] = "Bearer " + apiKey;
 
@@ -96,70 +91,6 @@ namespace AgenteIALocal.Infrastructure.Agents
                     using (var resp = (HttpWebResponse)req.GetResponse())
                     using (var sr = new StreamReader(resp.GetResponseStream()))
                     {
-                        if (useStream)
-                        {
-                            if (resp.StatusCode != HttpStatusCode.OK)
-                            {
-                                var errText = sr.ReadToEnd();
-                                return new AgentResponse { IsSuccess = false, Error = $"HTTP {resp.StatusCode}: {errText}" };
-                            }
-
-                            var contentSb = new StringBuilder();
-                            var rawSb = new StringBuilder();
-
-                            // PERF: batch delta callbacks to avoid UI overload
-                            var deltaBatch = new StringBuilder();
-                            var deltaFlushSw = Stopwatch.StartNew();
-
-                            string line;
-                            while ((line = sr.ReadLine()) != null)
-                            {
-                                if (cancellationToken.IsCancellationRequested)
-                                {
-                                    return new AgentResponse { IsSuccess = false, Error = "Canceled" };
-                                }
-
-                                if (line.Length == 0) continue;
-                                if (!line.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) continue;
-
-                                var data = line.Substring(5).Trim();
-                                if (string.Equals(data, "[DONE]", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    break;
-                                }
-
-                                rawSb.AppendLine(data);
-
-                                var delta = ExtractStreamDeltaContent(data);
-                                if (!string.IsNullOrEmpty(delta))
-                                {
-                                    contentSb.Append(delta);
-
-                                    deltaBatch.Append(delta);
-                                    var ms = deltaFlushSw.ElapsedMilliseconds;
-                                    if (deltaBatch.Length >= 128 || ms >= 30)
-                                    {
-                                        SafeInvokeDelta(request, deltaBatch.ToString());
-                                        deltaBatch.Clear();
-                                        deltaFlushSw.Restart();
-                                    }
-                                }
-                            }
-
-                            if (deltaBatch.Length > 0)
-                            {
-                                SafeInvokeDelta(request, deltaBatch.ToString());
-                                deltaBatch.Clear();
-                            }
-
-                            return new AgentResponse
-                            {
-                                IsSuccess = true,
-                                Content = contentSb.ToString(),
-                                RawResponse = rawSb.ToString()
-                            };
-                        }
-
                         var text = sr.ReadToEnd();
 
                         if (resp.StatusCode != HttpStatusCode.OK)
@@ -330,103 +261,86 @@ namespace AgenteIALocal.Infrastructure.Agents
             }
         }
 
-        
-        private static void SafeInvokeDelta(AgentRequest request, string delta)
+        private static string EscapeJson(string s)
         {
-            try
-            {
-                var cb = request?.OnDelta;
-                if (cb == null) return;
-                cb(delta);
-            }
-            catch
-            {
-                // ignore callback errors
-            }
+            if (s == null) return string.Empty;
+            return s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");
         }
 
-        private static string ExtractStreamDeltaContent(string jsonChunk)
+        private static string ExtractFirstChoiceContent(string responseText)
         {
-            try
+            if (string.IsNullOrEmpty(responseText)) return null;
+
+            // Best-effort extraction of:
+            // - choices[0].message.content (OpenAI chat completion)
+            // - choices[0].text (legacy completion)
+            // This function is intentionally dependency-free (no JSON library references).
+
+            var choicesIdx = responseText.IndexOf("\"choices\"", StringComparison.OrdinalIgnoreCase);
+            if (choicesIdx < 0) return null;
+
+            // Prefer "message" scope when present to avoid matching unrelated "content" fields.
+            var scopeIdx = responseText.IndexOf("\"message\"", choicesIdx, StringComparison.OrdinalIgnoreCase);
+            if (scopeIdx < 0) scopeIdx = choicesIdx;
+
+            var contentIdx = responseText.IndexOf("\"content\"", scopeIdx, StringComparison.OrdinalIgnoreCase);
+            if (contentIdx < 0)
             {
-                if (string.IsNullOrEmpty(jsonChunk)) return null;
-
-                // OpenAI-compatible SSE chunk commonly contains: choices[0].delta.content
-                // We best-effort extract the first "content":"...".
-                var contentIdx = jsonChunk.IndexOf("content", StringComparison.OrdinalIgnoreCase);
+                contentIdx = responseText.IndexOf("\"text\"", scopeIdx, StringComparison.OrdinalIgnoreCase);
                 if (contentIdx < 0) return null;
-
-                var colon = jsonChunk.IndexOf(':', contentIdx);
-                if (colon < 0) return null;
-
-                // Skip whitespace
-                var i = colon + 1;
-                while (i < jsonChunk.Length && char.IsWhiteSpace(jsonChunk[i])) i++;
-
-                if (i >= jsonChunk.Length) return null;
-
-                if (jsonChunk[i] == 'n') return null; // null
-
-                if (jsonChunk[i] != '"') return null;
-                var start = i + 1;
-                var end = FindJsonStringEnd(jsonChunk, start);
-                if (end < 0) return null;
-
-                var raw = jsonChunk.Substring(start, end - start);
-                return UnescapeJsonString(raw);
             }
-            catch
+
+            // Find ':' after the property name
+            var colon = responseText.IndexOf(':', contentIdx);
+            if (colon < 0) return null;
+
+            var i = colon + 1;
+            while (i < responseText.Length && char.IsWhiteSpace(responseText[i])) i++;
+
+            // null?
+            if (i + 3 < responseText.Length &&
+                (responseText[i] == 'n' || responseText[i] == 'N') &&
+                (responseText[i + 1] == 'u' || responseText[i + 1] == 'U') &&
+                (responseText[i + 2] == 'l' || responseText[i + 2] == 'L') &&
+                (responseText[i + 3] == 'l' || responseText[i + 3] == 'L'))
             {
                 return null;
             }
+
+            if (i >= responseText.Length || responseText[i] != '"') return null;
+
+            return ReadJsonString(responseText, ref i);
         }
 
-        private static int FindJsonStringEnd(string s, int startIndex)
+        private static string ReadJsonString(string s, ref int i)
         {
-            var escaped = false;
-            for (var i = startIndex; i < s.Length; i++)
+            // i must point at the opening quote.
+            if (s == null) return null;
+            if (i < 0 || i >= s.Length || s[i] != '"') return null;
+
+            i++; // skip opening quote
+            var sb = new StringBuilder();
+
+            while (i < s.Length)
             {
-                var c = s[i];
-                if (escaped)
+                var ch = s[i++];
+
+                if (ch == '"')
                 {
-                    escaped = false;
+                    // closing quote
+                    return sb.ToString();
+                }
+
+                if (ch != '\\')
+                {
+                    sb.Append(ch);
                     continue;
                 }
 
-                if (c == '\\')
-                {
-                    escaped = true;
-                    continue;
-                }
+                if (i >= s.Length) break;
+                var esc = s[i++];
 
-                if (c == '"') return i;
-            }
-
-            return -1;
-        }
-
-        private static string UnescapeJsonString(string s)
-        {
-            if (string.IsNullOrEmpty(s)) return s;
-
-            var sb = new StringBuilder(s.Length);
-            for (var i = 0; i < s.Length; i++)
-            {
-                var c = s[i];
-                if (c != '\\')
-                {
-                    sb.Append(c);
-                    continue;
-                }
-
-                if (i + 1 >= s.Length)
-                {
-                    sb.Append('\\');
-                    break;
-                }
-
-                var n = s[++i];
-                switch (n)
+                switch (esc)
                 {
                     case '"': sb.Append('"'); break;
                     case '\\': sb.Append('\\'); break;
@@ -437,82 +351,41 @@ namespace AgenteIALocal.Infrastructure.Agents
                     case 'r': sb.Append('\r'); break;
                     case 't': sb.Append('\t'); break;
                     case 'u':
-                        if (i + 4 < s.Length)
+                        // Unicode escape: \uXXXX
+                        if (i + 3 < s.Length)
                         {
-                            var hex = s.Substring(i + 1, 4);
-                            if (int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out var code))
+                            var h0 = ParseHex(s[i]);
+                            var h1 = ParseHex(s[i + 1]);
+                            var h2 = ParseHex(s[i + 2]);
+                            var h3 = ParseHex(s[i + 3]);
+                            if (h0 >= 0 && h1 >= 0 && h2 >= 0 && h3 >= 0)
                             {
+                                var code = (h0 << 12) | (h1 << 8) | (h2 << 4) | h3;
                                 sb.Append((char)code);
                                 i += 4;
+                                break;
                             }
                         }
+                        // malformed \u escape; keep raw
+                        sb.Append('u');
                         break;
                     default:
-                        sb.Append(n);
+                        // Keep unknown escape as-is (best-effort)
+                        sb.Append(esc);
                         break;
                 }
             }
 
+            // If malformed, return what we could parse.
             return sb.ToString();
         }
 
-private static string EscapeJson(string s)
+        private static int ParseHex(char c)
         {
-            if (s == null) return string.Empty;
-            return s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");
-        }
-
-        private static string ExtractFirstChoiceContent(string responseText)
-        {
-            if (string.IsNullOrEmpty(responseText)) return null;
-
-            // Best-effort extraction of choices[0].message.content or choices[0].text
-            var choicesIdx = responseText.IndexOf("\"choices\"", StringComparison.OrdinalIgnoreCase);
-            if (choicesIdx < 0) return null;
-
-            var contentIdx = responseText.IndexOf("\"content\"", choicesIdx, StringComparison.OrdinalIgnoreCase);
-            if (contentIdx < 0)
-            {
-                contentIdx = responseText.IndexOf("\"text\"", choicesIdx, StringComparison.OrdinalIgnoreCase);
-                if (contentIdx < 0) return null;
-            }
-
-            var colon = responseText.IndexOf(':', contentIdx);
-            if (colon < 0) return null;
-            var start = responseText.IndexOf('"', colon);
-            if (start < 0) return null;
-
-            // find the closing quote, but handle escaped quotes
-            var i = start + 1;
-            var sb = new StringBuilder();
-            bool escaped = false;
-            for (; i < responseText.Length; i++)
-            {
-                var ch = responseText[i];
-                if (escaped)
-                {
-                    sb.Append(ch);
-                    escaped = false;
-                    continue;
-                }
-
-                if (ch == '\\')
-                {
-                    escaped = true;
-                    continue;
-                }
-
-                if (ch == '"') break;
-
-                sb.Append(ch);
-            }
-
-            if (i >= responseText.Length) return null;
-
-            var content = sb.ToString();
-            // unescape basic sequences
-            content = content.Replace("\\\"", "\"").Replace("\\n", "\n").Replace("\\r", "\r").Replace("\\\\", "\\");
-            return content;
+            if (c >= '0' && c <= '9') return c - '0';
+            if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+            if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+            return -1;
         }
     }
 }
