@@ -1,0 +1,14 @@
+# Normaliza fin de línea de texto a LF en el repo (sin warnings). En Windows tu working copy usará LF también.
+* text=auto eol=lf
+
+# Mantener binarios tal cual
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.vsix binary
+*.dll binary
+*.exe binary
+*.pdb binary
