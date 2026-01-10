@@ -1,32 +1,18 @@
 # 🧾 Contexto general del proyecto — Agente IA Local
 
+> [!NOTE]
+> Documento canónico del proyecto. Optimizado para **lectura determinista por agentes IA** y para humanos. Cumple **GitHub Flavored Markdown (GFM)**.
 
-## 🗂️ Estructura raíz del proyecto
 
-| Nombre | Fecha de modificación | Tipo |
-|---|---:|---|
-| `.git` | 21/12/2025 2:00 | Carpeta |
-| `.VS` | 21/12/2025 0:43 | Carpeta |
-| `src` | 20/12/2025 22:29 | Carpeta |
-| `.gitignore` | 18/12/2025 22:47 | Archivo |
-| `AgentelALocal.sln` | 21/12/2025 1:35 | Archivo |
-| `README.md (Índice)` | 21/12/2025 1:35 | Archivo |
+## 📚 Mapa de documentación (Diátaxis)
 
-## 🧱 Estructura del segundo nivel del proyecto (cont. src)
 
-| Nombre | Fecha de modificación | Tipo |
-|---|---:|---|
-| `AgentelALocal.Application` | 21/12/2025 0:12 | Carpeta |
-| `AgentelALocal.Core` | 21/12/2025 0:12 | Carpeta |
-| `AgentelALocal.Infrastructure` | 21/12/2025 0:12 | Carpeta |
-| `AgentelALocal.Tests` | 21/12/2025 0:12 | Carpeta |
-| `AgentelALocal.UI` | 21/12/2025 0:45 | Carpeta |
-| `AgentelALocalVSIX` | 21/12/2025 1:58 | Carpeta |
-| `Resource` | 20/12/2025 22:29 | Carpeta |
-| `README.architecture.en.md` | 20/12/2025 22:29 | Archivo |
-| `README.architecture.es.md` | 20/12/2025 22:29 | Archivo |
-| `README.en.md` | 20/12/2025 22:29 | Archivo |
-| `README.es.md` | 20/12/2025 22:29 | Archivo |
+| Tipo | Documento |
+|---|---|
+| **Explanation** | Este documento (`Reglas.md`) |
+| **Reference** | `README.architecture.*`, `Readme.UX.md` |
+| **How‑to** | Prompts JSON por sprint |
+| **Tutorials** | `GettingStarted.txt` |
 
 ## 🧭 Visión general del proyecto
 
@@ -37,13 +23,61 @@
 - Arquitectura: Clean Architecture, HttpClientFactory, desacople, MVVM (XAML), C#, interfaces, inyección de dependencias, documentación en cada método
 - Principios de desarrollo: SOLID
 - VSIX basado en ToolWindow, comandos bajo el menú Herramientas, persistencia de configuración
-- Implementado: AsyncPackage, VSCT, ToolWindow, Options Page
+- Implementado: AsyncPackage, VSCT, ToolWindow
 - IDE de desarrollo: Visual Studio 2026
+- Arquitecto del proyecto: ChatGPT 5.2 Pro (rol arquitecto especialista 20 años experiencia) (WPF, C#, MVVM, Design Blend for Visual Studio), Modelos a utilizar GPT 5.2 o Gemini 3 Pro (Preview) y GPT-MINI-5
 - Desarrollador: GitHub Copilot (rol solo ejecutor) especialista en full stack (WPF, C#, MVVM, Design Blend for Visual Studio), Modelos a utilizar GPT 5.2 o Gemini 3 Pro (Preview) y GPT-MINI-5
 
-## ⚙️ Configuración final y autoritativa
+## 🗂️ Estructura del repositorio
 
-### 🧩 Proyecto
+### Raíz
+
+| Nombre | Fecha de modificación | Tipo |
+|---|---:|---|
+| `.git` | 10/01/2026 17:27 | Carpeta |
+| `.VS` | 09/01/2026 1:59 | Carpeta |
+| `artifacts` | 04/01/2026 19:46 | Carpeta |
+| `src` | 10/01/2026 17:42 | Carpeta |
+| `.gitattributes` | 10/01/2026 17:24 | Archivo |
+| `.gitignore` | 09/01/2026 1:25 | Archivo |
+| `AgenteIALocal.sln` | 03/01/2026 16:47 | Archivo |
+| `CHANGELOG.md` | 03/01/2026 16:47 | Archivo |
+| `GettingStarted.txt` | 03/01/2026 16:47 | Archivo |
+| `LICENSE.txt` | 03/01/2026 16:47 | Archivo |
+| `MARKETPLACE.md` | 03/01/2026 16:47 | Archivo |
+| `PRIVACY.md` | 03/01/2026 16:47 | Archivo |
+| `README.md (Índice)` | 26/12/2025 23:00 | Archivo |
+| `RELEASE_NOTES.md` | 03/01/2026 16:47 | Archivo |
+| `ReleaseNotes.txt` | 03/01/2026 16:47 | Archivo |
+| `SUPPORT.md` | 03/01/2026 16:47 | Archivo |
+
+### src/
+
+(cont. src)
+
+| Nombre | Fecha de modificación | Tipo |
+|---|---:|---|
+| `AgenteIALocal.Application` | 08/01/2026 22:28 | Carpeta |
+| `AgenteIALocal.Core` | 08/01/2026 21:49 | Carpeta |
+| `AgenteIALocal.Infrastructure` | 08/01/2026 21:37 | Carpeta |
+| `AgenteIALocal.Tests` | 08/01/2026 21:37 | Carpeta |
+| `AgenteIALocal.UI` | 08/01/2026 21:37 | Carpeta |
+| `AgenteIALocalVSIX` | 10/01/2026 16:42 | Carpeta |
+| `README.architecture.en.md` | 03/01/2026 16:47 | Archivo |
+| `README.architecture.es.md` | 03/01/2026 16:47 | Archivo |
+| `README.en.md` | 03/01/2026 16:47 | Archivo |
+| `README.es.md` | 03/01/2026 16:47 | Archivo |
+| `README.md` | 26/12/2025 23:00 | Archivo |
+| `Readme.UX.md` | 08/01/2026 20:40 | Archivo |
+| `Reglas.md` | 26/12/2025 23:00 | Archivo |
+
+## ⚙️ Reglas autoritativas del proyecto
+
+> [!WARNING]
+> Estas reglas son **obligatorias** para humanos, ChatGPT Arquitecto y GitHub Copilot.
+
+
+### 🧩 Proyecto | REGLAS | Directrices | Mandamientos | Normas | Políticas
 
 	- Copilot no puede tocar los siguientes archivos
 		  - *.vsix
@@ -55,121 +89,134 @@
 		  - Con indicaciones precisas paso a paso y entre pasos esperar a que este mande el resultado del paso en curso para evaluar con ChatGPT 5.2 (Arquitecto de la solución experto) indique el próximo paso hasta llegar al objetivo final.
 	- ChatGPT 5.2 Pro
 		  - Arquitecto, Coordinador y Desarrollador experimentado especialista en:
-			    - WPF
-			    - VSIX
-			    - Visual Studio 2026 y 2022
-			    - C# 14 y sus versiones anteriores
-			    - SDK de .NET 10 y sus versiones anteriores.
-			    - WinForm
-			    - Microsoft Blend
-			    - Microsoft Blazor
-			    - C++ todas sus versiones
-			    - Python  todas sus versiones
-			    - Scrum Master, conoce todos los conceptos
-			    - PM
-			    - Analista Funcional
-			    - Unit Test
-				      - MSTest c#
-				      - xunit c#
+			- WPF
+			- VSIX
+			- Visual Studio 2026 y 2022
+			- C# 14 y sus versiones anteriores
+			- SDK de .NET 10 y sus versiones anteriores.
+			- WinForm
+			- Microsoft Blend
+			- Microsoft Blazor
+			- C++ todas sus versiones
+			- Python  todas sus versiones
+			- Scrum Master, conoce todos los conceptos
+			- PM
+			- Analista Funcional
+			- Unit Test
+				  - MSTest c#
+				  - xunit c#
 		  - Núcleo de Desarrollo .NET y Visual Studio
-			    - .NET Framework 4.0-4.8 (histórico) y .NET Core/5/6/7/8 (moderno)
-			    - C# avanzado (hasta C# 12, todas las características evolutivas)
-			    - MSBuild y sistemas de compilación personalizados
-			    - Visual Studio SDK y VSIX Project System
-			    - Managed Package Framework (MPF) para extensiones VS clásicas
+			- .NET Framework 4.0-4.8 (histórico) y .NET Core/5/6/7/8 (moderno)
+			- C# avanzado (hasta C# 12, todas las características evolutivas)
+			- MSBuild y sistemas de compilación personalizados
+			- Visual Studio SDK y VSIX Project System
+			- Managed Package Framework (MPF) para extensiones VS clásicas
 		  - Arquitectura de Extensiones Visual Studio (VSIX)
-			    - VSIX Manifest 2.0/3.0 y esquemas de empaquetado
-			    - Visual Studio Shell y servicios de IServiceProvider
-			    - COM Interop para integración con VS (DTE, EnvDTE)
-			    - MEF (Managed Extensibility Framework) para componentes extensibles
-			    - AsyncPackage y carga asíncrona de extensiones
-			    - Editor de Texto y Classificadores (Tagger, Formateadores)
-			    - Language Server Protocol (LSP) para soporte de lenguajes
+			- VSIX Manifest 2.0/3.0 y esquemas de empaquetado
+			- Visual Studio Shell y servicios de IServiceProvider
+			- COM Interop para integración con VS (DTE, EnvDTE)
+			- MEF (Managed Extensibility Framework) para componentes extensibles
+			- AsyncPackage y carga asíncrona de extensiones
+			- Editor de Texto y Classificadores (Tagger, Formateadores)
+			- Language Server Protocol (LSP) para soporte de lenguajes
 		  - WPF (Windows Presentation Foundation) Avanzado
-			    - MVVM (Model-View-ViewModel) con patrones avanzados
-			    - DataBinding complejo (MultiBinding, PriorityBinding, etc.)
-			    - Plantillas y Estilos (ControlTemplate, DataTemplate, Style Triggers)
-			    - Recursos y ResourceDictionaries dinámicos
-			    - Comandos personalizados (ICommand, RoutedCommand)
-			    - Validación de datos (IDataErrorInfo, ValidationRules)
-			    - Animaciones y Storyboards personalizados
-			    - Custom Controls y UserControls reutilizables
-			    - Rendering personalizado con DrawingContext
-			    - 3D en WPF (Viewport3D, Model3D)
+			- MVVM (Model-View-ViewModel) con patrones avanzados
+			- DataBinding complejo (MultiBinding, PriorityBinding, etc.)
+			- Plantillas y Estilos (ControlTemplate, DataTemplate, Style Triggers)
+			- Recursos y ResourceDictionaries dinámicos
+			- Comandos personalizados (ICommand, RoutedCommand)
+			- Validación de datos (IDataErrorInfo, ValidationRules)
+			- Animaciones y Storyboards personalizados
+			- Custom Controls y UserControls reutilizables
+			- Rendering personalizado con DrawingContext
+			- 3D en WPF (Viewport3D, Model3D)
 		  - Windows Forms (WinForms) Profesional
-			    - Diseño de controles personalizados (herencia, composición)
-			    - GDI+ avanzado (Graphics, Path, Region, Transformaciones)
-			    - Double Buffering y optimización de redibujado
-			    - DataBinding complejo (BindingSource, BindingNavigator)
-			    - Interoperabilidad WinForms-WPF (ElementHost, WindowsFormsHost)
-			    - Hooks de Windows API para funcionalidad de bajo nivel
-			    - Custom Paint y Owner-Draw controls
+			- Diseño de controles personalizados (herencia, composición)
+			- GDI+ avanzado (Graphics, Path, Region, Transformaciones)
+			- Double Buffering y optimización de redibujado
+			- DataBinding complejo (BindingSource, BindingNavigator)
+			- Interoperabilidad WinForms-WPF (ElementHost, WindowsFormsHost)
+			- Hooks de Windows API para funcionalidad de bajo nivel
+			- Custom Paint y Owner-Draw controls
 		  - UI/UX y Diseño
-			    - Principios de UI/UX específicos para herramientas de desarrollo
-			    - Patrones de diseño para IDE (Dockable, ToolWindows, DocumentWindows)
-			    - Accesibilidad (UI Automation, MSAA, ARIA patterns)
-			    - Localización y globalización (satellite assemblies, RESX)
-			    - Theming y soporte para temas de Visual Studio (Dark/Light)
-			    - DPI Awareness y escalado en diferentes resoluciones
+			- Principios de UI/UX específicos para herramientas de desarrollo
+			- Patrones de diseño para IDE (Dockable, ToolWindows, DocumentWindows)
+			- Accesibilidad (UI Automation, MSAA, ARIA patterns)
+			- Localización y globalización (satellite assemblies, RESX)
+			- Theming y soporte para temas de Visual Studio (Dark/Light)
+			- DPI Awareness y escalado en diferentes resoluciones
 		  - Integración y Servicios
-			    - Visual Studio Services (IVs, SVs)
-			    - ToolWindows y ventanas acoplables personalizadas
-			    - Editor Extensions (Adornments, Margins, IntelliSense)
-			    - Debugger Visualizers y componentes de depuración
-			    - Code Analysis y analizadores personalizados (Roslyn)
-			    - Proyectos y Soluciones (IVsHierarchy, IVsProject)
-			    - Automatización IDE (macros, automatización DTE)
+			- Visual Studio Services (IVs, SVs)
+			- ToolWindows y ventanas acoplables personalizadas
+			- Editor Extensions (Adornments, Margins, IntelliSense)
+			- Debugger Visualizers y componentes de depuración
+			- Code Analysis y analizadores personalizados (Roslyn)
+			- Proyectos y Soluciones (IVsHierarchy, IVsProject)
+			- Automatización IDE (macros, automatización DTE)
 		  - .Patrones y Prácticas Arquitectónicas
-			    - SOLID, DRY, YAGNI, KISS
-			    - Patrones de diseño (Factory, Strategy, Observer, Command, etc.)
-			    - Inyección de Dependencias (Autofac, Unity, MEF2)
-			    - Arquitectura en capas (n-tier, clean architecture)
-			    - Event-driven architecture y mensajería (MediatR, EventAggregator)
+			- SOLID, DRY, YAGNI, KISS
+			- Patrones de diseño (Factory, Strategy, Observer, Command, etc.)
+			- Inyección de Dependencias (Autofac, Unity, MEF2)
+			- Arquitectura en capas (n-tier, clean architecture)
+			- Event-driven architecture y mensajería (MediatR, EventAggregator)
 		  - Testing y Calidad
-			    - Unit Testing (NUnit, xUnit, MSTest)
-			    - UI Testing (Coded UI, TestStack.White, FlaUI)
-			    - Integration Testing con VS Experimental Instance
-			    - Pruebas de rendimiento (profiling, memory leaks)
-			    - Static Code Analysis (SonarQube, NDepend)
+			- Unit Testing (NUnit, xUnit, MSTest)
+			- UI Testing (Coded UI, TestStack.White, FlaUI)
+			- Integration Testing con VS Experimental Instance
+			- Pruebas de rendimiento (profiling, memory leaks)
+			- Static Code Analysis (SonarQube, NDepend)
 		  - Despliegue y Distribución
-			    - Instaladores personalizados (WiX, InstallShield, Advanced Installer)
-			    - VSIX Deployment (gallery, private feeds)
-			    - Actualizaciones automáticas (ClickOnce, Squirrel)
-			    - Licenciamiento y protección de software
-			    - Registro Windows y configuración del sistema
+			- Instaladores personalizados (WiX, InstallShield, Advanced Installer)
+			- VSIX Deployment (gallery, private feeds)
+			- Actualizaciones automáticas (ClickOnce, Squirrel)
+			- Licenciamiento y protección de software
+			- Registro Windows y configuración del sistema
 		  - Tecnologías Complementarias
-			    - Roslyn Compiler Platform (Syntax API, Semantic API)
-			    - T4 Text Templating para generación de código
-			    - XML/JSON y serialización avanzada
-			    - Bases de datos embebidas (SQLite, ESE)
-			    - Networking (WCF, REST API, WebSockets)
-			    - Multithreading avanzado (TPL, async/await, SynchronizationContext)
-			    - Seguridad (autenticación, autorización, cifrado)
+			- Roslyn Compiler Platform (Syntax API, Semantic API)
+			- T4 Text Templating para generación de código
+			- XML/JSON y serialización avanzada
+			- Bases de datos embebidas (SQLite, ESE)
+			- Networking (WCF, REST API, WebSockets)
+			- Multithreading avanzado (TPL, async/await, SynchronizationContext)
+			- Seguridad (autenticación, autorización, cifrado)
 		  - Metodologías y Herramientas
-			    - DevOps para VSIX (CI/CD con Azure DevOps, GitHub Actions)
-			    - Control de versiones (Git avanzado, SVN)
-			    - Documentación técnica (Sandcastle, DocFX)
-			    - Reverse engineering y debugging de problemas complejos
-			    - Performance profiling (ANTS, dotTrace, PerfView)
+			- DevOps para VSIX (CI/CD con Azure DevOps, GitHub Actions)
+			- Control de versiones (Git avanzado, SVN)
+			- Documentación técnica (Sandcastle, DocFX)
+			- Reverse engineering y debugging de problemas complejos
+			- Performance profiling (ANTS, dotTrace, PerfView)
 		  - Conocimientos Transversales
-			    - Historia y evolución de .NET y Visual Studio
-			    - Compatibilidad hacia atrás y migración de versiones
-			    - Best practices de Microsoft y patrones del ecosistema VS
-			    - Mentoring y arquitectura de equipos
-			    - Estimación de proyectos complejos
+			- Historia y evolución de .NET y Visual Studio
+			- Compatibilidad hacia atrás y migración de versiones
+			- Best practices de Microsoft y patrones del ecosistema VS
+			- Mentoring y arquitectura de equipos
+			- Estimación de proyectos complejos
 
-## 🛠️ Reglas de build y debug
+### 🛠️ Build y debug
+
 
 	- Compilar y depurar solo con:
-		  - Visual Studio 2026
+		- Visual Studio 2026
 	- Debug: Start Experimental Instance
 
-## 📐 Reglas a seguir OBLIGATORIAS del Arquitecto en este proyecto (ChatGPT 5.2)
+### 🚫 Restricciones de Copilot
+
+- Usar Powershell scripts
+	- Usar Git Bash scripts
+	- Usar cualquier otro tipo de script que no sea C# WPF o XAML
+
+### 📐 Rol Arquitecto (ChatGPT)
+
+en este proyecto (ChatGPT)
 
 	- Continuar desde este baseline estable
 	- Armar Sprint de no más de 5 tareas
 	- Nunca pasar a otra tarea cuando esta no esté terminada
-	- Entre tarea y tarea hacer commit
+	- Entre tarea y tarea hacer commit y push
+	- Siempre usar ramas feature/nombre-de-la-tarea
+	- Siempre usar GIT FLOW
+	- Siempre hacer PR para mergear a master
+	- Esperar entre tarea y tarea la confirmación del humano,, para analizar proximo paso FUNDAMENTAL 
 	- En todos los proceso de GIT respetar la regla impuesta anteriormente y principal para los chat nunca dar varias instrucciones en simultaneo, solo una esperar al output brindado por el humano para evaluar y seguir con el próximo comando o tarea.
 	- No sugerir Microsoft.VisualStudio.Sdk como Project SDK
 	- No re-depurar generación VSIX salvo petición explícita
@@ -178,36 +225,77 @@
 	- Siempre código de máxima calidad
 	- Siempre garantizando los mejores y establecidos estándares
 	- Cuando hay duda consulta con el humano
-	- Respetar un buen flujo GIT Flow
 	- Documentación extrema por cada sprint terminado
 	- La documentacion tiene que ser clara y no se tiene que eliminar nada, salvo ocasiones donde ya no exista código o concepto escrito cualquier duda consultarla siempre.
 
+### 👨‍💻 Rol Desarrollador (GitHub Copilot)
 
-## 👨‍💻 Reglas a seguir OBLIGATORIAS del Desarrollador en este proyecto (GitHub Copilot)
+en este proyecto (GitHub Copilot)
 
-	- Modelo variable: GPT 5.2, GPT-5-mini
-	- Tienes los mismos conocimientos que ChatGPT 5.2 que actúa como Arquitecto pero tu eres un Desarrollador FullStack experto con mas de 20 años de experiencia en las mismas tecnologias pero solo ejecutas lo que te dan y si ves alguna discrepancia con tu conocimiento preguntas al humano que siempre es el que te va a estar escribiendo los prompt dados por el arquittecto.\
-	- No puedes modificar esto : *.vsix, *.vsct, *.vsixmanifest, *.csproj, *.sln
+	- Modelo variable: GPT 5.2, GPT-5-mini, GPT-5-Codex
+	- Tienes los mismos conocimientos que ChatGPT que actúa como Arquitecto pero tu eres un Desarrollador FullStack experto con mas de 20 años de experiencia en las mismas tecnologias pero solo ejecutas lo que te dan y si ves alguna discrepancia con tu conocimiento preguntas al humano que siempre es el que te va a estar escribiendo los prompt dados por el arquittecto.\
+	- No puedes modificar esto nunca : *.vsix, *.vsct, *.vsixmanifest, *.csproj, *.sln
 	- El forma de prompt que recibirás siempre es en JSON cuando viene del Arquitecto y a veces si se escribe en lenguaje naturall es porque soy yo el humano y solo me responderas si lo puedo hacer o consulta con el arquitecto y que me de un JSON con lo que tengo que hacer.
-	- Las respuestas que daras siempre tienen que ser en JSON cuando sean para el Arquitecto y en lenguaje naturall cuando sea con el humano.
+	- Las respuestas que daras siempre tienen que ser en JSON simpre.
+	- En las respuestas simpre tienes que indicar que has modificado, creado o eliminado (Funciones,Metodos,Class, Propiedades, Event, Archivos, Carpetas, etc)
+	- Simpre tiene que marcar la nueva funcion con un indicador preciso e indeclinable.
+		- Para ppoder hacer roollback si es necesario.
+		- Para documentacion tecnica y funcional.
+		- Para identificacion del humano, ChatGPT Arquitecto.
+		- la propuuesta de esta marcaicon es la siguiente:
+			- // NUEVA FUNCION [NombreDeLaFuncion] - ID: [YYYYMMDD_HHMMSS]
+			- // NUEVO METODO [NombreDelMetodo] - ID: [YYYYMMDD_HHMMSS]
+			- // NUEVA CLASE [NombreDeLaClase] - ID: [YYYYMMDD_HHMMSS]
+			- // NUEVA PROPIEDAD [NombreDeLaPropiedad] - ID: [YYYYMMDD_HHMMSS]
+			- // NUEVO EVENTO [NombreDelEvento] - ID: [YYYYMMDD_HHMMSS]
+			- // NUEVO ARCHIVO [NombreDelArchivo] - ID: [YYYYMMDD_HHMMSS]
+			- // NUEVA CARPETA [NombreDeLaCarpeta] - ID: [YYYYMMDD_HHMMSS]
+			- // ELIMINADA FUNCION [NombreDeLaFuncion] - ID: [YYYYMMDD_HHMMSS]
+			- // ELIMINADO METODO [NombreDelMetodo] - ID: [YYYYMMDD_HHMMSS]
+			- // ELIMINADA CLASE [NombreDeLaClase] - ID: [YYYYMMDD_HHMMSS]
+			- // Otros indicadores similares para eliminaciones y modificaciones.
+
+## 🤖 Contrato estándar para tareas de IA
+
+> [!TIP]
+> Todo prompt operativo debe seguir esta estructura mínima.
 
 
-## 🗣️ Formato de comunicación
 
-	- El Arquitecto (ChatGPT 5.2) escribirá para que copilot ejecute en la documentación el estado actúal del proyecto, tanto funcional, técnico, plan de ejecución y plan general sin desviarse del gantt y de arquitectura.
-	- El Arquitecto (ChatGPT 5.2) le escribirá SIMPRE y sin EXCEPCIÓN en un formato estandarizado al full stack (Copilot) de la siguiente forma:
-		  - JSON
-		  - Técnicamente
-		  - Sin lenguaje natural
-		  - Con ejemplos de como tiene que ir
-		  - Si fuera necesario le pedira una parte de código y el full stack (copilot) le enviara en formato JSON este código para que pueda tomar una determinacion de como tendra que armar tecnicamente la solcuion de esa tarea para el sprint actúal.
-		  - Siempre el Arquitecto informara el % de avances posterior al termino de cada Sprint.
-		  - Las tareas tiene que ser claras definiendo la siguiente estructura de JSON como un ejemplo a seguir:
+### Contexto
+- Inputs verificables
+- Paths y artefactos concretos
 
+### Objetivo
+- Una sola frase
 
+### Restricciones
+- MUST / MUST NOT
+
+### Pasos
+- [ ] Paso 1
+- [ ] Paso 2
+
+### Salida esperada
+- Archivos / clases / métodos
+
+### Criterio de aceptación
+- [ ] Condición verificable
+
+## 🗣️ Formato de comunicación (Reference)
+
+- El Arquitecto (ChatGPT 5.2) escribirá para que copilot ejecute en la documentación el estado actúal del proyecto, tanto funcional, técnico, plan de ejecución y plan general sin desviarse del gantt y de arquitectura.
+	- El Arquitecto (ChatGPT 5.2) le escribirá SIEMPRE y sin EXCEPCIÓN en un formato estandarizado al full stack (Copilot) de la siguiente forma:
+		- JSON
+		- Técnicamente
+		- Sin lenguaje natural
+		- Con ejemplos de como tiene que ir
+		- Si fuera necesario le pedira una parte de código y el full stack (copilot) le enviara en formato JSON este código para que pueda tomar una determinacion de como tendra que armar tecnicamente la solcuion de esa tarea para el sprint actúal.
+		- Siempre el Arquitecto informara el % de avances posterior al termino de cada Sprint.
+		- Las tareas tiene que ser claras definiendo la siguiente estructura de JSON como un ejemplo a seguir:
 
 ```json
-{
+		{
 		  "prompt_template": {
 		    "metadata": {
 		      "name": "Technical Architecture Prompt Template",
@@ -461,18 +549,14 @@
 		      "references": "Use Microsoft documentation and established enterprise patterns only"
 		    }
 		  }
-		}
-		
+}
 ```
+## 🎯 Objetivo y descripción del proyecto
 
+### Objetivo del proyecto
 
-
-
-# 🎯 Objetivo del proyecto
-
-
-Sí, se entiende. Reformulación del objetivo del proyecto, en lenguaje naturall, concreta y alineada a lo que buscas:
-Objetivo del proyecto (reformulado)
+Sí, se entiende. Reformulación del objetivo del proyecto, en lenguaje natural, concreta y alineada a lo que buscas:
+#### Objetivo del proyecto (reformulado)
 Desarrollar una extensión de Visual Studio (VSIX clásica) que actúe como plataforma de agentes de IA locales, capaz de conectarse a cualquier LLM que exponga un API server (principalmente LM Studio, pero también JAN u otros), para analizar, modificar y generar código directamente dentro de Visual Studio.
 La extensión debe permitir que los modelos de IA:
 - Accedan al contexto real del IDE (solución, proyectos, archivos y código).
@@ -486,8 +570,8 @@ El proyecto busca construir una base técnica sólida (arquitectura limpia, desa
 - Soportar Visual Studio 2022 y 2026 de forma estable.
 En resumen: una capa de integración entre Visual Studio y modelos de IA locales, orientada a agentes capaces de trabajar sobre código real, con control, trazabilidad y extensibilidad desde el primer diseño.
 
-# 🧾 Descripción del proyecto
-
+### Descripción del proyecto
+### Descripción del proyecto
 Agente IA Local es una extensión clásica de Visual Studio (VSIX) diseñada para integrar modelos de lenguaje grandes (LLM) ejecutados localmente dentro del IDE, permitiendo su uso como agentes inteligentes sobre código real.
 La extensión actúa como una capa de orquestación entre Visual Studio y cualquier LLM que exponga un API server local, como LM Studio (principal), JAN u otros, sin acoplarse a un proveedor específico. Los modelos se consumen exclusivamente a través de sus APIs, lo que garantiza intercambiabilidad y control total del entorno.
 El agente puede:
@@ -498,9 +582,8 @@ El agente puede:
 El proyecto está construido sobre una arquitectura limpia y desacoplada, separando claramente UI, VSIX host, orquestación, contratos y adaptadores de infraestructura. En su fase inicial (MVP), valida el empaquetado VSIX, el registro de comandos y ToolWindows, y el pipeline del agente mediante ejecución mock, dejando preparada la base para integración real con LLM locales.
 Agente IA Local no pretende ser un copiloto cerrado, sino una plataforma extensible de agentes de IA locales dentro de Visual Studio, enfocada en control, trazabilidad, compatibilidad y evolución a largo plazo.
 
-# 🗺️ Plan de Implementación — Agente IA Local (VSIX)
-
-Sprint 0 — Fundaciones y decisiones técnicas (COMPLETADO)
+## 📅 Plan de Implementación – Agente IA Local (VSIX)
+### Sprint 0 — Fundaciones y decisiones técnicas (COMPLETADO)
 Objetivo: Eliminar incertidumbre técnica y fijar una base estable.
 	1. Selección definitiva de VSIX clásico
 Descartar SDK-style y fijar csproj, VSCT y manifest clásicos.
@@ -513,12 +596,12 @@ Generación correcta del .vsix e instalación en instancia experimental.
 	5. Documentación base del proyecto
 README.es, README.en y documento de arquitectura inicial.
 
-Sprint 1 — Host VSIX funcional mínimo (COMPLETADO)
+### Sprint 1 — Host VSIX funcional mínimo (COMPLETADO)
 Objetivo: Tener una extensión visible y ejecutable.
 	1. Implementación del AsyncPackage clásico
 Inicialización correcta y ciclo de vida controlado.
 	2. Registro del comando en VSCT
-Comando visible bajo el menú Tools.
+Comando visible bajo menú Tools.
 	3. Alineación estricta de GUIDs
 Package, VSCT y vsixmanifest perfectamente sincronizados.
 	4. Configuración de depuración y diagnóstico
@@ -526,7 +609,7 @@ Experimental Instance y uso de ActivityLog.xml.
 	5. Logging base del VSIX
 Registro de eventos clave y errores iniciales.
 
-Sprint 2 — ToolWindow operativa y ciclo de vida
+### Sprint 2 — ToolWindow operativa y ciclo de vida
 Objetivo: Punto de entrada UI estable.
 	1. Registro correcto de la ToolWindow
 Uso de ProvideToolWindow en el Package.
@@ -539,7 +622,7 @@ Evitar estados inconsistentes al abrir/activar la ToolWindow.
 	5. Hardening ante fallos silenciosos
 Manejo explícito de errores y logging defensivo.
 
-Sprint 2.5 — UX Foundations (Visual Studio–first)
+### Sprint 2.5 — UX Foundations (Visual Studio–first)
 Objetivo: UX alineada al ecosistema Visual Studio.
 	1. Definición de principios UX para VSIX
 No bloqueante, no modal, integrada al IDE.
@@ -552,7 +635,7 @@ Iconografía, espaciados, foco y teclado.
 	5. Validación de flujos reales
 Ejecución UX sobre tareas concretas (leer archivo, ejecutar agente).
 
-Sprint 3 — Contratos del agente y pipeline base
+### Sprint 3 — Contratos del agente y pipeline base
 Objetivo: Formalizar el concepto de agente.
 	1. Contratos del agente en Core
 Requests, responses, contexto y resultados.
@@ -565,7 +648,7 @@ Flujo completo extremo a extremo.
 	5. Pruebas unitarias del pipeline
 Validación de comportamiento base.
 
-Sprint 3.5 — UI avanzada y experiencia de agente
+### Sprint 3.5 — UI avanzada y experiencia de agente
 Objetivo: Experiencia profesional, no demo.
 	1. Interacción por tareas, no chat libre
 Acciones claras y repetibles.
@@ -578,7 +661,7 @@ Mensajes claros, recuperables.
 	5. Consistencia visual y técnica
 WPF estable, estilos controlados.
 
-Sprint 4 — Ejecutor mock determinista
+### Sprint 4 — Ejecutor mock determinista
 Objetivo: Validar todo sin IA real.
 	1. Implementación de Mock LLM Executor
 Respuestas JSON predecibles.
@@ -591,7 +674,7 @@ Presentación entendible en la UI.
 	5. Logging completo del flujo del agente
 Trazabilidad total.
 
-Sprint 5 — Contexto real de Visual Studio
+### Sprint 5 — Contexto real de Visual Studio
 Objetivo: El agente entiende el IDE.
 	1. Lectura de solución y proyectos activos
 Uso de APIs del DTE / VS SDK.
@@ -604,7 +687,7 @@ Prevención de modificaciones accidentales.
 	5. Tests de integración ligera
 Validación dentro del IDE.
 
-Sprint 6 — Integración con LLM local vía API
+### Sprint 6 — Integración con LLM local vía API
 Objetivo: Primer agente real con IA local.
 	1. Adaptador HTTP genérico para LLMs
 Cliente desacoplado del proveedor.
@@ -617,7 +700,7 @@ Robustez ante fallos del modelo.
 	5. Sustitución transparente del mock
 Sin impacto en UI ni pipeline.
 
-Sprint 7 — Agente modificador de código
+### Sprint 7 — Agente modificador de código
 Objetivo: IA que cambia código de forma controlada.
 	1. Generación de diffs de código
 Cambios claros y auditables.
@@ -630,7 +713,7 @@ Soporte completo de deshacer.
 	5. Trazabilidad de modificaciones
 Registro de qué, cuándo y por qué.
 
-Sprint 8 — Endurecimiento y extensibilidad
+### Sprint 8 — Endurecimiento y extensibilidad
 Objetivo: Base profesional lista para evolución.
 	1. Soporte multi-LLM (JAN, otros)
 Sin cambios en UI ni pipeline.
@@ -643,6 +726,6 @@ Estabilidad entre versiones.
 	5. Preparación para release
 Versionado, firma y documentación final.
 
-Resultado final
+## 🏁 Resultado final
 Una plataforma de agentes de IA locales dentro de Visual Studio, profesional, extensible y alineada con estándares reales de Microsoft, preparada para evolucionar sin rehacer fundamentos.
 Si quieres, el siguiente paso natural es definir Definition of Done por sprint o bajar Sprint 2.5 a tareas técnicas concretas en WPF.
