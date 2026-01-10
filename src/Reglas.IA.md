@@ -9,7 +9,7 @@
 
 | Tipo | Documento |
 |---|---|
-| **Explanation** | Este documento (`Reglas.md`) |
+| **Explanation** | Este documento (`Reglas.IA.md`) |
 | **Reference** | `README.architecture.*`, `Readme.UX.md` |
 | **How‑to** | Prompts JSON por sprint |
 | **Tutorials** | `GettingStarted.txt` |
@@ -69,7 +69,7 @@
 | `README.es.md` | 03/01/2026 16:47 | Archivo |
 | `README.md` | 26/12/2025 23:00 | Archivo |
 | `Readme.UX.md` | 08/01/2026 20:40 | Archivo |
-| `Reglas.md` | 26/12/2025 23:00 | Archivo |
+| `Reglas.IA.md` | 26/12/2025 23:00 | Archivo |
 
 ## ⚙️ Reglas autoritativas del proyecto
 
