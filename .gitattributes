@@ -1,5 +1,4 @@
 # Normaliza fin de línea de texto a LF en el repo (sin warnings). En Windows tu working copy usará LF también.
-# .gitattributes (mínima) — evita warnings LF/CRLF manteniendo LF en working tree
 * text=auto eol=lf
 
 # (Opcional recomendado) Archivos típicos de Windows en CRLF
@@ -19,5 +18,3 @@
 *.dll binary
 *.exe binary
 *.pdb binary
-
-
