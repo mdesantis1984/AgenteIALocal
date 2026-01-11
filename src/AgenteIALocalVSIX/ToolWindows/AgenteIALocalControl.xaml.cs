@@ -1999,69 +1999,45 @@ namespace AgenteIALocalVSIX.ToolWindows
                             long lastRenderTick = 0;
                             int lastRenderedLen = 0;
 
-                            void QueueRender(bool force = false)
+                            async Task QueueRenderAsync(bool force = false)
                             {
+                                if (ct.IsCancellationRequested) return;
+
+                                var now = Stopwatch.GetTimestamp();
+                                if (!force)
+                                {
+                                    var last = Interlocked.Read(ref lastRenderTick);
+                                    if (last != 0 && (now - last) < 33)
+                                        return;
+                                }
+
+                                if (Interlocked.Exchange(ref renderPending, 1) != 0) return;
                                 try
                                 {
-                                    if (ct.IsCancellationRequested) return;
-
-                                    // Cap renders to avoid CPU spikes. No delay/sleep: only suppression.
-                                    var now = Stopwatch.GetTimestamp();
-                                    if (!force)
-                                    {
-                                        var last = Interlocked.Read(ref lastRenderTick);
-                                        if (last != 0 && (now - last) < 33)
-                                            return;
-                                    }
-
-                                    if (Interlocked.Exchange(ref renderPending, 1) != 0) return;
                                     Interlocked.Exchange(ref lastRenderTick, now);
 
-                                    var dispatcher = this.Dispatcher;
-                                    if (dispatcher == null)
+                                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+
+                                    var currentLen = 0;
+                                    try { currentLen = aiBubble?.Content?.Length ?? 0; } catch { }
+
+                                    if (force || currentLen != lastRenderedLen)
                                     {
-                                        try
-                                        {
-                                            var currentLen = 0;
-                                            try { currentLen = aiBubble?.Content?.Length ?? 0; } catch { }
-
-                                            if (force || currentLen != lastRenderedLen)
-                                            {
-                                                lastRenderedLen = currentLen;
-                                                RenderActiveChatToUi();
-                                            }
-                                        }
-                                        finally { Interlocked.Exchange(ref renderPending, 0); }
-                                        return;
+                                        lastRenderedLen = currentLen;
+                                        RenderActiveChatToUi();
                                     }
-
-                                    dispatcher.BeginInvoke(
-                                        System.Windows.Threading.DispatcherPriority.Background,
-                                        new Action(() =>
-                                        {
-                                            try
-                                            {
-                                                if (ct.IsCancellationRequested) return;
-
-                                                var currentLen = 0;
-                                                try { currentLen = aiBubble?.Content?.Length ?? 0; } catch { }
-
-                                                if (force || currentLen != lastRenderedLen)
-                                                {
-                                                    lastRenderedLen = currentLen;
-                                                    RenderActiveChatToUi();
-                                                }
-                                            }
-                                            catch { }
-                                            finally
-                                            {
-                                                Interlocked.Exchange(ref renderPending, 0);
-                                            }
-                                        }));
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                    // ignore cancellation
                                 }
                                 catch
                                 {
-                                    try { Interlocked.Exchange(ref renderPending, 0); } catch { }
+                                    // ignore render errors
+                                }
+                                finally
+                                {
+                                    Interlocked.Exchange(ref renderPending, 0);
                                 }
                             }
 
@@ -2128,7 +2104,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                                             }
                                             catch { }
 
-                                            QueueRender();
+                                            await QueueRenderAsync();
                                         }
                                         catch
                                         {
@@ -2150,7 +2126,7 @@ var finalText = sb.ToString();
                             }
                             catch { }
 
-                            QueueRender(force: true);
+                            await QueueRenderAsync(force: true);
 
                             if (ct.IsCancellationRequested)
                             {
@@ -3134,7 +3110,11 @@ var finalText = sb.ToString();
             {
                 try
                 {
-                    if (ResponseJsonText == null) return;
+                    if (activeChat == null)
+                    {
+                        ResponseJsonText.Document = CreatePlainDocument(string.Empty);
+                        return;
+                    }
                     ResponseJsonText.ScrollToEnd();
                 }
                 catch { }
