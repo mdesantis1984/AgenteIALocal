@@ -58,9 +58,13 @@
     <Compile Include="Application\VisualStudioWorkspaceProvider.cs" />
     <Compile Include="Chats\ChatSession.cs" />
     <Compile Include="Chats\ChatStore.cs" />
+    <Compile Include="Chats\DefaultChatService.cs" />
+    <Compile Include="Chats\IChatService.cs" />
     <Compile Include="Commands\OpenAgenteIALocalCommand.cs" />
     <Compile Include="Commands\VsctConsistencyValidator.cs" />
     <Compile Include="Commons\VsixExtensions.cs" />
+    <Compile Include="Execution\DefaultRunExecutor.cs" />
+    <Compile Include="Execution\IRunExecutor.cs" />
     <Compile Include="Execution\MockAgentExecutor.cs" />
     <Compile Include="LoggingV2\VsActivityLogSink.cs" />
     <Compile Include="Options\AgentOptionsViewModel.cs" />
@@ -70,6 +74,10 @@
     <Compile Include="ToolWindows\AgenteIALocalConfigWindow.xaml.cs">
       <DependentUpon>AgenteIALocalConfigWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ToolWindows\AgenteIALocalControl.Chat.cs" />
+    <Compile Include="ToolWindows\AgenteIALocalControl.Helpers.cs" />
+    <Compile Include="ToolWindows\AgenteIALocalControl.Renderers.cs" />
+    <Compile Include="ToolWindows\AgenteIALocalControl.Settings.cs" />
     <Compile Include="ToolWindows\AgenteIALocalControl.xaml.cs">
       <DependentUpon>AgenteIALocalControl.xaml</DependentUpon>
     </Compile>
@@ -135,7 +143,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="AgenteIALocalVSIX.vsct" />
+    <!--<Content Include="AgenteIALocalVSIX.vsct" />-->
     <Content Include="favicon-128.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
