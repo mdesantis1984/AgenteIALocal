@@ -60,6 +60,7 @@ namespace AgenteIALocalVSIX
                 }
 
                 var root = JObject.Parse(text);
+                var changed = false;
 
                 // Ensure version present and supported
                 var version = root.Value<string>("version");
@@ -67,6 +68,7 @@ namespace AgenteIALocalVSIX
                 {
                     // Try to upgrade minimally: set version if missing
                     root["version"] = SchemaVersion;
+                    changed = true;
                 }
 
                 // Deserialize known parts into typed model but keep root for unknown fields preservation
@@ -101,12 +103,20 @@ namespace AgenteIALocalVSIX
                 // preserve raw root
                 settings._raw = root;
 
-                // If no servers, populate default and save
-                if (settings.Servers.Count == 0)
+                changed |= EnsureGlobalSettings(settings);
+                changed |= EnsureServers(settings);
+                changed |= EnsureActiveServerId(settings);
+
+                if (changed)
                 {
-                    var defaults = CreateDefaultSettings();
-                    Save(defaults);
-                    return defaults;
+                    try
+                    {
+                        Save(settings);
+                    }
+                    catch
+                    {
+                        // ignore
+                    }
                 }
 
                 return settings;
@@ -181,6 +191,224 @@ namespace AgenteIALocalVSIX
             }
         }
 
+        // NUEVO METODO EnsureGlobalSettings - ID: 20250304_120000
+        private static bool EnsureGlobalSettings(AgentSettings settings)
+        {
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+
+            var changed = false;
+            var global = settings.GlobalSettings;
+
+            if (global == null || global.Type != JTokenType.Object)
+            {
+                global = new JObject();
+                settings.GlobalSettings = global;
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(global.Value<string>("runMode")))
+            {
+                global["runMode"] = "preguntar";
+                changed = true;
+            }
+
+            var requestDefaultsToken = global["requestDefaults"];
+            var requestDefaults = requestDefaultsToken as JObject;
+            if (requestDefaults == null)
+            {
+                requestDefaults = new JObject();
+                global["requestDefaults"] = requestDefaults;
+                changed = true;
+            }
+
+            if (requestDefaults["stream"] == null || requestDefaults["stream"].Type == JTokenType.Null || requestDefaults["stream"].Type == JTokenType.Undefined)
+            {
+                requestDefaults["stream"] = true;
+                changed = true;
+            }
+
+            if (requestDefaults["temperature"] == null || requestDefaults["temperature"].Type == JTokenType.Null || requestDefaults["temperature"].Type == JTokenType.Undefined)
+            {
+                requestDefaults["temperature"] = 0.2;
+                changed = true;
+            }
+
+            if (requestDefaults["maxTokens"] == null || requestDefaults["maxTokens"].Type == JTokenType.Null || requestDefaults["maxTokens"].Type == JTokenType.Undefined)
+            {
+                requestDefaults["maxTokens"] = 0;
+                changed = true;
+            }
+
+            var agentToken = global["agent"];
+            var agent = agentToken as JObject;
+            if (agent == null)
+            {
+                agent = new JObject();
+                global["agent"] = agent;
+                changed = true;
+            }
+
+            if (agent["ideIntegration"] == null || agent["ideIntegration"].Type == JTokenType.Null || agent["ideIntegration"].Type == JTokenType.Undefined)
+            {
+                agent["ideIntegration"] = true;
+                changed = true;
+            }
+
+            if (agent["applyChanges"] == null || agent["applyChanges"].Type == JTokenType.Null || agent["applyChanges"].Type == JTokenType.Undefined)
+            {
+                agent["applyChanges"] = false;
+                changed = true;
+            }
+
+            if (agent["maxSteps"] == null || agent["maxSteps"].Type == JTokenType.Null || agent["maxSteps"].Type == JTokenType.Undefined)
+            {
+                agent["maxSteps"] = 5;
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        // NUEVO METODO EnsureServers - ID: 20250304_120000
+        private static bool EnsureServers(AgentSettings settings)
+        {
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+
+            var changed = false;
+
+            if (settings.Servers == null)
+            {
+                settings.Servers = new List<ServerConfig>();
+                changed = true;
+            }
+
+            var hasLmstudio = false;
+            var hasJan = false;
+            ServerConfig lmstudioById = null;
+            ServerConfig janById = null;
+
+            foreach (var server in settings.Servers)
+            {
+                if (server == null) continue;
+
+                if (lmstudioById == null && string.Equals(server.Id, "lmstudio-local", StringComparison.OrdinalIgnoreCase))
+                {
+                    lmstudioById = server;
+                }
+
+                if (janById == null && string.Equals(server.Id, "jan-local", StringComparison.OrdinalIgnoreCase))
+                {
+                    janById = server;
+                }
+
+                if (string.Equals(server.Provider, "lmstudio", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasLmstudio = true;
+                }
+
+                if (string.Equals(server.Provider, "jan", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasJan = true;
+                }
+            }
+
+            if (lmstudioById != null && string.IsNullOrWhiteSpace(lmstudioById.Provider))
+            {
+                lmstudioById.Provider = "lmstudio";
+                hasLmstudio = true;
+                changed = true;
+            }
+
+            if (janById != null && string.IsNullOrWhiteSpace(janById.Provider))
+            {
+                janById.Provider = "jan";
+                hasJan = true;
+                changed = true;
+            }
+
+            if (!hasLmstudio)
+            {
+                settings.Servers.Add(new ServerConfig
+                {
+                    Id = "lmstudio-local",
+                    Name = "LM Studio (local)",
+                    Provider = "lmstudio",
+                    BaseUrl = "http://127.0.0.1:1234",
+                    ApiKey = string.Empty,
+                    Model = string.Empty,
+                    IsDefault = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+                changed = true;
+            }
+
+            if (!hasJan)
+            {
+                settings.Servers.Add(new ServerConfig
+                {
+                    Id = "jan-local",
+                    Name = "Jan (local)",
+                    Provider = "jan",
+                    BaseUrl = "http://127.0.0.1:1337",
+                    ApiKey = string.Empty,
+                    Model = string.Empty,
+                    IsDefault = false,
+                    CreatedAt = DateTime.UtcNow
+                });
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        // NUEVO METODO EnsureActiveServerId - ID: 20250304_120000
+        private static bool EnsureActiveServerId(AgentSettings settings)
+        {
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+
+            if (settings.Servers == null || settings.Servers.Count == 0)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(settings.ActiveServerId))
+            {
+                foreach (var server in settings.Servers)
+                {
+                    if (server == null) continue;
+                    if (string.Equals(server.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            string fallbackId = null;
+            foreach (var server in settings.Servers)
+            {
+                if (server == null) continue;
+
+                if (string.Equals(server.Id, "lmstudio-local", StringComparison.OrdinalIgnoreCase))
+                {
+                    fallbackId = server.Id;
+                    break;
+                }
+
+                if (fallbackId == null)
+                {
+                    fallbackId = server.Id;
+                }
+            }
+
+            if (string.IsNullOrEmpty(fallbackId))
+            {
+                return false;
+            }
+
+            settings.ActiveServerId = fallbackId;
+            return true;
+        }
+
         private static AgentSettings CreateDefaultSettings()
         {
             var s = new AgentSettings();
@@ -192,10 +420,21 @@ namespace AgenteIALocalVSIX
                     Id = "lmstudio-local",
                     Name = "LM Studio (local)",
                     Provider = "lmstudio",
-                    BaseUrl = "http://127.0.0.1:8080",
+                    BaseUrl = "http://127.0.0.1:1234",
                     ApiKey = string.Empty,
                     Model = string.Empty,
                     IsDefault = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new ServerConfig
+                {
+                    Id = "jan-local",
+                    Name = "Jan (local)",
+                    Provider = "jan",
+                    BaseUrl = "http://127.0.0.1:1337",
+                    ApiKey = string.Empty,
+                    Model = string.Empty,
+                    IsDefault = false,
                     CreatedAt = DateTime.UtcNow
                 }
             };
@@ -203,7 +442,20 @@ namespace AgenteIALocalVSIX
             s.GlobalSettings = new JObject
             {
                 ["defaultTimeoutMs"] = 60000,
-                ["useProxy"] = false
+                ["useProxy"] = false,
+                ["runMode"] = "preguntar",
+                ["requestDefaults"] = new JObject
+                {
+                    ["stream"] = true,
+                    ["temperature"] = 0.2,
+                    ["maxTokens"] = 0
+                },
+                ["agent"] = new JObject
+                {
+                    ["ideIntegration"] = true,
+                    ["applyChanges"] = false,
+                    ["maxSteps"] = 5
+                }
             };
 
             s.TaskProfiles = new JArray();
