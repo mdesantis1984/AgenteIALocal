@@ -273,6 +273,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -280,9 +281,10 @@
                     <TextBox Grid.Row="1" x:Name="ActiveServerIdTextBox_Modal" Style="{StaticResource UxTextBox}" />
 
                     <TextBlock Grid.Row="2" Text="Base URL" Foreground="#FFFFFFFF" Margin="0,10,0,4" />
-                    <TextBox Grid.Row="3" x:Name="ServerBaseUrlTextBox_Modal" Style="{StaticResource UxTextBox}" />
+                    <TextBox Grid.Row="3" x:Name="ServerBaseUrlTextBox_Modal" Style="{StaticResource UxTextBox}" TextChanged="ServerBaseUrlTextBox_Modal_TextChanged" />
+                    <TextBlock Grid.Row="4" x:Name="ServerBaseUrlPingErrorText_Modal" Foreground="{StaticResource DangerBrush}" Visibility="Collapsed" Text="Servidor no responde (/v1/models)." Margin="0,6,0,0" />
 
-                    <StackPanel Grid.Row="4" Orientation="Vertical" Margin="0,10,0,0">
+                    <StackPanel Grid.Row="5" Orientation="Vertical" Margin="0,10,0,0">
                         <TextBlock Text="Model" Foreground="#FFFFFFFF" Margin="0,0,0,4" />
                         <ComboBox x:Name="ServerModelCombo_Modal" Style="{StaticResource DarkFlatComboBoxStyle}" IsEditable="False" />
 

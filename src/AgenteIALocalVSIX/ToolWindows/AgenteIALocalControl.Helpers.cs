@@ -524,20 +524,53 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        private void SettingsButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var panel = GetElement<StackPanel>("SettingsPanel");
-                if (panel == null) return;
-                panel.Visibility = panel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
-            }
-            catch { }
-        }
-
         private void RefreshLogButton_Click(object sender, RoutedEventArgs e)
         {
             try { RefreshLogFromFile(); } catch { }
+        }
+        // NUEVO METODO SettingsButton_Click - ID: 20260114_000050
+        private async void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+                var w = new AgenteIALocalConfigWindow();
+
+                try
+                {
+                    w.BaseUrlHealthChanged += async (ok, baseUrl, models) =>
+                    {
+                        try
+                        {
+                            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                            ApplyConfigHealthFromModal(ok, models);
+                        }
+                        catch { }
+                    };
+                }
+                catch { }
+
+                try
+                {
+                    var owner = Window.GetWindow(this);
+                    if (owner != null)
+                    {
+                        w.Owner = owner;
+                    }
+                }
+                catch { }
+
+                w.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                if (!_settingsOpenErrorLogged)
+                {
+                    _settingsOpenErrorLogged = true;
+                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "Failed to open config window", ex); } catch { }
+                }
+            }
         }
 
         private void CopyLogAllButton_Click(object sender, RoutedEventArgs e)

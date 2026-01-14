@@ -86,6 +86,20 @@ namespace AgenteIALocalVSIX.ToolWindows
         private int _streamingFlushedLength = 0; // NUEVO CAMPO - ID: 20260114_000031
         private Paragraph _streamingAiParagraph = null; // NUEVO CAMPO - ID: 20260114_000032
         private Run _streamingAiLastRun = null; // NUEVO CAMPO - ID: 20260114_000033
+        // Guard to avoid spamming error logs when opening settings fails
+        private bool _settingsOpenErrorLogged = false; // NUEVO CAMPO - ID: 20260114_000051
+        // NUEVO CAMPO ConfigStatus - ID: 20260114_000060
+        private string _configStatus = "UNKNOWN"; // UNKNOWN|OK|ERROR
+        // NUEVO CAMPO ConfigStatusLabel - ID: 20260114_000061
+        private string _configStatusLabel = "CONFIG UNKNOWN";
+        // NUEVO CAMPO ConfigStatusBrush - ID: 20260114_000062
+        private Brush _configStatusBrush = Brushes.Gray;
+        // NUEVO CAMPO ValidatingConfig - ID: 20260114_000068
+        private int _configValidationGate = 0;
+        // NUEVA PROPIEDAD ConfigStatusLabel - ID: 20260114_000070
+        public string ConfigStatusLabel => _configStatusLabel;
+        // NUEVA PROPIEDAD ConfigStatusBrush - ID: 20260114_000071
+        public Brush ConfigStatusBrush => _configStatusBrush;
 
         public ExecutionState CurrentExecutionState
         {
@@ -809,6 +823,39 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: selection handler error: {ex.Message}", ex); } catch { }
             }
+        }
+
+        // NUEVO METODO ApplyConfigHealthFromModal - ID: 20260114_000078
+        internal void ApplyConfigHealthFromModal(bool ok, IReadOnlyList<string> models)
+        {
+            try
+            {
+                ConfigLabel = ok ? "OK Config" : "Not Config";
+
+                if (ModelOfLLM != null)
+                {
+                    ModelOfLLM.Items.Clear();
+                    if (ok && models != null)
+                    {
+                        foreach (var m in models) ModelOfLLM.Items.Add(m);
+                        if (ModelOfLLM.Items.Count > 0)
+                        {
+                            ModelOfLLM.SelectedIndex = 0;
+                        }
+                        else
+                        {
+                            ModelOfLLM.SelectedItem = null;
+                        }
+                    }
+                    else
+                    {
+                        ModelOfLLM.SelectedItem = null;
+                    }
+                }
+
+                RaisePropertyChanged(nameof(ConfigLabel));
+            }
+            catch { }
         }
         private void PromptTextBox_KeyDown(object sender, KeyEventArgs e)
         {

@@ -5,12 +5,21 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Windows.Media;
 using System.Windows.Input;
+using System.Threading;
+using System.Net.Http;
+using System.Windows.Controls;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
     public partial class AgenteIALocalConfigWindow : Window
     {
         private readonly string initialServerId;
+        // NUEVO CAMPO BaseUrlPingCts - ID: 20260114_000072
+        private CancellationTokenSource _baseUrlPingCts;
+        // NUEVO CAMPO LastPersistedBaseUrl - ID: 20260114_000073
+        private string _lastPersistedBaseUrl;
+        // NUEVO EVENTO BaseUrlHealthChanged - ID: 20260114_000079
+        public event Action<bool, string, IReadOnlyList<string>> BaseUrlHealthChanged;
 
         public AgenteIALocalConfigWindow(string serverId = null)
         {
@@ -95,6 +104,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                             ActiveServerIdTextBox_Modal.Text = targetId ?? string.Empty;
                             ServerBaseUrlTextBox_Modal.Text = srv?.BaseUrl ?? string.Empty;
+                            _lastPersistedBaseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
                             ServerApiKeyTextBox_Modal.Text = srv?.ApiKey ?? string.Empty;
 
                             // Wire BaseUrl change to re-fetch models
@@ -156,34 +166,191 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 try
                 {
-                    try
-                    {
-                        var newBase = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
-                        if (string.IsNullOrWhiteSpace(newBase))
-                        {
-                            ServerModelCombo_Modal.Items.Clear();
-                            return;
-                        }
-
-                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: BaseUrl changed in modal to {newBase}; fetching models..."); } catch { }
-                        var models = await FetchModelsAsync(newBase);
-                        ServerModelCombo_Modal.Items.Clear();
-                        if (models != null && models.Count > 0)
-                        {
-                            foreach (var m in models) ServerModelCombo_Modal.Items.Add(m);
-                            ServerModelCombo_Modal.SelectedIndex = 0;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Error re-fetching models on BaseUrl change: {ex.Message}", ex); } catch { }
-                    }
                 }
                 catch (Exception exOuter)
                 {
                     try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigWindow ServerBaseUrl LostFocus: unexpected error: {exOuter.Message}", exOuter); } catch { }
                 }
             });
+        }
+
+        // NUEVO METODO ServerBaseUrlTextBox_Modal_TextChanged - ID: 20260114_000074
+        private async void ServerBaseUrlTextBox_Modal_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            try
+            {
+                _baseUrlPingCts?.Cancel();
+                _baseUrlPingCts?.Dispose();
+                _baseUrlPingCts = new CancellationTokenSource();
+                var ct = _baseUrlPingCts.Token;
+
+                var baseUrl = (ServerBaseUrlTextBox_Modal.Text ?? string.Empty).Trim();
+                ServerBaseUrlPingErrorText_Modal.Visibility = Visibility.Collapsed;
+                ServerBaseUrlTextBox_Modal.ToolTip = null;
+
+                if (string.IsNullOrWhiteSpace(baseUrl))
+                {
+                    try
+                    {
+                        ServerModelCombo_Modal.Items.Clear();
+                        ServerModelCombo_Modal.SelectedItem = null;
+                    }
+                    catch { }
+                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, Array.Empty<string>()); } catch { }
+                    return;
+                }
+
+                if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var _))
+                {
+                    ShowBaseUrlError("URL inválida");
+                    try
+                    {
+                        ServerModelCombo_Modal.Items.Clear();
+                        ServerModelCombo_Modal.SelectedItem = null;
+                    }
+                    catch { }
+                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, Array.Empty<string>()); } catch { }
+                    return;
+                }
+
+                var endpoint = baseUrl.TrimEnd('/') + "/v1/models";
+
+                using (var client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(3);
+                    HttpResponseMessage resp = null;
+                    try
+                    {
+                        resp = await client.GetAsync(endpoint, ct).ConfigureAwait(true);
+                        if (ct.IsCancellationRequested) return;
+
+                        if (resp.IsSuccessStatusCode)
+                        {
+                            HideBaseUrlError();
+                            PersistBaseUrlIfChanged(baseUrl);
+
+                            List<string> models = new List<string>();
+                            try
+                            {
+                                models = await FetchModelsAsync(baseUrl);
+                            }
+                            catch { }
+
+                            try
+                            {
+                                ServerModelCombo_Modal.Items.Clear();
+                                if (models != null && models.Count > 0)
+                                {
+                                    foreach (var m in models) ServerModelCombo_Modal.Items.Add(m);
+                                    ServerModelCombo_Modal.SelectedIndex = 0;
+                                }
+                                else
+                                {
+                                    ServerModelCombo_Modal.SelectedItem = null;
+                                }
+                            }
+                            catch { }
+
+                            try { BaseUrlHealthChanged?.Invoke(true, baseUrl, models); } catch { }
+                        }
+                        else
+                        {
+                            ShowBaseUrlError($"Servidor responde {resp.StatusCode}");
+                            try
+                            {
+                                ServerModelCombo_Modal.Items.Clear();
+                                ServerModelCombo_Modal.SelectedItem = null;
+                            }
+                            catch { }
+                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, Array.Empty<string>()); } catch { }
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // cancelled; ignore
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!ct.IsCancellationRequested)
+                        {
+                            ShowBaseUrlError(ex.Message);
+                            try
+                            {
+                                ServerModelCombo_Modal.Items.Clear();
+                                ServerModelCombo_Modal.SelectedItem = null;
+                            }
+                            catch { }
+                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, Array.Empty<string>()); } catch { }
+                        }
+                    }
+                    finally
+                    {
+                        try { resp?.Dispose(); } catch { }
+                    }
+                }
+            }
+            catch (Exception exOuter)
+            {
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: BaseUrl ping error: {exOuter.Message}", exOuter); } catch { }
+            }
+        }
+
+        // NUEVO METODO PersistBaseUrlIfChanged - ID: 20260114_000075
+        private void PersistBaseUrlIfChanged(string baseUrl)
+        {
+            try
+            {
+                if (string.Equals(baseUrl, _lastPersistedBaseUrl, StringComparison.Ordinal)) return;
+
+                var settings = AgentSettingsStore.Load() ?? new AgentSettings();
+                if (settings.Servers == null) settings.Servers = new List<ServerConfig>();
+
+                var targetId = ActiveServerIdTextBox_Modal.Text;
+                if (string.IsNullOrWhiteSpace(targetId))
+                {
+                    targetId = settings.ActiveServerId ?? settings.Servers.FirstOrDefault()?.Id ?? string.Empty;
+                }
+                if (string.IsNullOrWhiteSpace(targetId)) return;
+
+                var srv = settings.Servers.Find(s => string.Equals(s.Id, targetId, StringComparison.OrdinalIgnoreCase));
+                if (srv == null)
+                {
+                    srv = new ServerConfig { Id = targetId, Name = targetId, Provider = settings.Servers.FirstOrDefault()?.Provider ?? "lmstudio", CreatedAt = DateTime.UtcNow };
+                    settings.Servers.Add(srv);
+                }
+
+                srv.BaseUrl = baseUrl;
+                settings.ActiveServerId = targetId;
+                AgentSettingsStore.Save(settings);
+                _lastPersistedBaseUrl = baseUrl;
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: BaseUrl ping OK, persisted '{baseUrl}' for server '{targetId}'"); } catch { }
+            }
+            catch (Exception ex)
+            {
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: PersistBaseUrlIfChanged error: {ex.Message}", ex); } catch { }
+            }
+        }
+
+        // NUEVO METODO ShowBaseUrlError - ID: 20260114_000076
+        private void ShowBaseUrlError(string message)
+        {
+            try
+            {
+                ServerBaseUrlPingErrorText_Modal.Visibility = Visibility.Visible;
+                if (!string.IsNullOrWhiteSpace(message)) ServerBaseUrlTextBox_Modal.ToolTip = message;
+            }
+            catch { }
+        }
+
+        // NUEVO METODO HideBaseUrlError - ID: 20260114_000077
+        private void HideBaseUrlError()
+        {
+            try
+            {
+                ServerBaseUrlPingErrorText_Modal.Visibility = Visibility.Collapsed;
+                ServerBaseUrlTextBox_Modal.ToolTip = null;
+            }
+            catch { }
         }
 
         private async Task<List<string>> FetchModelsAsync(string baseUrl)
