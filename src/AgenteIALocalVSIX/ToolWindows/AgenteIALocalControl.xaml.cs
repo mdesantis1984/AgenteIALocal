@@ -18,6 +18,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -74,6 +75,18 @@ namespace AgenteIALocalVSIX.ToolWindows
         private List<ChatSession> chats = new List<ChatSession>();
         private ChatSession activeChat = null;
 
+        // Sticky auto-scroll support
+        private System.Windows.Controls.ScrollViewer _responseScrollViewer = null;
+        private double _stickyThresholdPx = 48.0; // distance from bottom to consider 'at bottom'
+        private bool _userScrolledAway = false;
+        private int _autoScrollMinDeltaChars = 128;
+        private int _lastAutoScrollTotalChars = 0;
+        private bool _responseScrollViewerWired = false;
+        // Streaming incremental append state
+        private int _streamingFlushedLength = 0; // NUEVO CAMPO - ID: 20260114_000031
+        private Paragraph _streamingAiParagraph = null; // NUEVO CAMPO - ID: 20260114_000032
+        private Run _streamingAiLastRun = null; // NUEVO CAMPO - ID: 20260114_000033
+
         public ExecutionState CurrentExecutionState
         {
             get => currentExecutionState;
@@ -84,6 +97,164 @@ namespace AgenteIALocalVSIX.ToolWindows
                 RaisePropertyChanged(nameof(CurrentExecutionState));
                 UpdateStateProperties(value);
             }
+        }
+
+        // NUEVO METODO ApplyStreamingDeltaFrom - ID: 20260114_000034
+        private void ApplyStreamingDeltaFrom(StringBuilder sb)
+        {
+            try
+            {
+                if (_streamingAiRun == null) return;
+
+                var para = _streamingAiParagraph;
+                var lastRun = _streamingAiLastRun ?? _streamingAiRun;
+
+                var prev = _streamingFlushedLength;
+                var curr = sb.Length;
+                var deltaLen = curr - prev;
+                if (deltaLen <= 0) return;
+
+                string delta = null;
+                try { delta = sb.ToString(prev, deltaLen); } catch { delta = sb.ToString(); }
+
+                if (para == null)
+                {
+                    try { _streamingAiRun.Text = sb.ToString(); } catch { }
+                    _streamingFlushedLength = curr;
+                    try { AutoScrollIfSticky(deltaLen); } catch { }
+                    return;
+                }
+
+                if (lastRun.Text != null && lastRun.Text.Length < 4096)
+                {
+                    try { lastRun.Text += delta; }
+                    catch
+                    {
+                        var nr = new Run(delta);
+                        try { para.Inlines.Add(nr); } catch { }
+                        lastRun = nr;
+                    }
+                }
+                else
+                {
+                    var nr = new Run(delta);
+                    try { para.Inlines.Add(nr); } catch { }
+                    lastRun = nr;
+                }
+
+                _streamingAiLastRun = lastRun;
+                _streamingFlushedLength = curr;
+                try { AutoScrollIfSticky(deltaLen); } catch { }
+            }
+            catch { }
+        }
+
+
+        // NUEVO METODO AutoScrollIfSticky - ID: 20260114_000021
+        private void AutoScrollIfSticky(int recentDeltaChars)
+        {
+            try
+            {
+                EnsureResponseScrollViewer();
+                if (ResponseJsonText == null) return;
+
+                // Determine total chars in document roughly
+                var totalText = string.Empty;
+                try
+                {
+                    var doc = ResponseJsonText.Document;
+                    if (doc != null)
+                    {
+                        var range = new TextRange(doc.ContentStart, doc.ContentEnd);
+                        totalText = range.Text ?? string.Empty;
+                    }
+                }
+                catch { }
+
+                int totalChars = totalText.Length;
+
+                // Delta guard to reduce ScrollToEnd frequency
+                if (Math.Abs(totalChars - _lastAutoScrollTotalChars) < _autoScrollMinDeltaChars) return;
+
+                // If user scrolled away, don't force scroll
+                if (_userScrolledAway) return;
+
+                // Only scroll if we have a viewer
+                if (_responseScrollViewer == null)
+                {
+                    EnsureResponseScrollViewer();
+                    if (_responseScrollViewer == null) return;
+                }
+
+                // Check distance from bottom in pixels; if already near bottom, perform autoscroll
+                var extentHeight = _responseScrollViewer.ExtentHeight;
+                var viewportHeight = _responseScrollViewer.ViewportHeight;
+                var verticalOffset = _responseScrollViewer.VerticalOffset;
+                var distanceFromBottom = extentHeight - (verticalOffset + viewportHeight);
+
+                if (distanceFromBottom <= _stickyThresholdPx)
+                {
+                    // Post-layout scroll to end to avoid forcing layout during chunk update
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            ResponseJsonText.ScrollToEnd();
+                            _lastAutoScrollTotalChars = totalChars;
+                        }
+                        catch { }
+                    }), DispatcherPriority.Background);
+                }
+            }
+            catch { }
+        }
+
+        // NUEVO METODO EnsureResponseScrollViewer - ID: 20260114_000020
+        private void EnsureResponseScrollViewer()
+        {
+            try
+            {
+                if (_responseScrollViewer != null || ResponseJsonText == null) return;
+
+                // Try to find internal ScrollViewer of the RichTextBox
+                _responseScrollViewer = FindVisualChild<System.Windows.Controls.ScrollViewer>(ResponseJsonText);
+                if (_responseScrollViewer != null && !_responseScrollViewerWired)
+                {
+                    _responseScrollViewerWired = true;
+                    _responseScrollViewer.ScrollChanged += (s, e) =>
+                    {
+                        try
+                        {
+                            // If the user scrolls away from bottom by more than threshold, mark userScrolledAway
+                            var extentHeight = _responseScrollViewer.ExtentHeight;
+                            var viewportHeight = _responseScrollViewer.ViewportHeight;
+                            var verticalOffset = _responseScrollViewer.VerticalOffset;
+                            var distanceFromBottom = extentHeight - (verticalOffset + viewportHeight);
+                            _userScrolledAway = distanceFromBottom > _stickyThresholdPx;
+                        }
+                        catch { }
+                    };
+                    ResponseJsonText.PreviewMouseWheel += (s, e) =>
+                    {
+                        try { EnsureResponseScrollViewer(); } catch { }
+                    };
+                }
+            }
+            catch { }
+        }
+
+        // Visual tree helper generic finder
+        private static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null) return null;
+            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is T t) return t;
+                var res = FindVisualChild<T>(child);
+                if (res != null) return res;
+            }
+            return null;
         }
 
         private static void EnsureMahAppsIconPacksLoaded()
@@ -181,6 +352,16 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             // Ensure initial size label is correct even before first refresh tick
             try { UpdateLogFileSizeLabelFromBytes(TryGetLogFileSizeBytes()); } catch { }
+
+            // Wire up response scroll viewer detection after control is loaded
+            try
+            {
+                this.Loaded += (s, e) =>
+                {
+                    try { EnsureResponseScrollViewer(); } catch { }
+                };
+            }
+            catch { }
 
             // Load current settings into settings panel (but keep panel hidden)
             try
@@ -907,7 +1088,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                                         {
                                             lastIncrementalTick = nowTick;
                                             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
-                                            try { if (ReferenceEquals(aiBubble, _streamingAiMessage) && _streamingAiRun != null) { _streamingAiRun.Text = sb.ToString(); if (_streamingAiViewer != null) { try { _streamingAiViewer.BringIntoView(); } catch { } } } } catch { }
+                                            try
+                                            {
+                                                if (ReferenceEquals(aiBubble, _streamingAiMessage) && _streamingAiRun != null)
+                                                {
+                                                    ApplyStreamingDeltaFrom(sb);
+                                                }
+                                            }
+                                            catch { }
                                         }
                                     }
                                     catch { /* ignore malformed chunks */ }

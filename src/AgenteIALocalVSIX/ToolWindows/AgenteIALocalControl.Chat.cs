@@ -349,6 +349,14 @@ namespace AgenteIALocalVSIX.ToolWindows
             _streamingAiMessage = null;
             _streamingAiRun = null;
             _streamingAiViewer = null;
+            try
+            {
+                // Clear incremental streaming state (same partial class fields)
+                _streamingFlushedLength = 0;
+                _streamingAiParagraph = null;
+                _streamingAiLastRun = null;
+            }
+            catch { }
         }
 
         // NUEVO METODO RepairMissingMessageTokensFromUiState - ID: 20260114_000012
@@ -572,6 +580,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                 doc.Blocks.Add(p);
 
                 _streamingAiRun = run;
+                try
+                {
+                    // initialize paragraph/run state for incremental append (presentation-only)
+                    _streamingAiParagraph = p;
+                    _streamingAiLastRun = run;
+                    _streamingFlushedLength = 0;
+                }
+                catch { }
             }
             else
             {
