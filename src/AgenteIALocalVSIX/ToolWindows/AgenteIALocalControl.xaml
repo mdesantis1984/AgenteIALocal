@@ -13,6 +13,9 @@
     <SolidColorBrush x:Key="HeaderHighEmphasisBrush" Color="#FFFFFFFF" />
     <SolidColorBrush x:Key="HeaderMediumEmphasisBrush" Color="#FF424242" />
     <SolidColorBrush x:Key="HeaderCyanHoverBrush" Color="#00BCD4" />
+    <SolidColorBrush x:Key="GreenBrush" Color="LimeGreen" />
+    <SolidColorBrush x:Key="RedBrush" Color="IndianRed" />
+    <SolidColorBrush x:Key="BlueBrush" Color="DodgerBlue" />
     <SolidColorBrush x:Key="Brush.LayoutBg" Color="#282828" />
     <SolidColorBrush x:Key="Brush.ChangesBg" Color="#2E2E2E" />
     <SolidColorBrush x:Key="Brush.FooterBg" Color="#383838" />
@@ -1383,7 +1386,7 @@
                       <Style.Triggers>
 
                         <!-- Running: Stop grande + mismo efecto que Play -->
-                        <DataTrigger Binding="{Binding StateLabel}" Value="Running">
+                        <DataTrigger Binding="{Binding CurrentExecutionState}" Value="{x:Static local:AgenteIALocalControl+ExecutionState.Running}">
 
                           <!-- Stop icon -->
                           <Setter Property="Content">

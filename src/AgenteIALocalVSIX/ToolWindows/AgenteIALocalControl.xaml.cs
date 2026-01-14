@@ -692,48 +692,87 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             try
             {
-                switch (state)
+                Ui(() =>
                 {
-                    case ExecutionState.Idle:
-                        StateIconKind = PackIconKind.Play;
-                        StateColor = (Brush)FindResource("GreenBrush");
-                        StateLabel = "Idle";
-                        RunButtonEnabled = true;
-                        ClearButtonEnabled = true;
-                        IsPromptReadOnly = false;
-                        break;
+                    var green = ResolveBrushOrFallback("GreenBrush", Brushes.LimeGreen);
+                    var red = ResolveBrushOrFallback("RedBrush", Brushes.IndianRed);
+                    var blue = ResolveBrushOrFallback("BlueBrush", Brushes.DodgerBlue);
 
-                    case ExecutionState.Running:
-                        StateIconKind = PackIconKind.Stop;
-                        StateColor = (Brush)FindResource("RedBrush");
-                        StateLabel = "Running";
-                        RunButtonEnabled = true;
-                        ClearButtonEnabled = false;
-                        IsPromptReadOnly = true;
-                        break;
+                    switch (state)
+                    {
+                        case ExecutionState.Idle:
+                            StateIconKind = PackIconKind.Play;
+                            StateColor = green;
+                            StateLabel = "Idle";
+                            RunButtonEnabled = true;
+                            ClearButtonEnabled = true;
+                            IsPromptReadOnly = false;
+                            break;
 
-                    case ExecutionState.Completed:
-                        StateIconKind = PackIconKind.Check;
-                        StateColor = (Brush)FindResource("BlueBrush");
-                        StateLabel = "Completed";
-                        RunButtonEnabled = true;
-                        ClearButtonEnabled = true;
-                        IsPromptReadOnly = false;
-                        break;
+                        case ExecutionState.Running:
+                            StateIconKind = PackIconKind.Stop;
+                            StateColor = red;
+                            StateLabel = "Running";
+                            RunButtonEnabled = true;
+                            ClearButtonEnabled = false;
+                            IsPromptReadOnly = true;
+                            break;
 
-                    case ExecutionState.Error:
-                        StateIconKind = PackIconKind.Error;
-                        StateColor = (Brush)FindResource("RedBrush");
-                        StateLabel = "Error";
-                        RunButtonEnabled = false;
-                        ClearButtonEnabled = true;
-                        IsPromptReadOnly = false;
-                        break;
-                }
+                        case ExecutionState.Completed:
+                            StateIconKind = PackIconKind.Check;
+                            StateColor = blue;
+                            StateLabel = "Completed";
+                            RunButtonEnabled = true;
+                            ClearButtonEnabled = true;
+                            IsPromptReadOnly = false;
+                            break;
+
+                        case ExecutionState.Error:
+                            StateIconKind = PackIconKind.Error;
+                            StateColor = red;
+                            StateLabel = "Error";
+                            RunButtonEnabled = false;
+                            ClearButtonEnabled = true;
+                            IsPromptReadOnly = false;
+                            break;
+                    }
+
+                    RaisePropertyChanged(nameof(StateIconKind));
+                    RaisePropertyChanged(nameof(StateColor));
+                    RaisePropertyChanged(nameof(StateLabel));
+                });
             }
             catch (Exception ex)
             {
                 try { AgentComposition.Error(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] Error updating state properties: " + ex.Message, ex); } catch { }
+            }
+        }
+
+        private readonly System.Collections.Generic.HashSet<string> _warnedMissingBrushKeys = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+
+        // NUEVO METODO ResolveBrushOrFallback - ID: 20260114_000010
+        private Brush ResolveBrushOrFallback(string key, Brush fallback)
+        {
+            try
+            {
+                var resolved = TryFindResource(key) as Brush;
+                if (resolved != null) return resolved;
+
+                // Log a single warning per missing key to avoid spam
+                try
+                {
+                    if (_warnedMissingBrushKeys.Add(key))
+                    {
+                        AgentComposition.Info(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"Brush resource missing: {key}. Using fallback.");
+                    }
+                }
+                catch { }
+
+                return fallback;
+            }
+            catch
+            {
+                return fallback;
             }
         }
 
@@ -768,227 +807,138 @@ namespace AgenteIALocalVSIX.ToolWindows
                 Timestamp = DateTime.UtcNow.ToString("o")
             };
 
+            if (server == null) return respObj;
+
+            var baseUrl = (server.BaseUrl ?? string.Empty).TrimEnd('/');
+            var url = baseUrl + "/v1/chat/completions";
+
+            var payload = new JObject();
+            if (!string.IsNullOrWhiteSpace(server.Model)) payload["model"] = server.Model;
+            payload["stream"] = true;
+            try { payload["stream_options"] = new JObject(new JProperty("include_usage", true)); } catch { }
+            payload["messages"] = new JArray(new JObject { ["role"] = "user", ["content"] = BuildLmStudioPrompt(req) });
+
             try
             {
-                if (server == null) return respObj;
-
-                var baseUrl = (server.BaseUrl ?? string.Empty).TrimEnd('/');
-                var url = baseUrl + "/v1/chat/completions";
-
-                var payload = new JObject();
-                if (!string.IsNullOrWhiteSpace(server.Model))
-                    payload["model"] = server.Model;
-
-                payload["stream"] = true;
-                payload["messages"] = new JArray(new JObject
-                {
-                    ["role"] = "user",
-                    ["content"] = BuildLmStudioPrompt(req)
-                });
-
                 using (var client = new HttpClient())
                 {
                     client.Timeout = TimeSpan.FromMinutes(10);
-
                     using (var httpReq = new HttpRequestMessage(HttpMethod.Post, url))
                     {
                         httpReq.Headers.Accept.Clear();
-                        try
-                        {
-                            httpReq.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream"));
-                        }
-                        catch { }
-
+                        try { httpReq.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream")); } catch { }
                         if (!string.IsNullOrWhiteSpace(server.ApiKey))
                         {
-                            try
-                            {
-                                httpReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", server.ApiKey);
-                            }
-                            catch { }
+                            try { httpReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", server.ApiKey); } catch { }
                         }
-
                         httpReq.Content = new StringContent(payload.ToString(Formatting.None), Encoding.UTF8, "application/json");
 
-                        using (var httpResp = await client.SendAsync(httpReq, HttpCompletionOption.ResponseHeadersRead, ct))
+                        HttpResponseMessage httpResp = await client.SendAsync(httpReq, HttpCompletionOption.ResponseHeadersRead, ct);
+                        if (!httpResp.IsSuccessStatusCode && httpResp.StatusCode == System.Net.HttpStatusCode.BadRequest && payload["stream_options"] != null)
                         {
-                            if (!httpResp.IsSuccessStatusCode)
+                            try { httpResp.Dispose(); } catch { }
+                            payload.Remove("stream_options");
+                            using (var retryReq = new HttpRequestMessage(HttpMethod.Post, url))
                             {
-                                string body = string.Empty;
-                                try { body = await httpResp.Content.ReadAsStringAsync(); } catch { }
-
-                                var sample = body ?? string.Empty;
-                                if (sample.Length > 600) sample = sample.Substring(0, 600) + "...";
-
-                                respObj.Error = "LM Studio HTTP " + (int)httpResp.StatusCode + " " + httpResp.ReasonPhrase + (string.IsNullOrEmpty(sample) ? string.Empty : (": " + sample));
-                                return respObj;
-                            }
-
-                            var sb = new StringBuilder();
-                            int? promptTokens = null;
-                            int? completionTokens = null;
-                            int? totalTokens = null;
-
-                            int renderPending = 0;
-                            long lastRenderTick = 0;
-                            int lastRenderedLen = 0;
-
-                            async Task QueueRenderAsync(bool force = false)
-                            {
-                                if (ct.IsCancellationRequested) return;
-
-                                var now = Stopwatch.GetTimestamp();
-                                if (!force)
+                                retryReq.Headers.Accept.Clear();
+                                try { retryReq.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream")); } catch { }
+                                if (!string.IsNullOrWhiteSpace(server.ApiKey))
                                 {
-                                    var last = Interlocked.Read(ref lastRenderTick);
-                                    if (last != 0 && (now - last) < 33)
-                                        return;
+                                    try { retryReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", server.ApiKey); } catch { }
                                 }
-
-                                if (Interlocked.Exchange(ref renderPending, 1) != 0) return;
-                                try
-                                {
-                                    Interlocked.Exchange(ref lastRenderTick, now);
-
-                                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
-
-                                    var currentLen = 0;
-                                    try { currentLen = aiBubble?.Content?.Length ?? 0; } catch { }
-
-                                    if (force || currentLen != lastRenderedLen)
-                                    {
-                                        lastRenderedLen = currentLen;
-                                        RenderActiveChatToUi();
-                                    }
-                                }
-                                catch (OperationCanceledException)
-                                {
-                                    // ignore cancellation
-                                }
-                                catch
-                                {
-                                    // ignore render errors
-                                }
-                                finally
-                                {
-                                    Interlocked.Exchange(ref renderPending, 0);
-                                }
+                                retryReq.Content = new StringContent(payload.ToString(Formatting.None), Encoding.UTF8, "application/json");
+                                try { httpResp = await client.SendAsync(retryReq, HttpCompletionOption.ResponseHeadersRead, ct); try { AgentComposition.Info(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "LM Studio: stream_options.include_usage rejected by server; retrying without it."); } catch { } }
+                                catch (Exception exRetry) { respObj.Error = "LM Studio retry failed: " + exRetry.Message; return respObj; }
                             }
+                        }
 
-                            CancellationTokenRegistration cancelReg = default(CancellationTokenRegistration);
-                            try
-                            {
-                                cancelReg = ct.Register(() =>
-                                {
-                                    try { httpResp.Dispose(); } catch { }
-                                });
-
-                                using (var stream = await httpResp.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                                using (var reader = new StreamReader(stream))
-                                {
-                                    while (!ct.IsCancellationRequested)
-                                    {
-                                        string line = null;
-                                        try { line = await reader.ReadLineAsync().ConfigureAwait(false); }
-                                        catch { break; }
-
-                                        if (line == null) break;
-
-                                        if (string.IsNullOrWhiteSpace(line))
-                                            continue;
-
-                                        if (!line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
-                                            continue;
-
-                                        var data = line.Substring(5).Trim();
-
-                                        if (string.Equals(data, "[DONE]", StringComparison.OrdinalIgnoreCase))
-                                            break;
-
-                                        if (string.IsNullOrEmpty(data))
-                                            continue;
-
-                                        try
-                                        {
-                                            var j = JObject.Parse(data);
-
-                                            var u = j["usage"] as JObject;
-                                            if (u != null)
-                                            {
-                                                promptTokens = promptTokens ?? u.Value<int?>("prompt_tokens");
-                                                completionTokens = completionTokens ?? u.Value<int?>("completion_tokens");
-                                                totalTokens = totalTokens ?? u.Value<int?>("total_tokens");
-                                            }
-
-                                            var chunk =
-                                                j.SelectToken("choices[0].delta.content")?.ToString() ??
-                                                j.SelectToken("choices[0].message.content")?.ToString() ??
-                                                j.SelectToken("choices[0].text")?.ToString();
-
-                                            if (string.IsNullOrEmpty(chunk))
-                                                continue;
-
-                                            sb.Append(chunk);
-
-                                            try
-                                            {
-                                                if (aiBubble != null) aiBubble.Content = sb.ToString();
-                                            }
-                                            catch { }
-
-                                            await QueueRenderAsync();
-                                        }
-                                        catch
-                                        {
-                                            // ignore malformed chunks
-                                        }
-                                    }
-                                }
-                            }
-                            finally
-                            {
-                                try { cancelReg.Dispose(); } catch { }
-                            }
-
-                            var finalText = sb.ToString();
-
-                            try
-                            {
-                                if (aiBubble != null) aiBubble.Content = finalText;
-                            }
-                            catch { }
-
-                            await QueueRenderAsync(force: true);
-
-                            if (ct.IsCancellationRequested)
-                            {
-                                respObj.Error = "Cancelled";
-                                return respObj;
-                            }
-
-                            TryPersistChat(chat);
-
-                            RenderActiveChatToUi();
-
-                            respObj.Success = true;
-                            respObj.Output = finalText;
-                            respObj.PromptTokens = promptTokens;
-                            respObj.CompletionTokens = completionTokens;
-                            respObj.TotalTokens = totalTokens;
+                        if (!httpResp.IsSuccessStatusCode)
+                        {
+                            string body = string.Empty;
+                            try { body = await httpResp.Content.ReadAsStringAsync(); } catch { }
+                            var sample = body ?? string.Empty;
+                            if (sample.Length > 600) sample = sample.Substring(0, 600) + "...";
+                            respObj.Error = "LM Studio HTTP " + (int)httpResp.StatusCode + " " + httpResp.ReasonPhrase + (string.IsNullOrEmpty(sample) ? string.Empty : (": " + sample));
                             return respObj;
                         }
+
+                        var sb = new StringBuilder();
+                        int? promptTokens = null;
+                        int? completionTokens = null;
+                        int? totalTokens = null;
+
+                        long lastIncrementalTick = 0;
+                        CancellationTokenRegistration cancelReg = default(CancellationTokenRegistration);
+                        try
+                        {
+                            cancelReg = ct.Register(() => { try { httpResp.Dispose(); } catch { } });
+                            using (var stream = await httpResp.Content.ReadAsStreamAsync().ConfigureAwait(false))
+                            using (var reader = new StreamReader(stream))
+                            {
+                                while (!ct.IsCancellationRequested)
+                                {
+                                    string line = null;
+                                    try { line = await reader.ReadLineAsync().ConfigureAwait(false); } catch { break; }
+                                    if (line == null) break;
+                                    if (string.IsNullOrWhiteSpace(line)) continue;
+                                    if (!line.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) continue;
+                                    var data = line.Substring(5).Trim();
+                                    if (string.Equals(data, "[DONE]", StringComparison.OrdinalIgnoreCase)) break;
+                                    if (string.IsNullOrEmpty(data)) continue;
+
+                                    try
+                                    {
+                                        var j = JObject.Parse(data);
+                                        var u = j["usage"] as JObject;
+                                        if (u != null)
+                                        {
+                                            promptTokens = promptTokens ?? u.Value<int?>("prompt_tokens");
+                                            completionTokens = completionTokens ?? u.Value<int?>("completion_tokens");
+                                            totalTokens = totalTokens ?? u.Value<int?>("total_tokens");
+                                        }
+
+                                        var chunk = j.SelectToken("choices[0].delta.content")?.ToString() ?? j.SelectToken("choices[0].message.content")?.ToString() ?? j.SelectToken("choices[0].text")?.ToString();
+                                        if (string.IsNullOrEmpty(chunk)) continue;
+                                        sb.Append(chunk);
+                                        try { if (aiBubble != null) aiBubble.Content = sb.ToString(); } catch { }
+
+                                        var nowTick = Stopwatch.GetTimestamp();
+                                        if (lastIncrementalTick == 0 || (nowTick - lastIncrementalTick) >= (Stopwatch.Frequency / 10))
+                                        {
+                                            lastIncrementalTick = nowTick;
+                                            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+                                            try { if (ReferenceEquals(aiBubble, _streamingAiMessage) && _streamingAiRun != null) { _streamingAiRun.Text = sb.ToString(); if (_streamingAiViewer != null) { try { _streamingAiViewer.BringIntoView(); } catch { } } } } catch { }
+                                        }
+                                    }
+                                    catch { /* ignore malformed chunks */ }
+                                }
+                            }
+                        }
+                        finally { try { cancelReg.Dispose(); } catch { } }
+
+                        var finalText = sb.ToString();
+                        try { if (aiBubble != null) aiBubble.Content = finalText; } catch { }
+                        try { await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct); if (ReferenceEquals(aiBubble, _streamingAiMessage) && _streamingAiRun != null) _streamingAiRun.Text = finalText; if (ReferenceEquals(aiBubble, _streamingAiMessage) && _streamingAiViewer != null) { try { _streamingAiViewer.BringIntoView(); } catch { } } } catch { }
+
+                        if (ct.IsCancellationRequested) { ClearStreamingPlaceholder(); respObj.Error = "Cancelled"; return respObj; }
+
+                        try { int finalTokens = (completionTokens ?? totalTokens) ?? 0; try { TrySetProp(aiBubble, "Tokens", finalTokens); } catch { } try { TrySetProp(aiBubble, "TokenCount", finalTokens); } catch { } try { TrySetProp(aiBubble, "TotalTokens", finalTokens); } catch { } try { TrySetTokensForMessage(chat.Id, TryGetDateTimeProp(aiBubble, "Timestamp"), "IA", finalText, finalTokens); } catch { } } catch { }
+
+                        TryPersistChat(chat);
+                        RenderActiveChatToUi();
+                        ClearStreamingPlaceholder();
+
+                        respObj.Success = true; respObj.Output = finalText; respObj.PromptTokens = promptTokens; respObj.CompletionTokens = completionTokens; respObj.TotalTokens = totalTokens; return respObj;
                     }
                 }
             }
             catch (OperationCanceledException)
             {
-                respObj.Error = "Cancelled";
-                return respObj;
+                ClearStreamingPlaceholder(); respObj.Error = "Cancelled"; return respObj;
             }
             catch (Exception ex)
             {
-                respObj.Error = ex.Message;
-                return respObj;
+                ClearStreamingPlaceholder(); respObj.Error = ex.Message; return respObj;
             }
         }
 

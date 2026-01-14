@@ -24,6 +24,9 @@ namespace AgenteIALocalVSIX.ToolWindows
         private readonly object _uiStateGate = new object();
         private UiState _uiState = new UiState();
         private bool _isSyncingChatCombo;
+        private ChatMessage _streamingAiMessage;
+        private Run _streamingAiRun;
+        private FlowDocumentScrollViewer _streamingAiViewer;
 
         private static string UiStateFilePath()
         {
@@ -340,6 +343,88 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch { }
         }
 
+        // NUEVO METODO ClearStreamingPlaceholder - ID: 20260114_000006
+        private void ClearStreamingPlaceholder()
+        {
+            _streamingAiMessage = null;
+            _streamingAiRun = null;
+            _streamingAiViewer = null;
+        }
+
+        // NUEVO METODO RepairMissingMessageTokensFromUiState - ID: 20260114_000012
+        private void RepairMissingMessageTokensFromUiState(ChatSession chat)
+        {
+            if (chat == null || chat.Messages == null) return;
+            bool didRepair = false;
+            try
+            {
+                for (int i = 0; i < chat.Messages.Count; i++)
+                {
+                    var m = chat.Messages[i];
+                    if (m == null) continue;
+
+                    // check if message already has Tokens
+                    var hasTokens = false;
+                    try
+                    {
+                        var p = m.GetType().GetProperty("Tokens", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                        if (p != null)
+                        {
+                            var v = p.GetValue(m, null);
+                            if (v != null) hasTokens = true;
+                        }
+                    }
+                    catch { }
+
+                    if (hasTokens) continue;
+
+                    // compute key from chatId, timestamp, sender, content
+                    try
+                    {
+                        var ts = TryGetDateTimeProp(m, "Timestamp");
+                        var sender = TryGetStringProp(m, "Sender");
+                        var content = TryGetStringProp(m, "Content");
+                        var key = ComputeMessageTokenKey(chat.Id, ts, sender ?? string.Empty, content ?? string.Empty);
+
+                        bool filled = false;
+                        lock (_uiStateGate)
+                        {
+                            if (_uiState != null && _uiState.MessageTokens != null && _uiState.MessageTokens.TryGetValue(key, out var tval))
+                            {
+                                TrySetProp(m, "Tokens", tval);
+                                filled = true;
+                                didRepair = true;
+                            }
+                        }
+
+                        // If ui_state had no entry and this is a completed AI message with non-empty content,
+                        // set Tokens = 0 as a safe default (migration of legacy nulls).
+                        if (!filled)
+                        {
+                            try
+                            {
+                                var sLower = (sender ?? string.Empty).Trim().ToLowerInvariant();
+                                var isAi = (sLower == "ia" || sLower == "ai" || sLower == "assistant" || sLower == "system" || sLower == "robot");
+                                if (isAi && !string.IsNullOrWhiteSpace(content))
+                                {
+                                    TrySetProp(m, "Tokens", 0);
+                                    didRepair = true;
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            if (didRepair)
+            {
+                try { TryPersistChat(chat); } catch { }
+            }
+        }
+
         private void RenderActiveChatToUi()
         {
             Ui(() =>
@@ -369,6 +454,16 @@ namespace AgenteIALocalVSIX.ToolWindows
             try
             {
                 if (chat == null || chat.Messages == null) return fd;
+
+                _streamingAiRun = null;
+                _streamingAiViewer = null;
+
+                // NUEVO METODO: Repair missing Tokens in messages from UiState cache (one-shot per render)
+                try
+                {
+                    RepairMissingMessageTokensFromUiState(chat);
+                }
+                catch { }
 
                 foreach (var m in chat.Messages)
                 {
@@ -400,7 +495,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                         catch { }
                     }
 
-                    fd.Blocks.Add(CreateBubbleBlock(isUser, content ?? string.Empty, ts, tokens));
+                    var isStreamingAi = ReferenceEquals(m, _streamingAiMessage);
+
+                    fd.Blocks.Add(CreateBubbleBlock(isUser, content ?? string.Empty, ts, tokens, isStreamingAi));
                 }
             }
             catch
@@ -423,7 +520,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        private BlockUIContainer CreateBubbleBlock(bool isUser, string text, DateTime tsUtc, int? tokens)
+        private BlockUIContainer CreateBubbleBlock(bool isUser, string text, DateTime tsUtc, int? tokens, bool isStreamingAi = false)
         {
             Brush surfaceBg = TryFindResource("Brush.LayoutBg") as Brush ?? new SolidColorBrush(Color.FromRgb(40, 40, 40));
             Brush borderBrush = TryFindResource("HeaderMediumEmphasisBrush") as Brush ?? new SolidColorBrush(Color.FromRgb(66, 66, 66));
@@ -466,22 +563,35 @@ namespace AgenteIALocalVSIX.ToolWindows
             var stack = new StackPanel { Orientation = Orientation.Vertical };
 
             FlowDocument doc;
-            try
+            if (isStreamingAi && !isUser)
             {
-                var _prevCorr = activeCorrelationId;
+                doc = new FlowDocument { PagePadding = new Thickness(0) };
+                var p = new Paragraph { Margin = new Thickness(0) };
+                var run = new Run(text ?? string.Empty);
+                p.Inlines.Add(run);
+                doc.Blocks.Add(p);
+
+                _streamingAiRun = run;
+            }
+            else
+            {
                 try
                 {
-                    if (string.IsNullOrEmpty(activeCorrelationId)) activeCorrelationId = "-";
-                    doc = RenderResponseToDocument(text ?? string.Empty);
+                    var _prevCorr = activeCorrelationId;
+                    try
+                    {
+                        if (string.IsNullOrEmpty(activeCorrelationId)) activeCorrelationId = "-";
+                        doc = RenderResponseToDocument(text ?? string.Empty);
+                    }
+                    finally
+                    {
+                        activeCorrelationId = _prevCorr;
+                    }
                 }
-                finally
+                catch
                 {
-                    activeCorrelationId = _prevCorr;
+                    doc = CreatePlainDocument(text ?? string.Empty);
                 }
-            }
-            catch
-            {
-                doc = CreatePlainDocument(text ?? string.Empty);
             }
 
             try { doc.PagePadding = new Thickness(0); } catch { }
@@ -497,6 +607,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                 Focusable = false
             };
 
+            if (isStreamingAi && !isUser)
+            {
+                _streamingAiViewer = viewer;
+            }
+
             viewer.Foreground = textBrush;
             viewer.PreviewMouseWheel += BubbleViewer_PreviewMouseWheel;
 
@@ -509,7 +624,25 @@ namespace AgenteIALocalVSIX.ToolWindows
                 else tsLocal = DateTime.SpecifyKind(tsUtc, DateTimeKind.Local);
 
                 var dtText = tsLocal.ToString("g", System.Globalization.CultureInfo.CurrentCulture);
-                var tokText = (tokens.HasValue && tokens.Value >= 0) ? tokens.Value.ToString() : "-";
+                string tokText;
+                if (tokens.HasValue && tokens.Value >= 0)
+                {
+                    tokText = tokens.Value.ToString();
+                }
+                else
+                {
+                    // If streaming in progress, show '-' to indicate partial content
+                    if (isStreamingAi)
+                    {
+                        tokText = "-";
+                    }
+                    else
+                    {
+                        // Completed AI message with no usage info -> show 0 (don't leave as '-')
+                        var sLower = (TryGetStringProp(null, "") ?? string.Empty);
+                        tokText = "0";
+                    }
+                }
 
                 var meta = new TextBlock
                 {

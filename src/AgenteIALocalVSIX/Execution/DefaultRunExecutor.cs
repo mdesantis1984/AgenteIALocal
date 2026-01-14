@@ -112,7 +112,6 @@ namespace AgenteIALocalVSIX.ToolWindows
                         aiBubble = o.activeChat != null && o.activeChat.Messages != null ? o.activeChat.Messages.LastOrDefault() : null;
                         var ts = o._chatService.TryGetDateTimeProp(aiBubble, "Timestamp");
                         aiBubbleTsUtc = ts;
-                        o._chatService.RenderActiveChatToUi();
                     }
                     catch
                     {
@@ -138,10 +137,18 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                     if (canStreamLmStudio)
                     {
+                        o._streamingAiMessage = aiBubble;
+                        o._streamingAiRun = null;
+                        o._streamingAiViewer = null;
+                        o._chatService.RenderActiveChatToUi();
                         response = await o.ExecuteLmStudioStreamingAsync(req, lmServer, o.activeChat, aiBubble, ct);
                     }
                     else
                     {
+                        o._streamingAiMessage = null;
+                        o._streamingAiRun = null;
+                        o._streamingAiViewer = null;
+                        o._chatService.RenderActiveChatToUi();
                         var execTask = Task.Run(() =>
                         {
                             try
