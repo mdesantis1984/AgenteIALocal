@@ -274,6 +274,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -291,6 +292,33 @@
                         <TextBlock Text="API Key" Foreground="#FFFFFFFF" Margin="0,10,0,4" />
                         <TextBox x:Name="ServerApiKeyTextBox_Modal" Style="{StaticResource UxTextBox}" />
                     </StackPanel>
+
+                    <Expander Grid.Row="6" Header="Advanced" Margin="0,10,0,0" Foreground="#FFFFFFFF" Background="{StaticResource HeaderBackgroundBrush}" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" BorderThickness="1">
+                        <Border CornerRadius="8" BorderThickness="0" Background="Transparent">
+                            <StackPanel Orientation="Vertical" Margin="12,8,12,12">
+                                <TextBlock Text="Provider" Foreground="#FFFFFFFF" Margin="0,0,0,4" />
+                                <ComboBox x:Name="ProviderCombo_Modal" Style="{StaticResource DarkFlatComboBoxStyle}" IsEditable="False">
+                                    <ComboBoxItem Content="LM Studio" />
+                                    <ComboBoxItem Content="Jan" />
+                                </ComboBox>
+
+                                <TextBlock Text="Run Mode" Foreground="#FFFFFFFF" Margin="0,10,0,4" />
+                                <ComboBox x:Name="RunModeCombo_Modal" Style="{StaticResource DarkFlatComboBoxStyle}" IsEditable="False">
+                                    <ComboBoxItem Content="Preguntar" />
+                                    <ComboBoxItem Content="Agente" />
+                                </ComboBox>
+
+                                <CheckBox x:Name="StreamToggle_Modal" Content="Stream" Margin="0,10,0,0" Foreground="#FFFFFFFF" />
+                                <CheckBox x:Name="IncludeUsageToggle_Modal" Content="Include usage" Margin="0,6,0,0" Foreground="#FFFFFFFF" IsEnabled="False" />
+
+                                <CheckBox x:Name="AgentIdeIntegrationToggle_Modal" Content="IDE integration" Margin="0,10,0,0" Foreground="#FFFFFFFF" />
+                                <CheckBox x:Name="AgentApplyChangesToggle_Modal" Content="Apply changes" Margin="0,6,0,0" Foreground="#FFFFFFFF" />
+
+                                <TextBlock Text="Max steps" Foreground="#FFFFFFFF" Margin="0,10,0,4" />
+                                <TextBox x:Name="AgentMaxStepsTextBox_Modal" Style="{StaticResource UxTextBox}" />
+                            </StackPanel>
+                        </Border>
+                    </Expander>
                 </Grid>
             </ScrollViewer>
 
