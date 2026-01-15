@@ -196,7 +196,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     else if (!string.IsNullOrEmpty(response.Error)) display = "Error: " + response.Error;
                     else display = "(empty response)";
 
-                    o.Ui(() =>
+                    await o.UiAsync(() =>
                     {
                         if (ct.IsCancellationRequested) return;
                         if (myVersion != o._runVersion) return;
@@ -279,7 +279,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         o._runCts = null;
 
                         try { o.RefreshLogFromFile(); } catch { }
-                    });
+                    }).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -287,7 +287,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     if (myVersion != o._runVersion) return;
                     if (!string.Equals(o.activeCorrelationId, myCorrelationId, StringComparison.Ordinal)) return;
 
-                    o.Ui(() =>
+                    await o.UiAsync(() =>
                     {
                         o.UpdateUiState(ExecutionState.Error);
                         o.AppendLog("Execution failed: " + ex.Message);
@@ -313,7 +313,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         o._runCts = null;
 
                         try { o.RefreshLogFromFile(); } catch { }
-                    });
+                    }).ConfigureAwait(false);
                 }
             }
         }

@@ -88,14 +88,10 @@ namespace AgenteIALocalVSIX.ToolWindows
         private Run _streamingAiLastRun = null; // NUEVO CAMPO - ID: 20260114_000033
         // Guard to avoid spamming error logs when opening settings fails
         private bool _settingsOpenErrorLogged = false; // NUEVO CAMPO - ID: 20260114_000051
-        // NUEVO CAMPO ConfigStatus - ID: 20260114_000060
-        private string _configStatus = "UNKNOWN"; // UNKNOWN|OK|ERROR
         // NUEVO CAMPO ConfigStatusLabel - ID: 20260114_000061
         private string _configStatusLabel = "CONFIG UNKNOWN";
         // NUEVO CAMPO ConfigStatusBrush - ID: 20260114_000062
         private Brush _configStatusBrush = Brushes.Gray;
-        // NUEVO CAMPO ValidatingConfig - ID: 20260114_000068
-        private int _configValidationGate = 0;
         // NUEVA PROPIEDAD ConfigStatusLabel - ID: 20260114_000070
         public string ConfigStatusLabel => _configStatusLabel;
         // NUEVA PROPIEDAD ConfigStatusBrush - ID: 20260114_000071
@@ -209,7 +205,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (distanceFromBottom <= _stickyThresholdPx)
                 {
                     // Post-layout scroll to end to avoid forcing layout during chunk update
-                    Dispatcher.BeginInvoke(new Action(() =>
+                    FireAndForget(UiAsync(() =>
                     {
                         try
                         {
@@ -217,7 +213,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                             _lastAutoScrollTotalChars = totalChars;
                         }
                         catch { }
-                    }), DispatcherPriority.Background);
+                    }), "AutoScroll");
                 }
             }
             catch { }
@@ -585,38 +581,39 @@ namespace AgenteIALocalVSIX.ToolWindows
             logRefreshCts = new CancellationTokenSource();
             var ct = logRefreshCts.Token;
 
-            // Start a background task that refreshes the log every 2 seconds without blocking the UI
-            _ = Task.Run(async () =>
+            FireAndForget(RunLogRefreshLoopAsync(ct), "AgenteIALocalControl.LogRefreshLoop");
+        }
+
+        // NUEVO METODO RunLogRefreshLoopAsync - ID: 20250310_000005
+        private async Task RunLogRefreshLoopAsync(CancellationToken ct)
+        {
+            while (!ct.IsCancellationRequested)
             {
-                while (!ct.IsCancellationRequested)
+                try
                 {
-                    try
-                    {
-                        var content = await Task.Run(() => ReadLogFile());
+                    var content = await Task.Run(() => ReadLogFile());
 
-                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
 
-                        var bytes = TryGetLogFileSizeBytes();
-                        UpdateLogFileSizeLabelFromBytes(bytes);
+                    var bytes = TryGetLogFileSizeBytes();
+                    UpdateLogFileSizeLabelFromBytes(bytes);
 
-                        LogText.Text = string.IsNullOrEmpty(content)
-                            ? "(no logs)"
-                            : content;
+                    LogText.Text = string.IsNullOrEmpty(content)
+                        ? "(no logs)"
+                        : content;
 
-                        ScrollLogToEnd(force: false);
-                    }
-                    catch
-                    {
-                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
-                        UpdateLogFileSizeLabelFromBytes(0);
-                        LogText.Text = "(unable to read logs)";
-                        ScrollLogToEnd(force: false);
-                    }
-
-                    try { await Task.Delay(2000, ct); } catch { }
+                    ScrollLogToEnd(force: false);
+                }
+                catch
+                {
+                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+                    UpdateLogFileSizeLabelFromBytes(0);
+                    LogText.Text = "(unable to read logs)";
+                    ScrollLogToEnd(force: false);
                 }
 
-            }, ct);
+                try { await Task.Delay(2000, ct); } catch { }
+            }
         }
 
         public void SetSolutionInfo(string solutionName, int projectCount)
@@ -647,7 +644,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 try { AgentComposition.Verbose("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigStatus: RefreshFromSettings completed label={ConfigLabel} isConfigured={IsLlmConfigured}"); } catch { }
 
                 // Refresh models for active server asynchronously (fire-and-forget)
-                try { _ = RefreshModelsForActiveServerAsync("RefreshFromSettings"); } catch { }
+                try { FireAndForget(RefreshModelsForActiveServerAsync("RefreshFromSettings"), "RefreshFromSettings.RefreshModels"); } catch { }
             }
             catch (Exception ex)
             {
@@ -1186,7 +1183,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                 return;
             }
 
-            _ = _runExecutor.RunAsync(sender, e);
+            try
+            {
+                FireAndForget(_runExecutor.RunAsync(sender, e), "RunButton.Click");
+            }
+            catch { FireAndForget(_runExecutor.RunAsync(sender, e), "RunButton.Click.fallback"); }
         }
 
 

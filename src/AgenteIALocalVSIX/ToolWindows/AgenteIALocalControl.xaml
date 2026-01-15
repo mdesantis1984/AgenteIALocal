@@ -800,12 +800,23 @@
                         <Style TargetType="TextBlock">
                           <Setter Property="Visibility" Value="Collapsed" />
                           <Style.Triggers>
-                            <DataTrigger Binding="{Binding Text, ElementName=PromptTextBox}" Value="">
+                            <!-- Visible when Text is empty AND the textbox does NOT have keyboard focus -->
+                            <MultiDataTrigger>
+                              <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding Text, ElementName=PromptTextBox}" Value="" />
+                                <Condition Binding="{Binding IsKeyboardFocusWithin, ElementName=PromptTextBox}" Value="False" />
+                              </MultiDataTrigger.Conditions>
                               <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Text, ElementName=PromptTextBox}" Value="{x:Null}">
+                            </MultiDataTrigger>
+
+                            <!-- Visible when Text is null AND the textbox does NOT have keyboard focus -->
+                            <MultiDataTrigger>
+                              <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding Text, ElementName=PromptTextBox}" Value="{x:Null}" />
+                                <Condition Binding="{Binding IsKeyboardFocusWithin, ElementName=PromptTextBox}" Value="False" />
+                              </MultiDataTrigger.Conditions>
                               <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
+                            </MultiDataTrigger>
                           </Style.Triggers>
                         </Style>
                       </TextBlock.Style>

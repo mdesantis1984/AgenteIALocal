@@ -11,11 +11,39 @@ using System.Windows.Media;
 using Microsoft.VisualStudio.Shell;
 using System.ComponentModel;
 using MaterialDesignThemes.Wpf;
+using System.Threading.Tasks;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
     public partial class AgenteIALocalControl
     {
+        // NUEVO METODO FireAndForget - ID: 20250310_000007
+        private void FireAndForget(Task task, string op)
+        {
+            if (task == null) return;
+
+            _ = task.ContinueWith(t =>
+            {
+                try
+                {
+                    var ex = t.Exception != null ? t.Exception.GetBaseException() : null;
+                    if (ex != null)
+                    {
+                        AgentComposition.Error(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, op + " failed: " + ex.Message, ex);
+                    }
+                }
+                catch
+                {
+                }
+            }, System.Threading.CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+        }
+
+        // SAFE FORGET wrapper with same semantics (alias)
+        private void SafeForget(Task task, string op)
+        {
+            FireAndForget(task, op);
+        }
+
         // Raise property changed helper to avoid name collisions
         private void RaisePropertyChanged(string propertyName)
         {
@@ -80,13 +108,23 @@ namespace AgenteIALocalVSIX.ToolWindows
                     return;
                 }
 
-                ThreadHelper.JoinableTaskFactory.Run(async () =>
-                {
-                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                    action();
-                });
+                FireAndForget(UiAsync(action), "AgenteIALocalControl.Ui");
             }
             catch { }
+        }
+
+        // NUEVO METODO UiAsync - ID: 20250310_000006
+        private async Task UiAsync(Action action)
+        {
+            try
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                action();
+            }
+            catch (Exception ex)
+            {
+                try { AgentComposition.Error(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "UiAsync error: " + ex.Message, ex); } catch { }
+            }
         }
 
         // Update UI enablement based on current state and configuration
@@ -529,7 +567,21 @@ namespace AgenteIALocalVSIX.ToolWindows
             try { RefreshLogFromFile(); } catch { }
         }
         // NUEVO METODO SettingsButton_Click - ID: 20260114_000050
-        private async void SettingsButton_Click(object sender, RoutedEventArgs e)
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                FireAndForget(SettingsButton_ClickAsync(sender, e), "SettingsButton_Click");
+            }
+            catch
+            {
+                // fallback: start async without observation (should not happen because FireAndForget exists)
+                _ = SettingsButton_ClickAsync(sender, e);
+            }
+        }
+
+        // NUEVO METODO SettingsButton_ClickAsync - ID: 20260114_000051
+        private async Task SettingsButton_ClickAsync(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -539,12 +591,12 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                 try
                 {
-                    w.BaseUrlHealthChanged += async (ok, baseUrl, models) =>
+                    // Subscribe non-async handler that uses FireAndForget to marshal to UI thread
+                    w.BaseUrlHealthChanged += (ok, baseUrl, models) =>
                     {
                         try
                         {
-                            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                            ApplyConfigHealthFromModal(ok, models);
+                            FireAndForget(UiAsync(() => ApplyConfigHealthFromModal(ok, models)), "BaseUrlHealthChanged");
                         }
                         catch { }
                     };

@@ -8,6 +8,9 @@ using System.Windows.Input;
 using System.Threading;
 using System.Net.Http;
 using System.Windows.Controls;
+using AgenteIALocalVSIX;
+using Microsoft.VisualStudio.Shell;
+using Newtonsoft.Json.Linq;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -25,33 +28,17 @@ namespace AgenteIALocalVSIX.ToolWindows
         public AgenteIALocalConfigWindow(string serverId = null)
         {
             InitializeComponent();
-            // Attach drag handler for custom header
-            try
-            {
-                HeaderDragArea.MouseLeftButtonDown += HeaderDragArea_MouseLeftButtonDown;
-            }
-            catch { }
-
-            try
-            {
-                //if (CloseButton != null)
-                //{
-                //    CloseButton.PreviewMouseLeftButtonDown += CloseButton_PreviewMouseLeftButtonDown;
-                //}
-            }
-            catch { }
-
-            this.Loaded += AgenteIALocalConfigWindow_Loaded;
-            this.initialServerId = serverId ?? string.Empty;
+            try { HeaderDragArea.MouseLeftButtonDown += HeaderDragArea_MouseLeftButtonDown; } catch { }
+            Loaded += AgenteIALocalConfigWindow_Loaded;
+            initialServerId = serverId ?? string.Empty;
             if (!string.IsNullOrEmpty(serverId))
             {
-                this.Title = $"Configuración — {serverId}";
+                Title = "Configuración — " + serverId;
             }
         }
 
         private void CloseButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // prevent header drag from stealing the click
             e.Handled = true;
         }
 
@@ -60,137 +47,44 @@ namespace AgenteIALocalVSIX.ToolWindows
             try
             {
                 if (e.ChangedButton != MouseButton.Left) return;
-
-                // If click originated within CloseButton visual tree, ignore
-                try
-                {
-                    //if (CloseButton != null)
-                    //{
-                    //    var src = e.OriginalSource as DependencyObject;
-                    //    while (src != null)
-                    //    {
-                    //        if (ReferenceEquals(src, CloseButton)) return;
-                    //        src = VisualTreeHelper.GetParent(src);
-                    //    }
-                    //}
-                }
-                catch { }
-
-                // Log attempt
                 try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: DragMove start"); } catch { }
-                this.DragMove();
+                DragMove();
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: DragMove failed: {ex.Message}", ex); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: DragMove failed: " + ex.Message, ex); } catch { }
             }
         }
 
         private void AgenteIALocalConfigWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            _ = Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
-            {
-                try
-                {
-                    try
-                    {
-                        var settings = AgentSettingsStore.Load();
-                        if (settings != null)
-                        {
-                            _isInitializingAdvancedUi = true;
-                            try
-                            {
-                                // choose server to display: prefer initialServerId, else settings.ActiveServerId
-                                var targetId = !string.IsNullOrEmpty(initialServerId) ? initialServerId : settings.ActiveServerId;
-
-                                var srv = (settings.Servers ?? new List<ServerConfig>())
-                                    .Find(s => string.Equals(s.Id, targetId, StringComparison.OrdinalIgnoreCase));
-
-                                ActiveServerIdTextBox_Modal.Text = targetId ?? string.Empty;
-                                ServerBaseUrlTextBox_Modal.Text = srv?.BaseUrl ?? string.Empty;
-                                _lastPersistedBaseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
-                                ServerApiKeyTextBox_Modal.Text = srv?.ApiKey ?? string.Empty;
-
-                                LoadAdvancedControls(settings, srv);
-
-                                WireAdvancedHandlersOnce();
-
-                                // Wire BaseUrl change to re-fetch models
-                                try
-                                {
-                                    ServerBaseUrlTextBox_Modal.LostFocus -= ServerBaseUrl_LostFocus;
-                                    ServerBaseUrlTextBox_Modal.LostFocus += ServerBaseUrl_LostFocus;
-                                }
-                                catch { }
-
-                                var baseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
-                                if (!string.IsNullOrWhiteSpace(baseUrl))
-                                {
-                                    try
-                                    {
-                                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModels start for {baseUrl}"); } catch { }
-                                        var models = await FetchModelsAsync(baseUrl);
-                                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModels end for {baseUrl} (count={models?.Count ?? 0})"); } catch { }
-
-                                        if (models != null && models.Count > 0)
-                                        {
-                                            ServerModelCombo_Modal.Items.Clear();
-                                            foreach (var m in models) ServerModelCombo_Modal.Items.Add(m);
-
-                                            var activeModel = srv?.Model;
-                                            if (!string.IsNullOrEmpty(activeModel) && ServerModelCombo_Modal.Items.Contains(activeModel))
-                                            {
-                                                ServerModelCombo_Modal.SelectedItem = activeModel;
-                                            }
-                                            else
-                                            {
-                                                ServerModelCombo_Modal.SelectedIndex = 0;
-                                                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Defaulted model selection to '{ServerModelCombo_Modal.SelectedItem}'"); } catch { }
-                                            }
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModels error on load: {ex.Message}", ex); } catch { }
-                                    }
-                                }
-                            }
-                            finally
-                            {
-                                _isInitializingAdvancedUi = false;
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Load error: {ex.Message}", ex); } catch { }
-                    }
-                }
+            FireAndForget(HandleLoadedAsync(), "ConfigWindow.Loaded");
+        }
 
         // NUEVO METODO LoadAdvancedControls - ID: 20250304_170001
         private void LoadAdvancedControls(AgentSettings settings, ServerConfig activeServer)
         {
-            if (settings == null)
-            {
-                return;
-            }
+            if (settings == null) return;
 
-            var provider = (activeServer?.Provider ?? string.Empty).ToLowerInvariant();
+            var provider = (activeServer != null ? activeServer.Provider : string.Empty).ToLowerInvariant();
             ProviderCombo_Modal.SelectedIndex = provider == "jan" ? 1 : 0;
 
-            var runMode = settings.GlobalSettings?.Value<string>("runMode") ?? "preguntar";
+            var runMode = settings.GlobalSettings != null ? settings.GlobalSettings.Value<string>("runMode") : null;
+            if (string.IsNullOrEmpty(runMode)) runMode = "preguntar";
             RunModeCombo_Modal.SelectedIndex = string.Equals(runMode, "agente", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
 
-            var requestDefaults = settings.GlobalSettings?["requestDefaults"] as JObject ?? new JObject();
+            var requestDefaults = settings.GlobalSettings != null ? settings.GlobalSettings["requestDefaults"] as JObject : null;
+            if (requestDefaults == null) requestDefaults = new JObject();
             var streamValue = requestDefaults.Value<bool?>("stream") ?? true;
             StreamToggle_Modal.IsChecked = streamValue;
 
             var streamOptions = requestDefaults["streamOptions"] as JObject;
-            var includeUsage = streamOptions?.Value<bool?>("includeUsage") ?? false;
+            var includeUsage = streamOptions != null ? streamOptions.Value<bool?>("includeUsage") ?? false : false;
             IncludeUsageToggle_Modal.IsChecked = includeUsage;
             IncludeUsageToggle_Modal.IsEnabled = provider == "lmstudio";
 
-            var agent = settings.GlobalSettings?["agent"] as JObject ?? new JObject();
+            var agent = settings.GlobalSettings != null ? settings.GlobalSettings["agent"] as JObject : null;
+            if (agent == null) agent = new JObject();
             AgentIdeIntegrationToggle_Modal.IsChecked = agent.Value<bool?>("ideIntegration") ?? true;
             AgentApplyChangesToggle_Modal.IsChecked = agent.Value<bool?>("applyChanges") ?? false;
             var maxSteps = agent.Value<int?>("maxSteps") ?? 5;
@@ -243,7 +137,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             try
             {
-                var provider = GetSelectedComboContent(ProviderCombo_Modal)?.ToLowerInvariant() ?? "lmstudio";
+                var provider = GetSelectedComboContent(ProviderCombo_Modal).ToLowerInvariant();
                 var targetServerId = string.Equals(provider, "jan", StringComparison.OrdinalIgnoreCase) ? "jan-local" : "lmstudio-local";
 
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
@@ -265,7 +159,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Provider change error: {ex.Message}", ex); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Provider change error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -275,7 +169,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             if (_isInitializingAdvancedUi) return;
             try
             {
-                var runMode = string.Equals(GetSelectedComboContent(RunModeCombo_Modal), "Agente", StringComparison.OrdinalIgnoreCase) ? "agente" : "preguntar";
+                var selected = GetSelectedComboContent(RunModeCombo_Modal);
+                var runMode = string.Equals(selected, "Agente", StringComparison.OrdinalIgnoreCase) ? "agente" : "preguntar";
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
                 if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
                 settings.GlobalSettings["runMode"] = runMode;
@@ -283,7 +178,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: RunMode change error: {ex.Message}", ex); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: RunMode change error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -302,7 +197,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Stream toggle error: {ex.Message}", ex); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Stream toggle error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -312,7 +207,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             if (_isInitializingAdvancedUi) return;
             try
             {
-                var provider = GetSelectedComboContent(ProviderCombo_Modal)?.ToLowerInvariant() ?? string.Empty;
+                var provider = GetSelectedComboContent(ProviderCombo_Modal).ToLowerInvariant();
                 if (!string.Equals(provider, "lmstudio", StringComparison.OrdinalIgnoreCase)) return;
 
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
@@ -326,7 +221,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: IncludeUsage toggle error: {ex.Message}", ex); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: IncludeUsage toggle error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -340,7 +235,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Agent IDE toggle error: {ex.Message}", ex); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Agent IDE toggle error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -354,7 +249,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Agent ApplyChanges toggle error: {ex.Message}", ex); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Agent ApplyChanges toggle error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -380,7 +275,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: MaxSteps change error: {ex.Message}", ex); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: MaxSteps change error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -409,7 +304,8 @@ namespace AgenteIALocalVSIX.ToolWindows
         // NUEVO METODO ParseMaxSteps - ID: 20250304_170013
         private static int ParseMaxSteps(string text)
         {
-            if (int.TryParse(text, out var value) && value >= 1)
+            int value;
+            if (int.TryParse(text, out value) && value >= 1)
             {
                 return value;
             }
@@ -422,57 +318,124 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             if (combo == null) return string.Empty;
             var item = combo.SelectedItem;
-            if (item is ComboBoxItem cbi) return cbi.Content as string ?? string.Empty;
-            return item as string ?? combo.Text ?? string.Empty;
+            var cbi = item as ComboBoxItem;
+            if (cbi != null) return cbi.Content as string ?? string.Empty;
+            var s = item as string;
+            if (!string.IsNullOrEmpty(s)) return s;
+            return combo.Text ?? string.Empty;
         }
 
-        // NUEVO METODO ApplyServerToUi - ID: 20250304_170015
-        private void ApplyServerToUi(string serverId, ServerConfig srv)
+        // NUEVO METODO FireAndForget - ID: 20250310_000001
+        private void FireAndForget(Task task, string op)
         {
-            ActiveServerIdTextBox_Modal.Text = serverId ?? string.Empty;
-            ServerBaseUrlTextBox_Modal.Text = srv?.BaseUrl ?? string.Empty;
-            _lastPersistedBaseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
-            ServerApiKeyTextBox_Modal.Text = srv?.ApiKey ?? string.Empty;
+            if (task == null) return;
 
-            try
-            {
-                ServerModelCombo_Modal.Items.Clear();
-                if (!string.IsNullOrWhiteSpace(srv?.Model))
-                {
-                    ServerModelCombo_Modal.Items.Add(srv.Model);
-                    ServerModelCombo_Modal.SelectedItem = srv.Model;
-                }
-            }
-            catch { }
-        }
-                catch (Exception exOuter)
-                {
-                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigWindow Loaded: unexpected error: {exOuter.Message}", exOuter); } catch { }
-                }
-            });
-        }
-
-        private void ServerBaseUrl_LostFocus(object sender, RoutedEventArgs e)
-        {
-            _ = Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            _ = task.ContinueWith(t =>
             {
                 try
                 {
+                    var ex = t.Exception != null ? t.Exception.GetBaseException() : null;
+                    if (ex != null)
+                    {
+                        AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, op + " failed: " + ex.Message, ex);
+                    }
                 }
-                catch (Exception exOuter)
+                catch
                 {
-                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigWindow ServerBaseUrl LostFocus: unexpected error: {exOuter.Message}", exOuter); } catch { }
                 }
-            });
+            }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
         }
 
-        // NUEVO METODO ServerBaseUrlTextBox_Modal_TextChanged - ID: 20260114_000074
-        private async void ServerBaseUrlTextBox_Modal_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        // NUEVO METODO HandleLoadedAsync - ID: 20250310_000002
+        private async Task HandleLoadedAsync()
         {
             try
             {
-                _baseUrlPingCts?.Cancel();
-                _baseUrlPingCts?.Dispose();
+                var settings = AgentSettingsStore.Load();
+                if (settings == null) return;
+
+                _isInitializingAdvancedUi = true;
+                try
+                {
+                    var targetId = !string.IsNullOrEmpty(initialServerId) ? initialServerId : settings.ActiveServerId;
+                    var srv = (settings.Servers ?? new List<ServerConfig>()).Find(s => string.Equals(s.Id, targetId, StringComparison.OrdinalIgnoreCase));
+
+                    ActiveServerIdTextBox_Modal.Text = targetId ?? string.Empty;
+                    ServerBaseUrlTextBox_Modal.Text = srv != null ? srv.BaseUrl : string.Empty;
+                    _lastPersistedBaseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
+                    ServerApiKeyTextBox_Modal.Text = srv != null ? srv.ApiKey : string.Empty;
+
+                    LoadAdvancedControls(settings, srv);
+                    WireAdvancedHandlersOnce();
+
+                    try
+                    {
+                        ServerBaseUrlTextBox_Modal.LostFocus -= ServerBaseUrl_LostFocus;
+                        ServerBaseUrlTextBox_Modal.LostFocus += ServerBaseUrl_LostFocus;
+                    }
+                    catch
+                    {
+                    }
+
+                    var baseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(baseUrl))
+                    {
+                        try
+                        {
+                            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModels start for " + baseUrl); } catch { }
+                            var models = await FetchModelsAsync(baseUrl).ConfigureAwait(true);
+                            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModels end for " + baseUrl + " (count=" + (models != null ? models.Count : 0) + ")"); } catch { }
+
+                            if (models != null && models.Count > 0)
+                            {
+                                ServerModelCombo_Modal.Items.Clear();
+                                foreach (var m in models) ServerModelCombo_Modal.Items.Add(m);
+
+                                var activeModel = srv != null ? srv.Model : null;
+                                if (!string.IsNullOrEmpty(activeModel) && ServerModelCombo_Modal.Items.Contains(activeModel))
+                                {
+                                    ServerModelCombo_Modal.SelectedItem = activeModel;
+                                }
+                                else
+                                {
+                                    ServerModelCombo_Modal.SelectedIndex = 0;
+                                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Defaulted model selection to '" + ServerModelCombo_Modal.SelectedItem + "'"); } catch { }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModels error on load: " + ex.Message, ex); } catch { }
+                        }
+                    }
+                }
+                finally
+                {
+                    _isInitializingAdvancedUi = false;
+                }
+            }
+            catch (Exception exOuter)
+            {
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigWindow Loaded: unexpected error: " + exOuter.Message, exOuter); } catch { }
+            }
+        }
+
+        // NUEVO METODO HandleServerBaseUrlLostFocusAsync - ID: 20250310_000003
+        private Task HandleServerBaseUrlLostFocusAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        // NUEVO METODO HandleBaseUrlTextChangedAsync - ID: 20250310_000004
+        private async Task HandleBaseUrlTextChangedAsync()
+        {
+            try
+            {
+                if (_baseUrlPingCts != null)
+                {
+                    _baseUrlPingCts.Cancel();
+                    _baseUrlPingCts.Dispose();
+                }
                 _baseUrlPingCts = new CancellationTokenSource();
                 var ct = _baseUrlPingCts.Token;
 
@@ -487,12 +450,15 @@ namespace AgenteIALocalVSIX.ToolWindows
                         ServerModelCombo_Modal.Items.Clear();
                         ServerModelCombo_Modal.SelectedItem = null;
                     }
-                    catch { }
-                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, Array.Empty<string>()); } catch { }
+                    catch
+                    {
+                    }
+                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
                     return;
                 }
 
-                if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var _))
+                Uri uriResult;
+                if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out uriResult))
                 {
                     ShowBaseUrlError("URL inválida");
                     try
@@ -500,8 +466,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                         ServerModelCombo_Modal.Items.Clear();
                         ServerModelCombo_Modal.SelectedItem = null;
                     }
-                    catch { }
-                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, Array.Empty<string>()); } catch { }
+                    catch
+                    {
+                    }
+                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
                     return;
                 }
 
@@ -524,9 +492,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                             List<string> models = new List<string>();
                             try
                             {
-                                models = await FetchModelsAsync(baseUrl);
+                                models = await FetchModelsAsync(baseUrl).ConfigureAwait(true);
                             }
-                            catch { }
+                            catch
+                            {
+                            }
 
                             try
                             {
@@ -541,25 +511,28 @@ namespace AgenteIALocalVSIX.ToolWindows
                                     ServerModelCombo_Modal.SelectedItem = null;
                                 }
                             }
-                            catch { }
+                            catch
+                            {
+                            }
 
                             try { BaseUrlHealthChanged?.Invoke(true, baseUrl, models); } catch { }
                         }
                         else
                         {
-                            ShowBaseUrlError($"Servidor responde {resp.StatusCode}");
+                            ShowBaseUrlError("Servidor responde " + resp.StatusCode);
                             try
                             {
                                 ServerModelCombo_Modal.Items.Clear();
                                 ServerModelCombo_Modal.SelectedItem = null;
                             }
-                            catch { }
-                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, Array.Empty<string>()); } catch { }
+                            catch
+                            {
+                            }
+                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
                         }
                     }
                     catch (OperationCanceledException)
                     {
-                        // cancelled; ignore
                     }
                     catch (Exception ex)
                     {
@@ -571,20 +544,53 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 ServerModelCombo_Modal.Items.Clear();
                                 ServerModelCombo_Modal.SelectedItem = null;
                             }
-                            catch { }
-                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, Array.Empty<string>()); } catch { }
+                            catch
+                            {
+                            }
+                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
                         }
                     }
                     finally
                     {
-                        try { resp?.Dispose(); } catch { }
+                        try { if (resp != null) resp.Dispose(); } catch { }
                     }
                 }
             }
             catch (Exception exOuter)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: BaseUrl ping error: {exOuter.Message}", exOuter); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: BaseUrl ping error: " + exOuter.Message, exOuter); } catch { }
             }
+        }
+
+        // NUEVO METODO ApplyServerToUi - ID: 20250304_170015
+        private void ApplyServerToUi(string serverId, ServerConfig srv)
+        {
+            ActiveServerIdTextBox_Modal.Text = serverId ?? string.Empty;
+            ServerBaseUrlTextBox_Modal.Text = srv != null ? srv.BaseUrl : string.Empty;
+            _lastPersistedBaseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
+            ServerApiKeyTextBox_Modal.Text = srv != null ? srv.ApiKey : string.Empty;
+
+            try
+            {
+                ServerModelCombo_Modal.Items.Clear();
+                if (srv != null && !string.IsNullOrWhiteSpace(srv.Model))
+                {
+                    ServerModelCombo_Modal.Items.Add(srv.Model);
+                    ServerModelCombo_Modal.SelectedItem = srv.Model;
+                }
+            }
+            catch { }
+        }
+
+        private void ServerBaseUrl_LostFocus(object sender, RoutedEventArgs e)
+        {
+            FireAndForget(HandleServerBaseUrlLostFocusAsync(), "ConfigWindow.ServerBaseUrl.LostFocus");
+        }
+
+        // NUEVO METODO ServerBaseUrlTextBox_Modal_TextChanged - ID: 20260114_000074
+        private void ServerBaseUrlTextBox_Modal_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            FireAndForget(HandleBaseUrlTextChangedAsync(), "ConfigModal.BaseUrlTextChanged");
         }
 
         // NUEVO METODO PersistBaseUrlIfChanged - ID: 20260114_000075
@@ -600,14 +606,17 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var targetId = ActiveServerIdTextBox_Modal.Text;
                 if (string.IsNullOrWhiteSpace(targetId))
                 {
-                    targetId = settings.ActiveServerId ?? settings.Servers.FirstOrDefault()?.Id ?? string.Empty;
+                    var firstServer = settings.Servers.FirstOrDefault();
+                    targetId = settings.ActiveServerId ?? (firstServer != null ? firstServer.Id : string.Empty);
                 }
                 if (string.IsNullOrWhiteSpace(targetId)) return;
 
                 var srv = settings.Servers.Find(s => string.Equals(s.Id, targetId, StringComparison.OrdinalIgnoreCase));
                 if (srv == null)
                 {
-                    srv = new ServerConfig { Id = targetId, Name = targetId, Provider = settings.Servers.FirstOrDefault()?.Provider ?? "lmstudio", CreatedAt = DateTime.UtcNow };
+                    var firstServer = settings.Servers.FirstOrDefault();
+                    var provider = firstServer != null ? firstServer.Provider : "lmstudio";
+                    srv = new ServerConfig { Id = targetId, Name = targetId, Provider = provider, CreatedAt = DateTime.UtcNow };
                     settings.Servers.Add(srv);
                 }
 
@@ -615,11 +624,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                 settings.ActiveServerId = targetId;
                 AgentSettingsStore.Save(settings);
                 _lastPersistedBaseUrl = baseUrl;
-                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: BaseUrl ping OK, persisted '{baseUrl}' for server '{targetId}'"); } catch { }
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: BaseUrl ping OK, persisted '" + baseUrl + "' for server '" + targetId + "'"); } catch { }
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: PersistBaseUrlIfChanged error: {ex.Message}", ex); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: PersistBaseUrlIfChanged error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -653,15 +662,15 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (string.IsNullOrWhiteSpace(baseUrl)) return result;
 
                 var url = baseUrl.TrimEnd('/') + "/v1/models";
-                using (var client = new System.Net.Http.HttpClient())
+                using (var client = new HttpClient())
                 {
                     client.Timeout = TimeSpan.FromSeconds(5);
-                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModelsAsync GET {url}"); } catch { }
+                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync GET " + url); } catch { }
 
                     var resp = await client.GetAsync(url);
                     if (!resp.IsSuccessStatusCode)
                     {
-                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModelsAsync non-success status: {resp.StatusCode}"); } catch { }
+                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync non-success status: " + resp.StatusCode); } catch { }
                         return result;
                     }
 
@@ -683,7 +692,6 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 }
                                 catch { }
                             }
-
                             return result;
                         }
 
@@ -699,11 +707,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 }
                                 catch { }
                             }
-
                             return result;
                         }
 
-                        if (root is Newtonsoft.Json.Linq.JArray arr)
+                        var arr = root as Newtonsoft.Json.Linq.JArray;
+                        if (arr != null)
                         {
                             foreach (var item in arr)
                             {
@@ -714,13 +722,13 @@ namespace AgenteIALocalVSIX.ToolWindows
                     }
                     catch (Exception ex)
                     {
-                        try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModelsAsync parse error: {ex.Message}", ex); } catch { }
+                        try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync parse error: " + ex.Message, ex); } catch { }
                     }
                 }
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: FetchModelsAsync error: {ex.Message}", ex); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync error: " + ex.Message, ex); } catch { }
             }
 
             return result;
@@ -734,12 +742,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
                 if (settings.Servers == null) settings.Servers = new List<ServerConfig>();
 
-                // Determine target server id: prefer initialServerId (derived from ToolWindow selection), else textbox value
                 var activeIdInput = ActiveServerIdTextBox_Modal.Text ?? string.Empty;
                 var targetId = !string.IsNullOrEmpty(initialServerId) ? initialServerId : activeIdInput;
                 if (string.IsNullOrEmpty(targetId))
                 {
-                    // fallback to existing active or first server
                     targetId = settings.ActiveServerId ?? (settings.Servers.Count > 0 ? settings.Servers[0].Id : string.Empty);
                     if (string.IsNullOrEmpty(targetId)) targetId = activeIdInput;
                 }
@@ -747,61 +753,75 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var srv = settings.Servers.Find(s => string.Equals(s.Id, targetId, StringComparison.OrdinalIgnoreCase));
                 if (srv == null)
                 {
-                    srv = new ServerConfig { Id = targetId, Name = targetId, Provider = settings.Servers.FirstOrDefault()?.Provider ?? "lmstudio", CreatedAt = DateTime.UtcNow };
+                    var first = settings.Servers.FirstOrDefault();
+                    var provider = first != null ? first.Provider : "lmstudio";
+                    srv = new ServerConfig { Id = targetId, Name = targetId, Provider = provider, CreatedAt = DateTime.UtcNow };
                     settings.Servers.Add(srv);
                 }
 
                 srv.BaseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
-                // do not log apiKey
                 srv.ApiKey = ServerApiKeyTextBox_Modal.Text ?? string.Empty;
 
-                // Robust extraction of selected model value
                 string selectedModel = null;
                 try
                 {
-                    selectedModel = (ServerModelCombo_Modal?.SelectedItem as string) 
-                                    ?? (ServerModelCombo_Modal?.SelectedValue as string) 
-                                    ?? ServerModelCombo_Modal?.Text;
+                    selectedModel = (ServerModelCombo_Modal != null ? ServerModelCombo_Modal.SelectedItem as string : null)
+                                    ?? (ServerModelCombo_Modal != null ? ServerModelCombo_Modal.SelectedValue as string : null)
+                                    ?? (ServerModelCombo_Modal != null ? ServerModelCombo_Modal.Text : null);
                 }
                 catch { }
                 selectedModel = (selectedModel ?? string.Empty).Trim();
 
-                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Save activeId='{targetId}', baseUrlPresent={(!string.IsNullOrWhiteSpace(srv.BaseUrl)).ToString()}, modelPresent={(string.IsNullOrEmpty(selectedModel) ? "false" : "true")} "); } catch { }
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Save activeId='" + targetId + "', baseUrlPresent=" + (!string.IsNullOrWhiteSpace(srv.BaseUrl)).ToString() + ", modelPresent=" + (string.IsNullOrEmpty(selectedModel) ? "false" : "true")); } catch { }
 
-                try { if (!string.IsNullOrEmpty(selectedModel)) srv.Model = selectedModel; } catch { }
+                if (!string.IsNullOrEmpty(selectedModel))
+                {
+                    srv.Model = selectedModel;
+                }
 
                 settings.ActiveServerId = targetId;
                 AgentSettingsStore.Save(settings);
 
-                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Save persisted ActiveServerId={settings.ActiveServerId}, BaseUrl={(srv.BaseUrl ?? "(empty)" )}, ModelLength={(srv.Model != null ? srv.Model.Length : 0)}"); } catch { }
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Save persisted ActiveServerId=" + settings.ActiveServerId + ", BaseUrl=" + (srv.BaseUrl ?? "(empty)") + ", ModelLength=" + (srv.Model != null ? srv.Model.Length : 0)); } catch { }
 
-                // Recompose and refresh
                 try
                 {
                     AgentComposition.RecomposeFromSettings("ConfigModal.Save");
                 }
                 catch (Exception ex)
                 {
-                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: RecomposeFromSettings error: {ex.Message}", ex); } catch { }
+                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: RecomposeFromSettings error: " + ex.Message, ex); } catch { }
                 }
 
-                // Refresh owner control UI state using public API (no reflection)
                 try
                 {
                     AgenteIALocalControl found = null;
-                    var ownerWindow = this.Owner as Window;
+                    var ownerWindow = Owner as Window;
                     if (ownerWindow != null)
                     {
                         var content = ownerWindow.Content as FrameworkElement;
-                        if (content is AgenteIALocalControl ac) found = ac;
-                        else if (content != null) found = FindControlOfType(content, typeof(AgenteIALocalControl)) as AgenteIALocalControl;
+                        if (content is AgenteIALocalControl)
+                        {
+                            found = content as AgenteIALocalControl;
+                        }
+                        else if (content != null)
+                        {
+                            found = FindControlOfType(content, typeof(AgenteIALocalControl)) as AgenteIALocalControl;
+                        }
                     }
 
                     if (found == null && System.Windows.Application.Current != null)
                     {
-                        var mainContent = System.Windows.Application.Current.MainWindow?.Content as FrameworkElement;
-                        if (mainContent is AgenteIALocalControl ac2) found = ac2;
-                        else if (mainContent != null) found = FindControlOfType(mainContent, typeof(AgenteIALocalControl)) as AgenteIALocalControl;
+                        var mainWindow = System.Windows.Application.Current.MainWindow;
+                        var mainContent = mainWindow != null ? mainWindow.Content as FrameworkElement : null;
+                        if (mainContent is AgenteIALocalControl)
+                        {
+                            found = mainContent as AgenteIALocalControl;
+                        }
+                        else if (mainContent != null)
+                        {
+                            found = FindControlOfType(mainContent, typeof(AgenteIALocalControl)) as AgenteIALocalControl;
+                        }
                     }
 
                     if (found != null)
@@ -813,7 +833,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         }
                         catch (Exception ex)
                         {
-                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Error calling RefreshFromSettings: {ex.Message}", ex); } catch { }
+                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Error calling RefreshFromSettings: " + ex.Message, ex); } catch { }
                         }
                     }
                     else
@@ -823,19 +843,19 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 catch (Exception ex)
                 {
-                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Error refreshing owner UI: {ex.Message}", ex); } catch { }
+                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Error refreshing owner UI: " + ex.Message, ex); } catch { }
                 }
 
                 try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Save end"); } catch { }
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Save error: {ex.Message}", ex); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Save error: " + ex.Message, ex); } catch { }
             }
             finally
             {
-                try { this.DialogResult = true; } catch { }
-                try { this.Close(); } catch { }
+                try { DialogResult = true; } catch { }
+                try { Close(); } catch { }
             }
         }
 
@@ -843,11 +863,11 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             try
             {
-                this.Close();
+                Close();
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigModal: Close error: {ex.Message}", ex); } catch { }
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Close error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -855,8 +875,8 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             if (root == null) return null;
             if (root.GetType() == t) return root;
-            int count = VisualTreeHelper.GetChildrenCount(root);
-            for (int i = 0; i < count; i++)
+            var count = VisualTreeHelper.GetChildrenCount(root);
+            for (var i = 0; i < count; i++)
             {
                 var child = VisualTreeHelper.GetChild(root, i) as FrameworkElement;
                 var res = FindControlOfType(child, t);
