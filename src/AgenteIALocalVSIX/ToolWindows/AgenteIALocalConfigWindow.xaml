@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="Configuración" Height="475" Width="560" MinHeight="520"
+        Title="Configuración" Height="720" Width="1024" MinHeight="720" MinWidth="1024"
         WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False"
         Background="#282828"
         shell:WindowChrome.IsHitTestVisibleInChrome="True">
@@ -23,10 +23,89 @@
         <SolidColorBrush x:Key="AccentBrush" Color="#FF3FB950" />
         <SolidColorBrush x:Key="DangerBrush" Color="#FFF85149" />
 
+        <!-- OVERRIDE hover/feedback celeste (MaterialDesign Primary Light) - ID: 20260116_113500 -->
+        <!-- Removed in favor of targeted ToggleButton template; see FIX ComboBoxArrowHoverTransparent - ID: 20260116_120500 -->
+
         <Style x:Key="Text.Headline" TargetType="TextBlock">
             <Setter Property="FontSize" Value="16" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
+        </Style>
+
+        <!-- MODIFICADO - ID: 20260116_102100 -->
+        <!-- Added missing Text.Body style to avoid XamlParseException; reuses existing header brush -->
+        <Style x:Key="Text.Body" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
+        </Style>
+
+        <!-- MODIFICADO - ID: 20260116_112500 -->
+        <!-- Replace sidebar nav template with a minimal ToggleButton-based ControlTemplate to avoid theme overlays (hover/pressed/focus) -->
+        <Style x:Key="SidebarNavToggleStyle" TargetType="{x:Type ToggleButton}">
+          <Setter Property="OverridesDefaultStyle" Value="True" />
+          <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+          <Setter Property="Background" Value="Transparent" />
+          <Setter Property="BorderBrush" Value="Transparent" />
+          <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
+          <Setter Property="Padding" Value="8" />
+          <Setter Property="HorizontalContentAlignment" Value="Left" />
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="{x:Type ToggleButton}">
+                <Border x:Name="Bd"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="0"
+                        CornerRadius="8"
+                        Padding="12,8">
+                  <ContentPresenter HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    RecognizesAccessKey="True" />
+                </Border>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsChecked" Value="True">
+                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentBrush}" />
+                    <Setter Property="Foreground" Value="White" />
+                  </Trigger>
+
+                  <MultiTrigger>
+                    <MultiTrigger.Conditions>
+                      <Condition Property="IsMouseOver" Value="True" />
+                      <Condition Property="IsChecked" Value="False" />
+                    </MultiTrigger.Conditions>
+                    <Setter TargetName="Bd" Property="Background" Value="Transparent" />
+                    <Setter TargetName="Bd" Property="BorderBrush" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
+                  </MultiTrigger>
+
+                  <MultiTrigger>
+                    <MultiTrigger.Conditions>
+                      <Condition Property="IsPressed" Value="True" />
+                      <Condition Property="IsChecked" Value="False" />
+                    </MultiTrigger.Conditions>
+                    <Setter TargetName="Bd" Property="Background" Value="Transparent" />
+                    <Setter TargetName="Bd" Property="BorderBrush" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
+                  </MultiTrigger>
+
+                  <MultiTrigger>
+                    <MultiTrigger.Conditions>
+                      <Condition Property="IsKeyboardFocusWithin" Value="True" />
+                      <Condition Property="IsChecked" Value="False" />
+                    </MultiTrigger.Conditions>
+                    <Setter TargetName="Bd" Property="Background" Value="Transparent" />
+                    <Setter TargetName="Bd" Property="BorderBrush" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{StaticResource HeaderHighEmphasisBrush}" />
+                  </MultiTrigger>
+
+                  <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" TargetName="Bd" Value="0.6" />
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
         </Style>
 
         <!-- TextBox with rounded corners (taller for vertical alignment) -->
@@ -168,9 +247,11 @@
                                               VerticalAlignment="Center" />
 
                             <!-- ToggleButton: transparent background, small arrow -->
+                            <!-- FIX ComboBoxArrowHoverTransparent - ID: 20260116_120500 -->
                             <ToggleButton x:Name="ToggleButton"
                                           Grid.Column="1"
                                           Focusable="False"
+                                          OverridesDefaultStyle="True"
                                           IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                                           Background="Transparent"
                                           BorderBrush="Transparent"
@@ -180,6 +261,19 @@
                                           Width="28"
                                           Padding="0"
                                           FocusVisualStyle="{x:Null}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="0">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="Bd" Property="Opacity" Value="0.6" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                                <!-- arrow content remains as ComboBox toggle content -->
                                 <Grid Width="12" Height="8" HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <Path Data="M 0 0 L 4 4 L 8 0 Z" Fill="{StaticResource HeaderHighEmphasisBrush}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Grid>
@@ -251,7 +345,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="56" />
                 <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
+                <RowDefinition Height="72" />
             </Grid.RowDefinitions>
 
             <!-- Header -->
@@ -265,73 +359,159 @@
                 </Grid>
              </Border>
 
-            <!-- Content: scrollable so footer stays visible -->
-            <ScrollViewer Grid.Row="1" Margin="12,12,12,48" VerticalScrollBarVisibility="Auto">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
+            <!-- MODIFICADO - ID: 20260116_094500 -->
+            <!-- Root shell: Header (42) / Body (*) / Footer (96) -->
+            <Grid Grid.Row="1" Margin="24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="280" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Row="0" Text="Active Server Id" Foreground="#FFFFFFFF" Margin="0,4,0,4" />
-                    <TextBox Grid.Row="1" x:Name="ActiveServerIdTextBox_Modal" Style="{StaticResource UxTextBox}" />
+                <!-- Sidebar -->
+                <Border Grid.Column="0" Background="{StaticResource HeaderBackgroundBrush}" Padding="16,16,8,16">
+                    <StackPanel Orientation="Vertical" VerticalAlignment="Top">
+                        <!-- Navigation items: ToggleButtons with icon + text - mutual exclusive implemented manually - MODIFICADO - ID: 20260116_112500 -->
+                        <ToggleButton x:Name="NavIdiomaToggle" IsChecked="False" Margin="0,0,0,12" Height="56" Style="{StaticResource SidebarNavToggleStyle}" Checked="NavToggle_Checked">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <md:PackIcon Kind="Translate" Width="20" Height="20" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+                                <TextBlock Text="Idioma" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </ToggleButton>
 
-                    <TextBlock Grid.Row="2" Text="Base URL" Foreground="#FFFFFFFF" Margin="0,10,0,4" />
-                    <TextBox Grid.Row="3" x:Name="ServerBaseUrlTextBox_Modal" Style="{StaticResource UxTextBox}" TextChanged="ServerBaseUrlTextBox_Modal_TextChanged" />
-                    <TextBlock Grid.Row="4" x:Name="ServerBaseUrlPingErrorText_Modal" Foreground="{StaticResource DangerBrush}" Visibility="Collapsed" Text="Servidor no responde (/v1/models)." Margin="0,6,0,0" />
-
-                    <StackPanel Grid.Row="5" Orientation="Vertical" Margin="0,10,0,0">
-                        <TextBlock Text="Model" Foreground="#FFFFFFFF" Margin="0,0,0,4" />
-                        <ComboBox x:Name="ServerModelCombo_Modal" Style="{StaticResource DarkFlatComboBoxStyle}" IsEditable="False" />
-
-                        <TextBlock Text="API Key" Foreground="#FFFFFFFF" Margin="0,10,0,4" />
-                        <TextBox x:Name="ServerApiKeyTextBox_Modal" Style="{StaticResource UxTextBox}" />
+                        <ToggleButton x:Name="NavLlmToggle" IsChecked="True" Margin="0,0,0,0" Height="56" Style="{StaticResource SidebarNavToggleStyle}" Checked="NavToggle_Checked">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <md:PackIcon Kind="Brain" Width="20" Height="20" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+                                <TextBlock Text="LLM's Local" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </ToggleButton>
                     </StackPanel>
+                </Border>
 
-                    <Expander Grid.Row="6" Header="Advanced" Margin="0,10,0,0" Foreground="#FFFFFFFF" Background="{StaticResource HeaderBackgroundBrush}" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" BorderThickness="1">
-                        <Border CornerRadius="8" BorderThickness="0" Background="Transparent">
-                            <StackPanel Orientation="Vertical" Margin="12,8,12,12">
-                                <TextBlock Text="Provider" Foreground="#FFFFFFFF" Margin="0,0,0,4" />
+                <!-- Main content host -->
+                <Grid Grid.Column="1" Margin="24,0,0,0">
+                    <!-- Idioma Page -->
+                    <Grid x:Name="IdiomaPageGrid" Visibility="Collapsed">
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsChecked, ElementName=NavIdiomaToggle}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+
+                        <TextBlock Text="Seleccione el idioma" Style="{StaticResource Text.Headline}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" HorizontalAlignment="Left" />
+                        <StackPanel Orientation="Vertical" Margin="0,8,0,0">
+                            <StackPanel Orientation="Horizontal" Height="56" VerticalAlignment="Center">
+                                <CheckBox IsChecked="True" IsEnabled="False" Width="24" Height="24" VerticalAlignment="Center" />
+                                <TextBlock Text="Spanish" Foreground="{StaticResource HeaderHighEmphasisBrush}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Height="56" VerticalAlignment="Center">
+                                <CheckBox IsChecked="False" IsEnabled="False" Width="24" Height="24" VerticalAlignment="Center" />
+                                <TextBlock Text="English" Foreground="{StaticResource HeaderHighEmphasisBrush}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- LLM Local Page -->
+                    <Grid x:Name="LlmLocalPageGrid">
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsChecked, ElementName=NavLlmToggle}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="Configuración de los proveedores locales" Style="{StaticResource Text.Headline}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" />
+
+                        <!-- Top row: Provider (left) + Run Mode (right) -->
+                        <Grid Grid.Row="1" Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="3*" />
+                                <ColumnDefinition Width="1.2*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Vertical">
+                                <TextBlock Text="Provider" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,6" />
                                 <ComboBox x:Name="ProviderCombo_Modal" Style="{StaticResource DarkFlatComboBoxStyle}" IsEditable="False">
                                     <ComboBoxItem Content="LM Studio" />
                                     <ComboBoxItem Content="Jan" />
                                 </ComboBox>
-
-                                <TextBlock Text="Run Mode" Foreground="#FFFFFFFF" Margin="0,10,0,4" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Vertical" Margin="12,0,0,0">
+                                <TextBlock Text="Run Mode" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,6" />
                                 <ComboBox x:Name="RunModeCombo_Modal" Style="{StaticResource DarkFlatComboBoxStyle}" IsEditable="False">
                                     <ComboBoxItem Content="Preguntar" />
                                     <ComboBoxItem Content="Agente" />
                                 </ComboBox>
+                            </StackPanel>
+                        </Grid>
 
-                                <CheckBox x:Name="StreamToggle_Modal" Content="Stream" Margin="0,10,0,0" Foreground="#FFFFFFFF" />
-                                <CheckBox x:Name="IncludeUsageToggle_Modal" Content="Include usage" Margin="0,6,0,0" Foreground="#FFFFFFFF" IsEnabled="False" />
+                        <!-- Server card -->
+                        <Border Grid.Row="2" Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Padding="12" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" BorderThickness="1" Margin="0,0,0,12">
+                            <StackPanel Orientation="Vertical" >
+                                <TextBlock Text="Active Server Id" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+                                <TextBox x:Name="ActiveServerIdTextBox_Modal" Style="{StaticResource UxTextBox}" />
 
-                                <CheckBox x:Name="AgentIdeIntegrationToggle_Modal" Content="IDE integration" Margin="0,10,0,0" Foreground="#FFFFFFFF" />
-                                <CheckBox x:Name="AgentApplyChangesToggle_Modal" Content="Apply changes" Margin="0,6,0,0" Foreground="#FFFFFFFF" />
+                                <TextBlock Text="Base URL" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,10,0,0" />
+                                <TextBox x:Name="ServerBaseUrlTextBox_Modal" Style="{StaticResource UxTextBox}" TextChanged="ServerBaseUrlTextBox_Modal_TextChanged" />
+                                <TextBlock x:Name="ServerBaseUrlPingErrorText_Modal" Foreground="{StaticResource DangerBrush}" Visibility="Collapsed" Text="Servidor no responde (/v1/models)." Margin="0,6,0,0" />
 
-                                <TextBlock Text="Max steps" Foreground="#FFFFFFFF" Margin="0,10,0,4" />
-                                <TextBox x:Name="AgentMaxStepsTextBox_Modal" Style="{StaticResource UxTextBox}" />
+                                <TextBlock Text="Model" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,10,0,0" />
+                                <ComboBox x:Name="ServerModelCombo_Modal" Style="{StaticResource DarkFlatComboBoxStyle}" IsEditable="False" />
+
+                                <TextBlock Text="API Key" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,10,0,0" />
+                                <TextBox x:Name="ServerApiKeyTextBox_Modal" Style="{StaticResource UxTextBox}" />
                             </StackPanel>
                         </Border>
-                    </Expander>
+
+                        <!-- Checkboxes and max steps -->
+                        <StackPanel Grid.Row="3" Orientation="Vertical" >
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <CheckBox x:Name="StreamToggle_Modal" Content="Stream" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+                                <CheckBox x:Name="IncludeUsageToggle_Modal" Content="Include usage" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" />
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,6,0,0">
+                                <CheckBox x:Name="AgentIdeIntegrationToggle_Modal" Content="IDE integration" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+                                <CheckBox x:Name="AgentApplyChangesToggle_Modal" Content="Apply changes" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="16,0,0,0" />
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,0,0,0">
+                                    <TextBlock Text="Max steps" Foreground="{StaticResource HeaderHighEmphasisBrush}" VerticalAlignment="Center" Margin="20,0,8,0" />
+                                    <TextBox x:Name="AgentMaxStepsTextBox_Modal" Style="{StaticResource UxTextBox}" Width="80" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+
+                    </Grid>
                 </Grid>
-            </ScrollViewer>
+            </Grid>
 
             <!-- Footer: remains docked at bottom -->
-            <Border Grid.Row="2" Background="{StaticResource FooterBackgroundBrush}" CornerRadius="0,0,6,6" BorderThickness="1,1,1,0" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" MinHeight="72" Padding="16,12,16,12">
+            <!-- MODIFICADO - ID: 20260116_110200 Footer adjusted button sizes and padding -->
+            <Border Grid.Row="2" Background="{StaticResource FooterBackgroundBrush}" CornerRadius="0,0,6,6" BorderThickness="1,1,1,0" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" Height="72" Padding="24,12,48,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button x:Name="SaveButton_Modal" Content="Save" Click="SaveButton_Click" Style="{StaticResource UxPrimaryButton}" Margin="0,0,8,0" />
-                        <Button x:Name="CloseButton_Modal" Content="Close" Click="CloseButton_Click" Style="{StaticResource UxSecondaryButton}" />
+                        <!-- MODIFICADO - ID: 20260116_110200: reduced button sizes and spacing -->
+                        <Button x:Name="SaveButton_Modal" Content="Guardar" Click="SaveButton_Click" Style="{StaticResource UxPrimaryButton}" Width="120" Height="40" Margin="0,0,12,0" />
+                        <Button x:Name="CloseButton_Modal" Content="Cancelar" Click="CloseButton_Click" Style="{StaticResource UxSecondaryButton}" Width="120" Height="40" />
                     </StackPanel>
                 </Grid>
             </Border>

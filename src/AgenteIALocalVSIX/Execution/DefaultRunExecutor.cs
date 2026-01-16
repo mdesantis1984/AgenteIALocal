@@ -133,15 +133,39 @@ namespace AgenteIALocalVSIX.ToolWindows
                     AgentHostResponse response = null;
 
                     AgenteIALocalVSIX.ServerConfig lmServer = null;
-                    var canStreamLmStudio = o.TryGetActiveLmStudioServer(out lmServer);
+                    var canStreamOpenAi = o.TryGetActiveOpenAiCompatibleServer(out lmServer);
 
-                    if (canStreamLmStudio)
+                    if (canStreamOpenAi)
                     {
                         o._streamingAiMessage = aiBubble;
                         o._streamingAiRun = null;
                         o._streamingAiViewer = null;
                         o._chatService.RenderActiveChatToUi();
-                        response = await o.ExecuteLmStudioStreamingAsync(req, lmServer, o.activeChat, aiBubble, ct);
+                        // Use existing LM Studio streaming implementation for OpenAI-compatible providers (LM Studio, JAN)
+                        try
+                        {
+                            // Log provider info once when it changes (never log ApiKey)
+                            try
+                            {
+                                var prov = (lmServer != null ? (lmServer.Provider ?? string.Empty).ToLowerInvariant() : string.Empty);
+                                var host = string.Empty;
+                                try { host = new Uri((lmServer?.BaseUrl ?? string.Empty)).Host; } catch { host = lmServer != null ? lmServer.BaseUrl ?? string.Empty : string.Empty; }
+                                var model = lmServer != null ? lmServer.Model ?? string.Empty : string.Empty;
+                                var info = prov + "|" + host + "|" + model;
+                                if (!string.Equals(o._lastLoggedProviderInfo, info, StringComparison.Ordinal))
+                                {
+                                    o._lastLoggedProviderInfo = info;
+                                    try { AgentComposition.Info(o.activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "OpenAI-compatible provider used: " + prov + " host=" + host + " model=" + model); } catch { }
+                                }
+                            }
+                            catch { }
+
+                            response = await o.ExecuteLmStudioStreamingAsync(req, lmServer, o.activeChat, aiBubble, ct);
+                        }
+                        catch (Exception)
+                        {
+                            throw;
+                        }
                     }
                     else
                     {

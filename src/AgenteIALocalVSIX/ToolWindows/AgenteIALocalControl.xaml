@@ -1397,7 +1397,7 @@
                       <Style.Triggers>
 
                         <!-- Running: Stop grande + mismo efecto que Play -->
-                        <DataTrigger Binding="{Binding CurrentExecutionState}" Value="{x:Static local:AgenteIALocalControl+ExecutionState.Running}">
+                        <DataTrigger Binding="{Binding CurrentExecutionState}" Value="Running">
 
                           <!-- Stop icon -->
                           <Setter Property="Content">

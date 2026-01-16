@@ -8,7 +8,9 @@ using System.Windows.Input;
 using System.Threading;
 using System.Net.Http;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using AgenteIALocalVSIX;
+using AgenteIALocalVSIX.Commons;
 using Microsoft.VisualStudio.Shell;
 using Newtonsoft.Json.Linq;
 
@@ -16,6 +18,8 @@ namespace AgenteIALocalVSIX.ToolWindows
 {
     public partial class AgenteIALocalConfigWindow : Window
     {
+        // NUEVO - suppress BaseUrl TextChanged handler while programmatically setting text - ID: 20260115_223100
+        private bool _suppressBaseUrlTextChanged_20260116;
         private readonly string initialServerId;
         // NUEVO CAMPO BaseUrlPingCts - ID: 20260114_000072
         private CancellationTokenSource _baseUrlPingCts;
@@ -24,6 +28,14 @@ namespace AgenteIALocalVSIX.ToolWindows
         private bool _isInitializingAdvancedUi;
         // NUEVO EVENTO BaseUrlHealthChanged - ID: 20260114_000079
         public event Action<bool, string, IReadOnlyList<string>> BaseUrlHealthChanged;
+
+        // NUEVO: in-memory models cache per serverId - ID: 20260115_220500
+        private static System.Collections.Concurrent.ConcurrentDictionary<string, System.Collections.Generic.List<string>> _modelsCacheByServerId = new System.Collections.Concurrent.ConcurrentDictionary<string, System.Collections.Generic.List<string>>();
+
+        // NUEVO: versioning to avoid stale UI updates for models fetch - ID: 20260115_220500
+        private int _modelsFetchVersion = 0;
+        // NUEVO: guard to avoid recursion when toggling nav buttons - ID: 20260116_112500
+        private bool _suppressNavToggleChecked_20260116;
 
         public AgenteIALocalConfigWindow(string serverId = null)
         {
@@ -35,6 +47,19 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 Title = "Configuración — " + serverId;
             }
+
+            // MODIFICADO - ID: 20260116_110300
+            // Set window and header caption to match ToolWindowPane caption including VSIX version
+            try
+            {
+                var version = typeof(AgenteIALocalVSIXPackage).GetVsixVersionString();
+                var caption = $"Chat de Agente IA Local {version} - Configuracion";
+                try { this.Title = caption; } catch { }
+                try { HeaderTitleText.Text = caption; } catch { }
+            }
+            catch { }
+
+            // NUEVO: view switching is handled by XAML DataTriggers; no code-behind wiring required - ID: 20260116_094500
         }
 
         private void CloseButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -59,6 +84,31 @@ namespace AgenteIALocalVSIX.ToolWindows
         private void AgenteIALocalConfigWindow_Loaded(object sender, RoutedEventArgs e)
         {
             FireAndForget(HandleLoadedAsync(), "ConfigWindow.Loaded");
+        }
+
+        // NUEVO METODO NavToggle_Checked - ID: 20260116_112500
+        // Make sidebar ToggleButtons act mutually exclusive without changing their x:Name
+        private void NavToggle_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_suppressNavToggleChecked_20260116) return;
+            try
+            {
+                _suppressNavToggleChecked_20260116 = true;
+                var tb = sender as ToggleButton;
+                if (tb == null) return;
+
+                // If Idioma was checked, uncheck LLM
+                if (tb == NavIdiomaToggle)
+                {
+                    try { NavLlmToggle.IsChecked = false; } catch { }
+                }
+                else if (tb == NavLlmToggle)
+                {
+                    try { NavIdiomaToggle.IsChecked = false; } catch { }
+                }
+            }
+            catch { }
+            finally { _suppressNavToggleChecked_20260116 = false; }
         }
 
         // NUEVO METODO LoadAdvancedControls - ID: 20250304_170001
@@ -354,7 +404,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var settings = AgentSettingsStore.Load();
                 if (settings == null) return;
 
+                // Suppress baseUrl change handler while we hydrate controls to avoid races
                 _isInitializingAdvancedUi = true;
+                _suppressBaseUrlTextChanged_20260116 = true;
                 try
                 {
                     var targetId = !string.IsNullOrEmpty(initialServerId) ? initialServerId : settings.ActiveServerId;
@@ -373,45 +425,19 @@ namespace AgenteIALocalVSIX.ToolWindows
                         ServerBaseUrlTextBox_Modal.LostFocus -= ServerBaseUrl_LostFocus;
                         ServerBaseUrlTextBox_Modal.LostFocus += ServerBaseUrl_LostFocus;
                     }
-                    catch
-                    {
-                    }
-
-                    var baseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
-                    if (!string.IsNullOrWhiteSpace(baseUrl))
-                    {
-                        try
-                        {
-                            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModels start for " + baseUrl); } catch { }
-                            var models = await FetchModelsAsync(baseUrl).ConfigureAwait(true);
-                            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModels end for " + baseUrl + " (count=" + (models != null ? models.Count : 0) + ")"); } catch { }
-
-                            if (models != null && models.Count > 0)
-                            {
-                                ServerModelCombo_Modal.Items.Clear();
-                                foreach (var m in models) ServerModelCombo_Modal.Items.Add(m);
-
-                                var activeModel = srv != null ? srv.Model : null;
-                                if (!string.IsNullOrEmpty(activeModel) && ServerModelCombo_Modal.Items.Contains(activeModel))
-                                {
-                                    ServerModelCombo_Modal.SelectedItem = activeModel;
-                                }
-                                else
-                                {
-                                    ServerModelCombo_Modal.SelectedIndex = 0;
-                                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Defaulted model selection to '" + ServerModelCombo_Modal.SelectedItem + "'"); } catch { }
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModels error on load: " + ex.Message, ex); } catch { }
-                        }
-                    }
+                    catch { }
                 }
                 finally
                 {
+                    _suppressBaseUrlTextChanged_20260116 = false;
                     _isInitializingAdvancedUi = false;
+                }
+
+                // After init, if there's a baseUrl, trigger a single evaluation (do not run parallel fetches here)
+                var baseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(baseUrl))
+                {
+                    try { FireAndForget(HandleBaseUrlTextChangedAsync(), "ConfigModal.BaseUrlTextChanged.OnLoaded"); } catch { }
                 }
             }
             catch (Exception exOuter)
@@ -431,6 +457,9 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             try
             {
+                // Respect suppression: do not run when suppress flag set
+                if (_suppressBaseUrlTextChanged_20260116 || _isInitializingAdvancedUi) return;
+
                 if (_baseUrlPingCts != null)
                 {
                     _baseUrlPingCts.Cancel();
@@ -473,111 +502,220 @@ namespace AgenteIALocalVSIX.ToolWindows
                     return;
                 }
 
-                var endpoint = baseUrl.TrimEnd('/') + "/v1/models";
+                // MODIFICADO HandleBaseUrlTextChangedAsync: use unified endpoint builder + auth header + fallback host - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+                var baseUri = NormalizeBaseUri(baseUrl);
+                if (baseUri == null)
+                {
+                    ShowBaseUrlError("URL inválida");
+                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                    return;
+                }
 
+                var primary = BuildModelsUri(baseUri);
+                var fallbackHost = TryGetFallbackHost(baseUri);
+
+                var myFetchVersion = System.Threading.Interlocked.Increment(ref _modelsFetchVersion); // NUEVO: version tag for this fetch - ID: 20260115_220500
                 using (var client = new HttpClient())
                 {
                     client.Timeout = TimeSpan.FromSeconds(3);
                     HttpResponseMessage resp = null;
+                    Exception firstEx = null;
+
                     try
                     {
-                        resp = await client.GetAsync(endpoint, ct).ConfigureAwait(true);
-                        if (ct.IsCancellationRequested) return;
-
-                        if (resp.IsSuccessStatusCode)
+                        using (var req = new HttpRequestMessage(HttpMethod.Get, primary))
                         {
-                            HideBaseUrlError();
-                            PersistBaseUrlIfChanged(baseUrl);
-
-                            List<string> models = new List<string>();
+                            req.Headers.Accept.Clear();
+                            req.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
                             try
                             {
-                                models = await FetchModelsAsync(baseUrl).ConfigureAwait(true);
+                                var apiKey = (ServerApiKeyTextBox_Modal != null ? ServerApiKeyTextBox_Modal.Text : null) ?? string.Empty;
+                                apiKey = apiKey.Trim();
+                                if (!string.IsNullOrWhiteSpace(apiKey))
+                                {
+                                    req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                                }
                             }
-                            catch
-                            {
-                            }
+                            catch { }
 
+                            resp = await client.SendAsync(req, ct).ConfigureAwait(true);
+                        }
+                    }
+                    catch (Exception exPrimary)
+                    {
+                        firstEx = exPrimary;
+                    }
+
+                    // If primary failed with connection refused and a fallback host is available, retry
+                    if (firstEx != null && IsConnectionRefused(firstEx) && !string.IsNullOrEmpty(fallbackHost))
+                    {
+                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: primary GET failed, retrying with fallback host"); } catch { }
+                        var altBuilder = new UriBuilder(baseUri) { Host = fallbackHost };
+                        var alt = BuildModelsUri(altBuilder.Uri);
+                        try
+                        {
+                            using (var req = new HttpRequestMessage(HttpMethod.Get, alt))
+                            {
+                                req.Headers.Accept.Clear();
+                                req.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+                                try
+                                {
+                                    var apiKey = (ServerApiKeyTextBox_Modal != null ? ServerApiKeyTextBox_Modal.Text : null) ?? string.Empty;
+                                    apiKey = apiKey.Trim();
+                                    if (!string.IsNullOrWhiteSpace(apiKey))
+                                    {
+                                        req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                                    }
+                                }
+                                catch { }
+
+                                resp = await client.SendAsync(req, ct).ConfigureAwait(true);
+                                firstEx = null;
+
+                                // Update textbox to effective host so user sees working host (do not persist)
+                                try { _suppressBaseUrlTextChanged_20260116 = true; ServerBaseUrlTextBox_Modal.Text = altBuilder.Uri.ToString().TrimEnd('/'); } catch { } finally { _suppressBaseUrlTextChanged_20260116 = false; }
+                            }
+                        }
+                        catch (Exception exAlt)
+                        {
+                            // both attempts failed
+                            try { ShowBaseUrlError("Servidor no responde (/v1/models)"); } catch { }
+                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                            return;
+                        }
+                    }
+
+                    if (firstEx != null)
+                    {
+                        // If cancelled, do not touch UI
+                        if (ct.IsCancellationRequested) return;
+                        try { ShowBaseUrlError(firstEx.Message); } catch { }
+                        try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                        return;
+                    }
+
+                    if (resp == null)
+                    {
+                        // stale check
+                        if (myFetchVersion != _modelsFetchVersion) return; // discard
+                        try { ShowBaseUrlError("Servidor no responde (/v1/models)"); } catch { }
+                        try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                        return;
+                    }
+
+                    // Handle auth vs other failures vs success
+                    if (resp.IsSuccessStatusCode)
+                    {
+                        // stale check
+                        if (myFetchVersion != _modelsFetchVersion) return; // discard if newer fetch started
+
+                        HideBaseUrlError();
+
+                        List<string> models = new List<string>();
+                        try
+                        {
+                            models = await FetchModelsAsync(baseUrl).ConfigureAwait(true);
+                        }
+                        catch { }
+
+                        // If fetch returned models, update cache and UI; if not, try using cache or persisted model
+                        if (models != null && models.Count > 0)
+                        {
+                            try { _modelsCacheByServerId.AddOrUpdate(ActiveServerIdTextBox_Modal.Text ?? string.Empty, (k) => new System.Collections.Generic.List<string>(models), (k, v) => new System.Collections.Generic.List<string>(models)); } catch { }
                             try
                             {
                                 ServerModelCombo_Modal.Items.Clear();
-                                if (models != null && models.Count > 0)
-                                {
-                                    foreach (var m in models) ServerModelCombo_Modal.Items.Add(m);
-                                    ServerModelCombo_Modal.SelectedIndex = 0;
-                                }
-                                else
-                                {
-                                    ServerModelCombo_Modal.SelectedItem = null;
-                                }
+                                foreach (var m in models) ServerModelCombo_Modal.Items.Add(m);
+                                ServerModelCombo_Modal.SelectedIndex = 0;
                             }
-                            catch
-                            {
-                            }
-
-                            try { BaseUrlHealthChanged?.Invoke(true, baseUrl, models); } catch { }
+                            catch { }
                         }
                         else
                         {
-                            ShowBaseUrlError("Servidor responde " + resp.StatusCode);
-                            try
+                            // no models returned: fallback to cache or persisted model
+                            var sid = (ActiveServerIdTextBox_Modal.Text ?? string.Empty);
+                            System.Collections.Generic.List<string> cached = null;
+                            _modelsCacheByServerId.TryGetValue(sid, out cached);
+                            if (cached != null && cached.Count > 0)
                             {
-                                ServerModelCombo_Modal.Items.Clear();
-                                ServerModelCombo_Modal.SelectedItem = null;
+                                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Using cached models for server " + sid); } catch { }
+                                try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in cached) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch { }
                             }
-                            catch
+                            else
                             {
+                                // fallback to persisted single model if exists
+                                try
+                                {
+                                    var settings = AgentSettingsStore.Load();
+                                    if (settings != null && settings.Servers != null)
+                                    {
+                                        var srv = settings.Servers.Find(s => string.Equals(s.Id, ActiveServerIdTextBox_Modal.Text, StringComparison.OrdinalIgnoreCase));
+                                        if (srv != null && !string.IsNullOrWhiteSpace(srv.Model))
+                                        {
+                                            try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.Items.Add(srv.Model); ServerModelCombo_Modal.SelectedIndex = 0; } catch { }
+                                        }
+                                    }
+                                }
+                                catch { }
                             }
-                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
                         }
+
+                        try { BaseUrlHealthChanged?.Invoke(true, baseUrl, models); } catch { }
                     }
-                    catch (OperationCanceledException)
+                    else if (resp.StatusCode == System.Net.HttpStatusCode.Unauthorized || resp.StatusCode == System.Net.HttpStatusCode.Forbidden)
                     {
+                        // Auth issue: clear combo and show error
+                        try { ShowBaseUrlError("No autorizado: revisa API Key"); } catch { }
+                        try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch { }
+                        try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        if (!ct.IsCancellationRequested)
-                        {
-                            ShowBaseUrlError(ex.Message);
-                            try
-                            {
-                                ServerModelCombo_Modal.Items.Clear();
-                                ServerModelCombo_Modal.SelectedItem = null;
-                            }
-                            catch
-                            {
-                            }
-                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
-                        }
-                    }
-                    finally
-                    {
-                        try { if (resp != null) resp.Dispose(); } catch { }
+                        try { ShowBaseUrlError("Servidor responde " + resp.StatusCode); } catch { }
+                        try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch { }
+                        try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
                     }
                 }
             }
             catch (Exception exOuter)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: BaseUrl ping error: " + exOuter.Message, exOuter); } catch { }
+                // Log once to avoid spam from repeated failures
+                try { AgenteIALocalVSIX.Logging.ExceptionLogOnce.LogOnce("ConfigModal:BaseUrlPingError", () => AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: BaseUrl ping error: " + exOuter.Message, exOuter)); } catch { }
             }
         }
 
         // NUEVO METODO ApplyServerToUi - ID: 20250304_170015
         private void ApplyServerToUi(string serverId, ServerConfig srv)
         {
-            ActiveServerIdTextBox_Modal.Text = serverId ?? string.Empty;
-            ServerBaseUrlTextBox_Modal.Text = srv != null ? srv.BaseUrl : string.Empty;
-            _lastPersistedBaseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
-            ServerApiKeyTextBox_Modal.Text = srv != null ? srv.ApiKey : string.Empty;
-
+            // NUEVO - suppress BaseUrl change handler while hydrating UI - ID: 20260115_223100
+            _suppressBaseUrlTextChanged_20260116 = true;
             try
             {
-                ServerModelCombo_Modal.Items.Clear();
-                if (srv != null && !string.IsNullOrWhiteSpace(srv.Model))
+                ActiveServerIdTextBox_Modal.Text = serverId ?? string.Empty;
+                ServerBaseUrlTextBox_Modal.Text = srv != null ? srv.BaseUrl : string.Empty;
+                _lastPersistedBaseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
+                ServerApiKeyTextBox_Modal.Text = srv != null ? srv.ApiKey : string.Empty;
+
+                try
                 {
-                    ServerModelCombo_Modal.Items.Add(srv.Model);
-                    ServerModelCombo_Modal.SelectedItem = srv.Model;
+                    ServerModelCombo_Modal.Items.Clear();
+                    if (srv != null && !string.IsNullOrWhiteSpace(srv.Model))
+                    {
+                        ServerModelCombo_Modal.Items.Add(srv.Model);
+                        ServerModelCombo_Modal.SelectedItem = srv.Model;
+                    }
                 }
+                catch { }
+            }
+            finally
+            {
+                _suppressBaseUrlTextChanged_20260116 = false;
+            }
+
+            // Fire a single evaluation of the base URL after hydration
+            try
+            {
+                FireAndForget(HandleBaseUrlTextChangedAsync(), "ConfigModal.BaseUrlTextChanged.ApplyServerToUi");
             }
             catch { }
         }
@@ -590,6 +728,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         // NUEVO METODO ServerBaseUrlTextBox_Modal_TextChanged - ID: 20260114_000074
         private void ServerBaseUrlTextBox_Modal_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (_suppressBaseUrlTextChanged_20260116 || _isInitializingAdvancedUi) return;
             FireAndForget(HandleBaseUrlTextChangedAsync(), "ConfigModal.BaseUrlTextChanged");
         }
 
@@ -654,27 +793,193 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch { }
         }
 
+        // NUEVO METODO NormalizeBaseUri - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        private static Uri NormalizeBaseUri(string baseUrl)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(baseUrl)) return null;
+                Uri uri;
+                if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out uri))
+                {
+                    if (Uri.TryCreate("http://" + baseUrl, UriKind.Absolute, out uri)) return uri;
+                    return null;
+                }
+                return uri;
+            }
+            catch { return null; }
+        }
+
+        // NUEVO METODO BuildModelsUri - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        private static string BuildModelsUri(Uri baseUri)
+        {
+            try
+            {
+                if (baseUri == null) return null;
+                var s = baseUri.ToString().TrimEnd('/');
+                var lower = s.ToLowerInvariant();
+                if (lower.EndsWith("/v1/models")) return s; // already complete
+                if (lower.EndsWith("/v1")) return s + "/models";
+                return s + "/v1/models";
+            }
+            catch { return null; }
+        }
+
+        // NUEVO METODO TryGetFallbackHost - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        private static string TryGetFallbackHost(Uri baseUri)
+        {
+            try
+            {
+                if (baseUri == null) return null;
+                var host = baseUri.Host ?? string.Empty;
+                if (string.Equals(host, "127.0.0.1", StringComparison.OrdinalIgnoreCase)) return "localhost";
+                if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)) return "127.0.0.1";
+                return null;
+            }
+            catch { return null; }
+        }
+
+        // NUEVO METODO IsConnectionRefused - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        private static bool IsConnectionRefused(Exception ex)
+        {
+            try
+            {
+                if (ex == null) return false;
+                var ae = ex as AggregateException;
+                if (ae != null) ex = ae.GetBaseException();
+
+                var httpEx = ex as HttpRequestException;
+                if (httpEx != null)
+                {
+                    var inner = httpEx.InnerException;
+                    if (inner != null) ex = inner;
+                }
+
+                var socketEx = ex as System.Net.Sockets.SocketException;
+                if (socketEx != null)
+                {
+                    if (socketEx.ErrorCode == 10061) return true;
+                }
+
+                if (ex.InnerException != null) return IsConnectionRefused(ex.InnerException);
+
+                var msg = ex.Message ?? string.Empty;
+                if (msg.IndexOf("Connection refused", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                if (msg.IndexOf("ECONNREFUSED", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+
+                return false;
+            }
+            catch { return false; }
+        }
+
         private async Task<List<string>> FetchModelsAsync(string baseUrl)
         {
             var result = new List<string>();
             try
             {
                 if (string.IsNullOrWhiteSpace(baseUrl)) return result;
+                // MODIFICADO FetchModelsAsync - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+                var baseUri = NormalizeBaseUri(baseUrl);
+                if (baseUri == null) return result;
 
-                var url = baseUrl.TrimEnd('/') + "/v1/models";
+                var primary = BuildModelsUri(baseUri);
+                var fallbackHost = TryGetFallbackHost(baseUri);
+
                 using (var client = new HttpClient())
                 {
                     client.Timeout = TimeSpan.FromSeconds(5);
-                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync GET " + url); } catch { }
+                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync GET " + primary); } catch { }
 
-                    var resp = await client.GetAsync(url);
+                    HttpResponseMessage resp = null;
+                    Exception firstEx = null;
+                    try
+                    {
+                        using (var req = new HttpRequestMessage(HttpMethod.Get, primary))
+                        {
+                            req.Headers.Accept.Clear();
+                            req.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+                            try
+                            {
+                                var apiKey = (ServerApiKeyTextBox_Modal != null ? ServerApiKeyTextBox_Modal.Text : null) ?? string.Empty;
+                                apiKey = apiKey.Trim();
+                                if (!string.IsNullOrWhiteSpace(apiKey))
+                                {
+                                    req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                                }
+                            }
+                            catch { }
+
+                            resp = await client.SendAsync(req).ConfigureAwait(true);
+                        }
+                    }
+                    catch (Exception exPrimary)
+                    {
+                        firstEx = exPrimary;
+                    }
+
+                    // If primary attempt threw connection refused and we have a fallback host, try alternate host
+                    if (firstEx != null && IsConnectionRefused(firstEx) && !string.IsNullOrEmpty(fallbackHost))
+                    {
+                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: primary GET failed with connection refused, will retry with fallback host"); } catch { }
+                        var altBuilder = new UriBuilder(baseUri) { Host = fallbackHost };
+                        var alt = BuildModelsUri(altBuilder.Uri);
+                        try
+                        {
+                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync fallback GET " + alt); } catch { }
+                        try
+                        {
+                            using (var req = new HttpRequestMessage(HttpMethod.Get, alt))
+                            {
+                                req.Headers.Accept.Clear();
+                                req.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+                                try
+                                {
+                                    var apiKey = (ServerApiKeyTextBox_Modal != null ? ServerApiKeyTextBox_Modal.Text : null) ?? string.Empty;
+                                    apiKey = apiKey.Trim();
+                                    if (!string.IsNullOrWhiteSpace(apiKey))
+                                    {
+                                        req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                                    }
+                                }
+                                catch { }
+
+                                resp = await client.SendAsync(req).ConfigureAwait(true);
+                                firstEx = null; // mark fallback attempted
+                            }
+                        }
+                        catch (Exception exAlt)
+                        {
+                            // fallback also failed
+                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync both primary and fallback failed: " + exAlt.Message, exAlt); } catch { }
+                            return result;
+                        }
+                        }
+                        catch (Exception exAlt)
+                        {
+                            // fallback also failed
+                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync both primary and fallback failed: " + exAlt.Message, exAlt); } catch { }
+                            return result;
+                        }
+                    }
+
+                    if (firstEx != null)
+                    {
+                        try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync error: " + firstEx.Message, firstEx); } catch { }
+                        return result;
+                    }
+
+                    if (resp == null)
+                    {
+                        return result;
+                    }
+
                     if (!resp.IsSuccessStatusCode)
                     {
                         try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync non-success status: " + resp.StatusCode); } catch { }
                         return result;
                     }
 
-                    var txt = await resp.Content.ReadAsStringAsync();
+                    var txt = await resp.Content.ReadAsStringAsync().ConfigureAwait(true);
                     if (string.IsNullOrWhiteSpace(txt)) return result;
 
                     try

@@ -26,11 +26,12 @@ using System.Windows.Media;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
+    // NUEVO ENUM ExecutionState - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+    public enum ExecutionState { Idle, Running, Completed, Error }
+
     public partial class AgenteIALocalControl : UserControl, INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
-
-        public enum ExecutionState { Idle, Running, Completed, Error }
 
         private IChatService _chatService;
 
@@ -86,6 +87,10 @@ namespace AgenteIALocalVSIX.ToolWindows
         private int _streamingFlushedLength = 0; // NUEVO CAMPO - ID: 20260114_000031
         private Paragraph _streamingAiParagraph = null; // NUEVO CAMPO - ID: 20260114_000032
         private Run _streamingAiLastRun = null; // NUEVO CAMPO - ID: 20260114_000033
+        // NUEVO CAMPO _isRefreshingUiProvider - ID: 20260115_123000
+        private bool _isRefreshingUiProvider = false;
+        // NUEVO CAMPO last logged provider info to avoid repeated info logs - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR_EN_ESTA_TAREA
+        private string _lastLoggedProviderInfo = null;
         // Guard to avoid spamming error logs when opening settings fails
         private bool _settingsOpenErrorLogged = false; // NUEVO CAMPO - ID: 20260114_000051
         // NUEVO CAMPO ConfigStatusLabel - ID: 20260114_000061
@@ -108,6 +113,150 @@ namespace AgenteIALocalVSIX.ToolWindows
                 UpdateStateProperties(value);
             }
         }
+
+        // NUEVO METODO NormalizeBaseUri - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        private static Uri NormalizeBaseUri(string baseUrl)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(baseUrl)) return null;
+                Uri uri;
+                if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out uri))
+                {
+                    // try with http scheme
+                    if (Uri.TryCreate("http://" + baseUrl, UriKind.Absolute, out uri)) return uri;
+                    return null;
+                }
+                return uri;
+            }
+            catch { return null; }
+        }
+
+        // NUEVO METODO BuildModelsUri - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        // MODIFICADO BuildModelsUri - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        private static string BuildModelsUri(Uri baseUri)
+        {
+            try
+            {
+                var s = baseUri.ToString().TrimEnd('/');
+                var path = baseUri.AbsolutePath ?? string.Empty;
+                // If already contains /v1/models -> return as-is
+                if (path.IndexOf("/v1/models", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return s;
+                }
+                // If ends with /v1 -> append /models
+                if (path.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
+                {
+                    return s + "/models";
+                }
+                // default -> append /v1/models
+                return s + "/v1/models";
+            }
+            catch { return null; }
+        }
+
+        // NUEVO METODO TryGetFallbackHost - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        private static string TryGetFallbackHost(Uri baseUri)
+        {
+            try
+            {
+                if (baseUri == null) return null;
+                var host = baseUri.Host ?? string.Empty;
+                if (string.Equals(host, "127.0.0.1", StringComparison.OrdinalIgnoreCase)) return "localhost";
+                if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)) return "127.0.0.1";
+                return null;
+            }
+            catch { return null; }
+        }
+
+        // NUEVO METODO IsConnectionRefused - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        private static bool IsConnectionRefused(Exception ex)
+        {
+            try
+            {
+                if (ex == null) return false;
+                var ae = ex as AggregateException;
+                if (ae != null) ex = ae.GetBaseException();
+
+                var httpEx = ex as HttpRequestException;
+                if (httpEx != null)
+                {
+                    var inner = httpEx.InnerException;
+                    if (inner != null) ex = inner;
+                }
+
+                // look for SocketException with connection refused (10061) or ECONNREFUSED
+                var socketEx = ex as System.Net.Sockets.SocketException;
+                if (socketEx != null)
+                {
+                    // 10061 Windows WSAECONNREFUSED
+                    if (socketEx.ErrorCode == 10061) return true;
+                }
+
+                // check inner exceptions
+                if (ex.InnerException != null) return IsConnectionRefused(ex.InnerException);
+
+                var msg = ex.Message ?? string.Empty;
+                if (msg.IndexOf("Connection refused", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                if (msg.IndexOf("ECONNREFUSED", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+
+                return false;
+            }
+            catch { return false; }
+        
+
+        } // <-- Cierre de la propiedad CurrentExecutionState faltante
+
+        // MODIFICADO ServerLLM_SelectionChanged - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR_EN_ESTA_TAREA
+        private void ServerLLM_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                if (!IsLoaded) return;
+                if (_isRefreshingUiProvider) return; // avoid loop when UI is being hydrated
+
+                var cb = sender as ComboBox;
+                var selected = cb?.SelectedItem as string ?? cb?.SelectedItem?.ToString() ?? string.Empty;
+
+                // Preserve verbose log previously implemented in Helpers
+                try { AppendLog($"[VERBOSE] ServerLLM selection changed -> {selected}"); } catch { }
+
+                if (string.IsNullOrWhiteSpace(selected)) return;
+
+                // Map UI selection to activeServerId
+                string newActiveId = null;
+                if (string.Equals(selected, "LM Studio", StringComparison.OrdinalIgnoreCase)) newActiveId = "lmstudio-local";
+                else if (string.Equals(selected, "JAN", StringComparison.OrdinalIgnoreCase)) newActiveId = "jan-local";
+                if (string.IsNullOrEmpty(newActiveId)) return;
+
+                try
+                {
+                    var settings = AgentSettingsStore.Load() ?? new AgentSettings();
+                    var prev = settings.ActiveServerId ?? string.Empty;
+                    if (string.Equals(prev, newActiveId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // no change
+                        return;
+                    }
+
+                    settings.ActiveServerId = newActiveId;
+                    AgentSettingsStore.Save(settings);
+
+                    // Refresh UI and trigger recompose
+                    try { RefreshFromSettings(); } catch { }
+                    try { AgentComposition.RecomposeFromSettings("ui:provider-changed"); } catch { }
+
+                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"Server provider changed: {prev} -> {newActiveId}"); } catch { }
+                }
+                catch (Exception ex)
+                {
+                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ServerLLM selection handler failed: " + ex.Message, ex); } catch { }
+                }
+            }
+            catch { }
+        }
+        
 
         // NUEVO METODO ApplyStreamingDeltaFrom - ID: 20260114_000034
         private void ApplyStreamingDeltaFrom(StringBuilder sb)
@@ -377,7 +526,37 @@ namespace AgenteIALocalVSIX.ToolWindows
             try
             {
                 var settings = AgentSettingsStore.Load();
+                // MODIFICADO METODO PopulateSettingsPanel call to ensure ServerLLM refleja activeServerId sin activar el controlador de seleccion - ID: 20260115_123000
                 PopulateSettingsPanel(settings);
+                try
+                {
+                    _isRefreshingUiProvider = true;
+                    // Hydrate ServerLLM selection from settings.ActiveServerId
+                    try
+                    {
+                        var activeId = settings != null ? settings.ActiveServerId : null;
+                        if (!string.IsNullOrEmpty(activeId) && ServerLLM != null)
+                        {
+                            // Map stored activeServerId to UI item text
+                            string uiText = null;
+                            if (string.Equals(activeId, "lmstudio-local", StringComparison.OrdinalIgnoreCase)) uiText = "LM Studio";
+                            else if (string.Equals(activeId, "jan-local", StringComparison.OrdinalIgnoreCase)) uiText = "JAN";
+
+                            if (!string.IsNullOrEmpty(uiText))
+                            {
+                                if (ServerLLM.Items.Contains(uiText))
+                                {
+                                    ServerLLM.SelectedItem = uiText;
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+                }
+                finally
+                {
+                    _isRefreshingUiProvider = false;
+                }
 
                 // compute LLM configured state and refresh UI
                 ComputeIsLlmConfigured(settings);
@@ -659,12 +838,113 @@ namespace AgenteIALocalVSIX.ToolWindows
             try
             {
                 if (string.IsNullOrWhiteSpace(baseUrl)) return result;
-                var url = baseUrl.TrimEnd('/') + "/v1/models";
-                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: GET {url}");
+
+                // MODIFICADO FetchModelsFromBaseUrlAsync - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+                var baseUri = NormalizeBaseUri(baseUrl);
+                if (baseUri == null) return result;
+
+                var primary = BuildModelsUri(baseUri);
+                var fallbackHost = TryGetFallbackHost(baseUri);
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: GET {primary}"); } catch { }
                 using (var client = new HttpClient())
                 {
                     client.Timeout = TimeSpan.FromSeconds(5);
-                    var resp = await client.GetAsync(url);
+                    HttpResponseMessage resp = null;
+                    Exception firstEx = null;
+                    try
+                    {
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: GET {primary}"); } catch { }
+                try
+                {
+                    using (var req = new HttpRequestMessage(HttpMethod.Get, primary))
+                    {
+                        req.Headers.Accept.Clear();
+                        req.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+                        // Attach API key from settings if available (ToolWindow context)
+                        try
+                        {
+                            var settings = AgentSettingsStore.Load();
+                            var apiKey = string.Empty;
+                            if (settings != null && !string.IsNullOrWhiteSpace(settings.ActiveServerId) && settings.Servers != null)
+                            {
+                                var srv = settings.Servers.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase));
+                                if (srv != null) apiKey = srv.ApiKey ?? string.Empty;
+                            }
+                            if (!string.IsNullOrWhiteSpace(apiKey))
+                            {
+                                req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                            }
+                        }
+                        catch { }
+
+                        resp = await client.SendAsync(req);
+                    }
+                }
+                catch (Exception exPrimary)
+                {
+                    firstEx = exPrimary;
+                }
+                    }
+                    catch (Exception exPrimary)
+                    {
+                        firstEx = exPrimary;
+                    }
+
+                    if (firstEx != null && IsConnectionRefused(firstEx) && !string.IsNullOrEmpty(fallbackHost))
+                    {
+                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ModelsFetch: primary GET failed with connection refused, retrying with fallback host"); } catch { }
+                        var altBuilder = new UriBuilder(baseUri) { Host = fallbackHost };
+                        var alt = BuildModelsUri(altBuilder.Uri);
+                        try
+                        {
+                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: GET {alt}"); } catch { }
+                        try
+                        {
+                            using (var req = new HttpRequestMessage(HttpMethod.Get, alt))
+                            {
+                                req.Headers.Accept.Clear();
+                                req.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+                                try
+                                {
+                                    var settings = AgentSettingsStore.Load();
+                                    var apiKey = string.Empty;
+                                    if (settings != null && !string.IsNullOrWhiteSpace(settings.ActiveServerId) && settings.Servers != null)
+                                    {
+                                        var srv = settings.Servers.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase));
+                                        if (srv != null) apiKey = srv.ApiKey ?? string.Empty;
+                                    }
+                                    if (!string.IsNullOrWhiteSpace(apiKey))
+                                    {
+                                        req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                                    }
+                                }
+                                catch { }
+
+                                resp = await client.SendAsync(req);
+                            }
+                        }
+                        catch (Exception exAlt)
+                        {
+                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: primary and fallback failed: {exAlt.Message}", exAlt); } catch { }
+                            return result;
+                        }
+                            firstEx = null;
+                        }
+                        catch (Exception exAlt)
+                        {
+                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: primary and fallback failed: {exAlt.Message}", exAlt); } catch { }
+                            return result;
+                        }
+                    }
+
+                    if (firstEx != null)
+                    {
+                        try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: error: {firstEx.Message}", firstEx); } catch { }
+                        return result;
+                    }
+
+                    if (resp == null) return result;
+
                     if (!resp.IsSuccessStatusCode)
                     {
                         AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: non-success status {resp.StatusCode}");
@@ -871,7 +1151,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        private bool TryGetActiveLmStudioServer(out AgenteIALocalVSIX.ServerConfig server)
+        // RENAMED TryGetActiveOpenAiCompatibleServer - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR_EN_ESTA_TAREA
+        private bool TryGetActiveOpenAiCompatibleServer(out AgenteIALocalVSIX.ServerConfig server)
         {
             server = null;
             try
@@ -885,7 +1166,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var srv = settings.Servers.Find(s => string.Equals(s.Id, activeId, StringComparison.OrdinalIgnoreCase));
                 if (srv == null) return false;
 
-                if (string.IsNullOrEmpty(srv.Provider) || !srv.Provider.Equals("lmstudio", StringComparison.OrdinalIgnoreCase))
+                var provider = srv.Provider ?? string.Empty;
+                // allow both lmstudio and jan as OpenAI-compatible providers
+                if (!provider.Equals("lmstudio", StringComparison.OrdinalIgnoreCase) && !provider.Equals("jan", StringComparison.OrdinalIgnoreCase))
                     return false;
 
                 if (string.IsNullOrWhiteSpace(srv.BaseUrl) || string.IsNullOrWhiteSpace(srv.Model))

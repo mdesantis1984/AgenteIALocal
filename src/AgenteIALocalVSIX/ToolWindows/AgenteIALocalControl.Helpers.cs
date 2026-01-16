@@ -347,17 +347,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        private void ServerLLM_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            try
-            {
-                if (!IsLoaded) return;
-                var cb = sender as ComboBox;
-                var selected = cb?.SelectedItem as string ?? cb?.SelectedItem?.ToString() ?? string.Empty;
-                AppendLog($"[VERBOSE] ServerLLM selection changed -> {selected}");
-            }
-            catch { }
-        }
+        // ELIMINADO: duplicate ServerLLM_SelectionChanged consolidated into main file - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR_EN_ESTA_TAREA
 
         private void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
