@@ -42,6 +42,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             InitializeComponent();
             try { HeaderDragArea.MouseLeftButtonDown += HeaderDragArea_MouseLeftButtonDown; } catch { }
             Loaded += AgenteIALocalConfigWindow_Loaded;
+            // Subscribe to settings saved notifications to refresh modal when settings change elsewhere
+            try { AgentSettingsStore.SettingsSaved += OnSettingsSaved; } catch { }
             initialServerId = serverId ?? string.Empty;
             if (!string.IsNullOrEmpty(serverId))
             {
@@ -86,6 +88,37 @@ namespace AgenteIALocalVSIX.ToolWindows
             FireAndForget(HandleLoadedAsync(), "ConfigWindow.Loaded");
         }
 
+        private void OnSettingsSaved(string reason)
+        {
+            try
+            {
+                if (!IsLoaded) return;
+                // Rehydrate advanced controls only, avoid triggering save
+                try
+                {
+                    var jt = Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                    {
+                        await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                        try
+                        {
+                            _isInitializingAdvancedUi = true;
+                            var settings = AgentSettingsStore.Load();
+                            var targetId = settings != null ? settings.ActiveServerId : null;
+                            var srv = (settings != null && settings.Servers != null) ? settings.Servers.Find(s => string.Equals(s.Id, targetId, StringComparison.OrdinalIgnoreCase)) : null;
+                            ApplyServerToUi(targetId ?? string.Empty, srv);
+                            LoadAdvancedControls(settings, srv);
+                        }
+                        catch { }
+                        finally { _isInitializingAdvancedUi = false; }
+                    });
+
+                    _ = jt.Task.ContinueWith(t => { var _e = t.Exception; }, System.Threading.CancellationToken.None, System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted, System.Threading.Tasks.TaskScheduler.Default);
+                }
+                catch { }
+            }
+            catch { }
+        }
+
         // NUEVO METODO NavToggle_Checked - ID: 20260116_112500
         // Make sidebar ToggleButtons act mutually exclusive without changing their x:Name
         private void NavToggle_Checked(object sender, RoutedEventArgs e)
@@ -117,11 +150,12 @@ namespace AgenteIALocalVSIX.ToolWindows
             if (settings == null) return;
 
             var provider = (activeServer != null ? activeServer.Provider : string.Empty).ToLowerInvariant();
-            ProviderCombo_Modal.SelectedIndex = provider == "jan" ? 1 : 0;
+            // Use TrySelectComboByText to avoid creating new items and to select the existing item
+            try { TrySelectComboByText(ProviderCombo_Modal, provider == "jan" ? "JAN" : "LM Studio"); } catch { }
 
             var runMode = settings.GlobalSettings != null ? settings.GlobalSettings.Value<string>("runMode") : null;
             if (string.IsNullOrEmpty(runMode)) runMode = "preguntar";
-            RunModeCombo_Modal.SelectedIndex = string.Equals(runMode, "agente", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+            try { TrySelectComboByText(RunModeCombo_Modal, string.Equals(runMode, "agente", StringComparison.OrdinalIgnoreCase) ? "Agente" : "Preguntar"); } catch { }
 
             var requestDefaults = settings.GlobalSettings != null ? settings.GlobalSettings["requestDefaults"] as JObject : null;
             if (requestDefaults == null) requestDefaults = new JObject();
@@ -180,6 +214,41 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch { }
         }
 
+        // NUEVO METODO TrySelectComboByText - ID: 20260116_180500
+        // Selects an existing ComboBox item by comparing display text case-insensitively.
+        private bool TrySelectComboByText(ComboBox cb, string text)
+        {
+            if (cb == null || string.IsNullOrWhiteSpace(text)) return false;
+            try
+            {
+                foreach (var item in cb.Items)
+                {
+                    try
+                    {
+                        string s = null;
+                        var cbi = item as ComboBoxItem;
+                        if (cbi != null)
+                        {
+                            try { s = cbi.Content?.ToString(); } catch { s = null; }
+                        }
+                        if (string.IsNullOrEmpty(s))
+                        {
+                            try { s = item?.ToString(); } catch { s = null; }
+                        }
+                        if (string.IsNullOrEmpty(s)) continue;
+                        if (string.Equals(s, text, StringComparison.OrdinalIgnoreCase))
+                        {
+                            cb.SelectedItem = item;
+                            return true;
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+            return false;
+        }
+
         // NUEVO METODO ProviderCombo_Modal_SelectionChanged - ID: 20250304_170003
         private void ProviderCombo_Modal_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -193,8 +262,16 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
                 if (settings.Servers == null) settings.Servers = new List<ServerConfig>();
 
-                settings.ActiveServerId = targetServerId;
-                AgentSettingsStore.Save(settings);
+                var prev = settings.ActiveServerId ?? string.Empty;
+                if (string.Equals(prev, targetServerId, StringComparison.OrdinalIgnoreCase))
+                {
+                    // no change
+                }
+                else
+                {
+                    settings.ActiveServerId = targetServerId;
+                    AgentSettingsStore.Save(settings);
+                }
 
                 var srv = settings.Servers.Find(s => string.Equals(s.Id, targetServerId, StringComparison.OrdinalIgnoreCase));
                 ApplyServerToUi(targetServerId, srv);
@@ -514,6 +591,13 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var primary = BuildModelsUri(baseUri);
                 var fallbackHost = TryGetFallbackHost(baseUri);
 
+                // If models endpoint cannot be built (baseUrl not yet complete/valid), do not perform HTTP or log error.
+                if (string.IsNullOrWhiteSpace(primary))
+                {
+                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                    return;
+                }
+
                 var myFetchVersion = System.Threading.Interlocked.Increment(ref _modelsFetchVersion); // NUEVO: version tag for this fetch - ID: 20260115_220500
                 using (var client = new HttpClient())
                 {
@@ -576,7 +660,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 try { _suppressBaseUrlTextChanged_20260116 = true; ServerBaseUrlTextBox_Modal.Text = altBuilder.Uri.ToString().TrimEnd('/'); } catch { } finally { _suppressBaseUrlTextChanged_20260116 = false; }
                             }
                         }
-                        catch (Exception exAlt)
+                        catch (Exception)
                         {
                             // both attempts failed
                             try { ShowBaseUrlError("Servidor no responde (/v1/models)"); } catch { }
@@ -677,10 +761,8 @@ namespace AgenteIALocalVSIX.ToolWindows
                     }
                 }
             }
-            catch (Exception exOuter)
+            catch (Exception)
             {
-                // Log once to avoid spam from repeated failures
-                try { AgenteIALocalVSIX.Logging.ExceptionLogOnce.LogOnce("ConfigModal:BaseUrlPingError", () => AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: BaseUrl ping error: " + exOuter.Message, exOuter)); } catch { }
             }
         }
 
@@ -735,6 +817,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         // NUEVO METODO PersistBaseUrlIfChanged - ID: 20260114_000075
         private void PersistBaseUrlIfChanged(string baseUrl)
         {
+            if (_isInitializingAdvancedUi) return;
             try
             {
                 if (string.Equals(baseUrl, _lastPersistedBaseUrl, StringComparison.Ordinal)) return;
@@ -1174,6 +1257,16 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Close error: " + ex.Message, ex); } catch { }
             }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            try
+            {
+                try { AgentSettingsStore.SettingsSaved -= OnSettingsSaved; } catch { }
+            }
+            catch { }
+            base.OnClosed(e);
         }
 
         private static FrameworkElement FindControlOfType(FrameworkElement root, Type t)

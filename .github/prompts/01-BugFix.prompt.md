@@ -1,3 +1,16 @@
+---
+name: 'bugfix'
+description: 'Bugfix con cambio minimo (JSON tecnico)'
+agent: 'agent'
+argument-hint: 'repro="..." expected="..." actual="..." refs="#output #File.cs ..."'
+---
+
+Ejecuta este prompt y responde SOLO con JSON valido (sin texto adicional).
+Si falta contexto: pide #File, #output, @workspace y marca status="needs_confirmation".
+
+Plantilla JSON (rellena placeholders entre <>):
+
+```json
 {
   "meta": {
     "project": "Agente IA Local",
@@ -51,3 +64,5 @@
     "must_include_new_markers": true
   }
 }
+
+```

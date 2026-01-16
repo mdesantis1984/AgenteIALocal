@@ -14,6 +14,9 @@ namespace AgenteIALocalVSIX
     /// </summary>
     public static class AgentSettingsStore
     {
+        // In-process notification: raised after settings are saved. Argument contains reason (e.g. "save").
+        internal static event Action<string> SettingsSaved;
+
         private const string FileName = "settings.json";
         private const string FolderName = "AgenteIALocal";
         private const string SchemaVersion = "v1";
@@ -61,6 +64,22 @@ namespace AgenteIALocalVSIX
 
                 var root = JObject.Parse(text);
                 var changed = false;
+
+                // Canonicalize legacy PascalCase keys to camelCase to avoid duplication/mismatch
+                try
+                {
+                    // If canonical key missing but PascalCase present, copy value and mark changed
+                    JToken t;
+                    if (root["version"] == null && (t = root["Version"]) != null) { root["version"] = t; changed = true; }
+                    if (root["servers"] == null && (t = root["Servers"]) != null) { root["servers"] = t; changed = true; }
+                    if (root["globalSettings"] == null && (t = root["GlobalSettings"]) != null) { root["globalSettings"] = t; changed = true; }
+                    if (root["taskProfiles"] == null && (t = root["TaskProfiles"]) != null) { root["taskProfiles"] = t; changed = true; }
+                    if (root["activeServerId"] == null && (t = root["ActiveServerId"]) != null) { root["activeServerId"] = t; changed = true; }
+                }
+                catch
+                {
+                    // ignore canonicalization failures
+                }
 
                 // Ensure version present and supported
                 var version = root.Value<string>("version");
@@ -111,7 +130,8 @@ namespace AgenteIALocalVSIX
                 {
                     try
                     {
-                        Save(settings);
+                        // Auto-save during Load should not raise SettingsSaved events to avoid startup recursion
+                        Save(settings, false);
                     }
                     catch
                     {
@@ -139,6 +159,12 @@ namespace AgenteIALocalVSIX
 
         public static void Save(AgentSettings settings)
         {
+            Save(settings, true);
+        }
+
+        // Internal overload that controls whether to raise SettingsSaved event after writing
+        internal static void Save(AgentSettings settings, bool raiseEvent)
+        {
             if (settings == null) return;
 
             try
@@ -161,29 +187,73 @@ namespace AgenteIALocalVSIX
 
                 if (root == null) root = new JObject();
 
-                root["version"] = settings.Version ?? SchemaVersion;
-
-                // servers
-                var arr = new JArray();
-                if (settings.Servers != null)
+                // Ensure canonical keys and remove legacy PascalCase duplicates before writing
+                try
                 {
-                    foreach (var s in settings.Servers)
+                    // set canonical keys
+                    root["version"] = settings.Version ?? SchemaVersion;
+
+                    // servers
+                    var arr = new JArray();
+                    if (settings.Servers != null)
                     {
-                        try { arr.Add(JObject.FromObject(s)); } catch { }
+                        foreach (var s in settings.Servers)
+                        {
+                            try { arr.Add(JObject.FromObject(s)); } catch { }
+                        }
+                    }
+                    root["servers"] = arr;
+
+                    // globalSettings
+                    root["globalSettings"] = settings.GlobalSettings ?? new JObject();
+
+                    // taskProfiles
+                    root["taskProfiles"] = settings.TaskProfiles ?? new JArray();
+
+                    // activeServerId
+                    if (!string.IsNullOrEmpty(settings.ActiveServerId)) root["activeServerId"] = settings.ActiveServerId;
+
+                    // Remove legacy PascalCase duplicate keys if present
+                    try { root.Remove("Version"); } catch { }
+                    try { root.Remove("Servers"); } catch { }
+                    try { root.Remove("GlobalSettings"); } catch { }
+                    try { root.Remove("TaskProfiles"); } catch { }
+                    try { root.Remove("ActiveServerId"); } catch { }
+                }
+                catch
+                {
+                    // fallback to previous behavior if anything unexpected
+                    root["version"] = settings.Version ?? SchemaVersion;
+                    root["servers"] = settings.Servers != null ? JArray.FromObject(settings.Servers) : new JArray();
+                    root["globalSettings"] = settings.GlobalSettings ?? new JObject();
+                    root["taskProfiles"] = settings.TaskProfiles ?? new JArray();
+                    if (!string.IsNullOrEmpty(settings.ActiveServerId)) root["activeServerId"] = settings.ActiveServerId;
+                }
+
+                // Prepare final text and avoid writing if identical to existing file to prevent event storms
+                var newText = root.ToString(Formatting.Indented);
+                try
+                {
+                    if (File.Exists(path))
+                    {
+                        var existing = File.ReadAllText(path);
+                        if (string.Equals(existing, newText, StringComparison.Ordinal))
+                        {
+                            // no change -> do not rewrite or raise event
+                            return;
+                        }
+                    }
+
+                    File.WriteAllText(path, newText);
+                    if (raiseEvent)
+                    {
+                        try { SettingsSaved?.Invoke("save"); } catch { }
                     }
                 }
-                root["servers"] = arr;
-
-                // globalSettings
-                root["globalSettings"] = settings.GlobalSettings ?? new JObject();
-
-                // taskProfiles
-                root["taskProfiles"] = settings.TaskProfiles ?? new JArray();
-
-                // activeServerId
-                if (!string.IsNullOrEmpty(settings.ActiveServerId)) root["activeServerId"] = settings.ActiveServerId;
-
-                File.WriteAllText(path, root.ToString(Formatting.Indented));
+                catch
+                {
+                    // ignore I/O failures silently per design
+                }
             }
             catch
             {

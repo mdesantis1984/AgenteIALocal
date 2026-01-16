@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="AgenteIALocalVSIX.5110f6f2-6bef-4be1-a90a-e017c2971e99" Version="1.0.50" Language="en-US" Publisher="Marco Alejandro De Santis" />
+        <Identity Id="AgenteIALocalVSIX.5110f6f2-6bef-4be1-a90a-e017c2971e99" Version="1.0.51" Language="en-US" Publisher="Marco Alejandro De Santis" />
         <DisplayName>Agente IA Local</DisplayName>
         <Description xml:space="preserve">Agente IA Local is a classic Visual Studio extension that adds a Tool Window to run a local AI agent inside the IDE. It supports chat-based sessions, configurable local LLM endpoints (e.g., LM Studio), and local logging for troubleshooting. The software is provided “AS IS”, without warranty—use at your own risk.</Description>
         <MoreInfo>https://github.com/mdesantis1984/AgenteIALocal</MoreInfo>

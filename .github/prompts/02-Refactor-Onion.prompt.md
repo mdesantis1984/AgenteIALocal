@@ -1,3 +1,16 @@
+---
+name: 'refactor-onion'
+description: 'Refactor Onion/Clean Architecture (JSON tecnico)'
+agent: 'agent'
+argument-hint: 'goal="..." refs="#Folder #README.architecture..."'
+---
+
+Ejecuta este prompt y responde SOLO con JSON valido (sin texto adicional).
+Si falta contexto: pide #File, #output, @workspace y marca status="needs_confirmation".
+
+Plantilla JSON (rellena placeholders entre <>):
+
+```json
 {
   "meta": {
     "project": "Agente IA Local",
@@ -41,3 +54,5 @@
     "must_list_changes": true
   }
 }
+
+```

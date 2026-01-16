@@ -1,3 +1,16 @@
+---
+name: 'context-gathering'
+description: 'Recoleccion minima de contexto (JSON tecnico)'
+agent: 'agent'
+argument-hint: 'need="..." refs="#Reglas.IA.md #output ..."'
+---
+
+Ejecuta este prompt y responde SOLO con JSON valido (sin texto adicional).
+Si falta contexto: pide #File, #output, @workspace y marca status="needs_confirmation".
+
+Plantilla JSON (rellena placeholders entre <>):
+
+```json
 {
   "meta": {
     "project": "Agente IA Local",
@@ -39,3 +52,5 @@
     ]
   }
 }
+
+```

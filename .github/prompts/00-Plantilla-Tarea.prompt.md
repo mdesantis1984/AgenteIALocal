@@ -1,3 +1,16 @@
+---
+name: 'task-template'
+description: 'Plantilla de tarea (paso a paso, JSON tecnico)'
+agent: 'agent'
+argument-hint: 'objective="..." acceptance="..." refs="#File.cs #output ..."'
+---
+
+Ejecuta este prompt y responde SOLO con JSON valido (sin texto adicional).
+Si falta contexto: pide #File, #output, @workspace y marca status="needs_confirmation".
+
+Plantilla JSON (rellena placeholders entre <>):
+
+```json
 {
   "meta": {
     "project": "Agente IA Local",
@@ -55,3 +68,5 @@
     ]
   }
 }
+
+```

@@ -57,6 +57,21 @@ namespace AgenteIALocalVSIX
             }
         }
 
+        // NUEVO METODO IsOpenAiCompatibleProvider - ID: 20260116_012700
+        private static bool IsOpenAiCompatibleProvider(string provider)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(provider)) return false;
+                return provider.Equals("lmstudio", StringComparison.OrdinalIgnoreCase)
+                    || provider.Equals("jan", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static void TryComposeRealBackend()
         {
             try
@@ -76,15 +91,16 @@ namespace AgenteIALocalVSIX
                 }
 
                 var srv = vsixSettings.Servers.Find(s => string.Equals(s.Id, activeId, StringComparison.OrdinalIgnoreCase));
+
                 if (srv == null)
                 {
                     LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Active server entry not found; keeping mock.");
                     return;
                 }
 
-                if (string.IsNullOrEmpty(srv.Provider) || !srv.Provider.Equals("lmstudio", StringComparison.OrdinalIgnoreCase))
+                if (!IsOpenAiCompatibleProvider(srv.Provider))
                 {
-                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Active provider is not lmstudio; keeping mock.");
+                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Active provider is not OpenAI-compatible (lmstudio|jan); keeping mock.");
                     return;
                 }
 
@@ -152,16 +168,16 @@ namespace AgenteIALocalVSIX
 
                 try
                 {
-                    if (string.IsNullOrEmpty(srv?.Provider) || !srv.Provider.Equals("lmstudio", StringComparison.OrdinalIgnoreCase))
+                    if (!IsOpenAiCompatibleProvider(srv?.Provider))
                     {
-                        LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Provider not lmstudio; assigning mock AgentService.");
+                        LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Provider not OpenAI-compatible (lmstudio|jan); assigning mock AgentService.");
                         AgentService = new MockAgentService();
                         return;
                     }
 
                     if (string.IsNullOrWhiteSpace(srv.BaseUrl))
                     {
-                        LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "LM Studio BaseUrl empty; assigning mock AgentService.");
+                        LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Active server BaseUrl empty; assigning mock AgentService.");
                         AgentService = new MockAgentService();
                         return;
                     }

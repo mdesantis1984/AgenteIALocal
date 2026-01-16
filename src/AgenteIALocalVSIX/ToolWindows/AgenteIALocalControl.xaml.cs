@@ -26,7 +26,7 @@ using System.Windows.Media;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
-    // NUEVO ENUM ExecutionState - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+    // NUEVO ENUM ExecutionState - ID: 20260116_103000
     public enum ExecutionState { Idle, Running, Completed, Error }
 
     public partial class AgenteIALocalControl : UserControl, INotifyPropertyChanged
@@ -89,7 +89,11 @@ namespace AgenteIALocalVSIX.ToolWindows
         private Run _streamingAiLastRun = null; // NUEVO CAMPO - ID: 20260114_000033
         // NUEVO CAMPO _isRefreshingUiProvider - ID: 20260115_123000
         private bool _isRefreshingUiProvider = false;
-        // NUEVO CAMPO last logged provider info to avoid repeated info logs - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR_EN_ESTA_TAREA
+        // NUEVO CAMPO guard para evitar reentrancia en RefreshFromSettings via SettingsSaved - ID: 20260116_173500
+        private bool _isRefreshingFromSettings = false;
+        // NUEVO CAMPO para recordar el ultimo activeServerId aplicado en UI - ID: 20260116_181200
+        private string _lastActiveServerIdUi = null;
+        // NUEVO CAMPO last logged provider info to avoid repeated info logs - ID: 20260116_103000
         private string _lastLoggedProviderInfo = null;
         // Guard to avoid spamming error logs when opening settings fails
         private bool _settingsOpenErrorLogged = false; // NUEVO CAMPO - ID: 20260114_000051
@@ -114,7 +118,106 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // NUEVO METODO NormalizeBaseUri - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        // NUEVO METODO TrySelectComboByText - ID: 20260116_180500
+        // Selects an existing ComboBox item by comparing display text case-insensitively.
+        private bool TrySelectComboByText(ComboBox cb, string text)
+        {
+            if (cb == null || string.IsNullOrWhiteSpace(text)) return false;
+            try
+            {
+                foreach (var item in cb.Items)
+                {
+                    try
+                    {
+                        string s = null;
+                        var cbi = item as ComboBoxItem;
+                        if (cbi != null)
+                        {
+                            try { s = cbi.Content?.ToString(); } catch { s = null; }
+                        }
+                        if (string.IsNullOrEmpty(s))
+                        {
+                            try { s = item?.ToString(); } catch { s = null; }
+                        }
+                        if (string.IsNullOrEmpty(s)) continue;
+                        if (string.Equals(s, text, StringComparison.OrdinalIgnoreCase))
+                        {
+                            cb.SelectedItem = item;
+                            return true;
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        // Unsubscribe from settings notifications when control is unloaded to avoid leaks
+        protected override void OnVisualParentChanged(DependencyObject oldParent)
+        {
+            base.OnVisualParentChanged(oldParent);
+            try
+            {
+                if (this.VisualParent == null)
+                {
+                    try { AgentSettingsStore.SettingsSaved -= OnSettingsSaved; } catch { }
+                }
+            }
+            catch { }
+        }
+
+        // Handler for settings saved notifications; refresh UI from canonical settings
+        private void OnSettingsSaved(string reason)
+        {
+            try
+            {
+                if (!IsLoaded) return;
+
+                // Prevent reentrancy
+                if (_isRefreshingFromSettings) return;
+                _isRefreshingFromSettings = true;
+
+                try
+                {
+                    // Use JoinableTaskFactory to safely switch to UI thread without Dispatcher usage
+                    var jt = Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                    {
+                        await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                        try
+                        {
+                            // Load settings and decide whether activeServerId changed
+                            var settings = AgentSettingsStore.Load();
+                            var activeId = settings != null ? settings.ActiveServerId : null;
+                            if (string.Equals(_lastActiveServerIdUi ?? string.Empty, activeId ?? string.Empty, StringComparison.OrdinalIgnoreCase))
+                            {
+                                // No change in active server -> refresh UI but skip models fetch
+                                RefreshFromSettings(refreshModels: false);
+                            }
+                            else
+                            {
+                                // Active server changed -> remember and allow one models refresh
+                                _lastActiveServerIdUi = activeId;
+                                RefreshFromSettings(refreshModels: true);
+                            }
+                            try { AgentComposition.Verbose("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "SettingsSaved handler executed: " + reason); } catch { }
+                        }
+                        catch { }
+                    });
+
+                    // Observe faults to avoid unobserved task exceptions (VSTHRD110)
+                    _ = jt.Task.ContinueWith(t => { var _e = t.Exception; }, System.Threading.CancellationToken.None, System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted, System.Threading.Tasks.TaskScheduler.Default);
+                }
+                catch { }
+                finally
+                {
+                    _isRefreshingFromSettings = false;
+                }
+            }
+            catch { }
+        }
+
+        // NUEVO METODO NormalizeBaseUri - ID: 20260116_103000
         private static Uri NormalizeBaseUri(string baseUrl)
         {
             try
@@ -132,12 +235,18 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch { return null; }
         }
 
-        // NUEVO METODO BuildModelsUri - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
-        // MODIFICADO BuildModelsUri - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        // NUEVO METODO BuildModelsUri - ID: 20260116_103000
+        // MODIFICADO BuildModelsUri - ID: 20260116_103000
         private static string BuildModelsUri(Uri baseUri)
         {
             try
             {
+                if (baseUri == null) return null;
+
+                // Extra validation to be defensive
+                var normalized = NormalizeBaseUri(baseUri.ToString());
+                if (normalized == null) return null;
+
                 var s = baseUri.ToString().TrimEnd('/');
                 var path = baseUri.AbsolutePath ?? string.Empty;
                 // If already contains /v1/models -> return as-is
@@ -156,7 +265,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch { return null; }
         }
 
-        // NUEVO METODO TryGetFallbackHost - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        // NUEVO METODO TryGetFallbackHost - ID: 20260116_103000
         private static string TryGetFallbackHost(Uri baseUri)
         {
             try
@@ -170,7 +279,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch { return null; }
         }
 
-        // NUEVO METODO IsConnectionRefused - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        // NUEVO METODO IsConnectionRefused - ID: 20260116_103000
         private static bool IsConnectionRefused(Exception ex)
         {
             try
@@ -208,13 +317,14 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         } // <-- Cierre de la propiedad CurrentExecutionState faltante
 
-        // MODIFICADO ServerLLM_SelectionChanged - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR_EN_ESTA_TAREA
+        // MODIFICADO ServerLLM_SelectionChanged - ID: 20260116_103000
         private void ServerLLM_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             try
             {
                 if (!IsLoaded) return;
                 if (_isRefreshingUiProvider) return; // avoid loop when UI is being hydrated
+                if (_isRefreshingFromSettings) return; // avoid persisting during programmatic refresh
 
                 var cb = sender as ComboBox;
                 var selected = cb?.SelectedItem as string ?? cb?.SelectedItem?.ToString() ?? string.Empty;
@@ -243,9 +353,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                     settings.ActiveServerId = newActiveId;
                     AgentSettingsStore.Save(settings);
 
-                    // Refresh UI and trigger recompose
-                    try { RefreshFromSettings(); } catch { }
-                    try { AgentComposition.RecomposeFromSettings("ui:provider-changed"); } catch { }
+                    // Refresh UI and trigger recompose (explicit tag for toolwindow)
+                    try { RefreshFromSettings(refreshModels: true); } catch { }
+                    try { AgentComposition.RecomposeFromSettings("ui:provider-changed-toolwindow"); } catch { }
 
                     try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"Server provider changed: {prev} -> {newActiveId}"); } catch { }
                 }
@@ -479,6 +589,17 @@ namespace AgenteIALocalVSIX.ToolWindows
             // Set DataContext for XAML bindings
             this.DataContext = this;
 
+            // Wire up footer RunMode selector persistence
+            try
+            {
+                if (TypeActivitie != null)
+                {
+                    TypeActivitie.SelectionChanged -= TypeActivitie_SelectionChanged;
+                    TypeActivitie.SelectionChanged += TypeActivitie_SelectionChanged;
+                }
+            }
+            catch { }
+
             _chatService = new DefaultChatService(this);
             _runExecutor = new DefaultRunExecutor(this);
 
@@ -526,6 +647,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             try
             {
                 var settings = AgentSettingsStore.Load();
+                // Subscribe to settings saved notifications to refresh UI across windows
+                try { AgentSettingsStore.SettingsSaved += OnSettingsSaved; } catch { }
                 // MODIFICADO METODO PopulateSettingsPanel call to ensure ServerLLM refleja activeServerId sin activar el controlador de seleccion - ID: 20260115_123000
                 PopulateSettingsPanel(settings);
                 try
@@ -811,7 +934,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         }
 
         // Public helper to refresh UI from persisted settings (used by modal after save)
-        public void RefreshFromSettings()
+        public void RefreshFromSettings(bool refreshModels = true)
         {
             try
             {
@@ -821,9 +944,85 @@ namespace AgenteIALocalVSIX.ToolWindows
                 ComputeIsLlmConfigured(settings);
                 UpdateUiState(CurrentExecutionState);
                 try { AgentComposition.Verbose("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigStatus: RefreshFromSettings completed label={ConfigLabel} isConfigured={IsLlmConfigured}"); } catch { }
+                // Update footer UI controls: Provider (ServerLLM), Model (ModelOfLLM), RunMode (TypeActivitie)
+                try
+                {
+                    // Provider -> map activeServerId to UI text
+                    var activeId = settings != null ? settings.ActiveServerId : null;
+                    string providerText = null;
+                    if (!string.IsNullOrEmpty(activeId))
+                    {
+                        if (string.Equals(activeId, "lmstudio-local", StringComparison.OrdinalIgnoreCase)) providerText = "LM Studio";
+                        else if (string.Equals(activeId, "jan-local", StringComparison.OrdinalIgnoreCase)) providerText = "JAN";
+                    }
 
-                // Refresh models for active server asynchronously (fire-and-forget)
-                try { FireAndForget(RefreshModelsForActiveServerAsync("RefreshFromSettings"), "RefreshFromSettings.RefreshModels"); } catch { }
+                    if (!string.Equals(_lastLoggedProviderInfo ?? string.Empty, providerText ?? string.Empty, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _lastLoggedProviderInfo = providerText;
+                    }
+
+                    if (ServerLLM != null)
+                    {
+                        try
+                        {
+                            _isRefreshingUiProvider = true;
+                            if (!string.IsNullOrEmpty(providerText))
+                            {
+                                // select existing item by display text
+                                TrySelectComboByText(ServerLLM, providerText);
+                            }
+                        }
+                        finally { _isRefreshingUiProvider = false; }
+                    }
+
+                    // RunMode -> map globalSettings.runMode to TypeActivitie options
+                    try
+                    {
+                        var runMode = settings != null && settings.GlobalSettings != null ? settings.GlobalSettings.Value<string>("runMode") : null;
+                        if (string.IsNullOrEmpty(runMode)) runMode = "preguntar";
+                        string runModeUi = string.Equals(runMode, "agente", StringComparison.OrdinalIgnoreCase) ? "Agente" : "Preguntar";
+                        if (TypeActivitie != null)
+                        {
+                            // avoid triggering persistence handlers
+                            var prev = _isRefreshingFromSettings;
+                            _isRefreshingFromSettings = true;
+                            try { TrySelectComboByText(TypeActivitie, runModeUi); } catch { }
+                            _isRefreshingFromSettings = prev;
+                        }
+                    }
+                    catch { }
+
+                    // Model -> try select saved model if present in list
+                    try
+                    {
+                        var srv = (settings != null && settings.Servers != null && !string.IsNullOrEmpty(settings.ActiveServerId)) ? settings.Servers.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase)) : null;
+                        var savedModel = srv != null ? srv.Model : null;
+                        if (ModelOfLLM != null)
+                        {
+                        if (!string.IsNullOrEmpty(savedModel))
+                        {
+                            // try select by text if present, otherwise clear selection to avoid inconsistent model shown
+                            var selOk = TrySelectComboByText(ModelOfLLM, savedModel);
+                            if (!selOk)
+                            {
+                                try { ModelOfLLM.SelectedItem = null; } catch { }
+                            }
+                        }
+                        else
+                        {
+                            try { ModelOfLLM.SelectedItem = null; } catch { }
+                        }
+                        }
+                    }
+                    catch { }
+                }
+                catch { }
+
+                // Refresh models for active server asynchronously (fire-and-forget) only when requested
+                if (refreshModels)
+                {
+                    try { FireAndForget(RefreshModelsForActiveServerAsync("RefreshFromSettings"), "RefreshFromSettings.RefreshModels"); } catch { }
+                }
             }
             catch (Exception ex)
             {
@@ -1031,26 +1230,30 @@ namespace AgenteIALocalVSIX.ToolWindows
                     if (models != null && models.Count > 0)
                     {
                         foreach (var m in models) ModelOfLLM.Items.Add(m);
-                        // try select saved model
+                        // try select saved model via helper
                         var saved = srv.Model ?? string.Empty;
-                        if (!string.IsNullOrEmpty(saved) && ModelOfLLM.Items.Contains(saved))
+                        if (!string.IsNullOrEmpty(saved))
                         {
-                            ModelOfLLM.SelectedItem = saved;
+                            var selOk = TrySelectComboByText(ModelOfLLM, saved);
+                            if (!selOk)
+                            {
+                                ModelOfLLM.SelectedIndex = 0;
+                                // if saved model existed but not found, persist first as fallback
+                                if (!string.IsNullOrEmpty(saved))
+                                {
+                                    try
+                                    {
+                                        srv.Model = ModelOfLLM.SelectedItem as string ?? string.Empty;
+                                        AgentSettingsStore.Save(settings);
+                                        AgentComposition.RecomposeFromSettings("ModelOfLLM.AutoFallback");
+                                    }
+                                    catch { }
+                                }
+                            }
                         }
                         else
                         {
                             ModelOfLLM.SelectedIndex = 0;
-                            // if saved model existed but not found, persist first as fallback
-                            if (!string.IsNullOrEmpty(saved))
-                            {
-                                try
-                                {
-                                    srv.Model = ModelOfLLM.SelectedItem as string ?? string.Empty;
-                                    AgentSettingsStore.Save(settings);
-                                    AgentComposition.RecomposeFromSettings("ModelOfLLM.AutoFallback");
-                                }
-                                catch { }
-                            }
                         }
                     }
                 }
@@ -1067,6 +1270,8 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             try
             {
+                if (_isRefreshingFromSettings) return;
+                if (!IsLoaded) return;
                 var sel = ModelOfLLM.SelectedItem as string;
                 if (string.IsNullOrEmpty(sel)) return;
                 AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: selection changed modelPresent=true modelIdLength={sel.Length}");
@@ -1099,6 +1304,35 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch (Exception ex)
             {
                 try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: selection handler error: {ex.Message}", ex); } catch { }
+            }
+        }
+
+        // NUEVO METODO TypeActivitie_SelectionChanged - ID: 20260116_181200
+        private void TypeActivitie_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                if (_isRefreshingFromSettings) return;
+                if (!IsLoaded) return;
+
+                var selected = TypeActivitie.SelectedItem as string ?? TypeActivitie.SelectedItem?.ToString() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(selected)) return;
+
+                var runMode = string.Equals(selected, "Agente", StringComparison.OrdinalIgnoreCase) ? "agente" : "preguntar";
+                var settings = AgentSettingsStore.Load() ?? new AgentSettings();
+                if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
+
+                var prev = settings.GlobalSettings.Value<string>("runMode") ?? string.Empty;
+                if (string.Equals(prev, runMode, StringComparison.OrdinalIgnoreCase)) return;
+
+                settings.GlobalSettings["runMode"] = runMode;
+                AgentSettingsStore.Save(settings);
+
+                try { AgentComposition.RecomposeFromSettings("ui:runmode-changed-toolwindow"); } catch { }
+            }
+            catch (Exception ex)
+            {
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "TypeActivitie change failed: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -1171,8 +1405,20 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (!provider.Equals("lmstudio", StringComparison.OrdinalIgnoreCase) && !provider.Equals("jan", StringComparison.OrdinalIgnoreCase))
                     return false;
 
+                // BaseUrl and Model must be present
                 if (string.IsNullOrWhiteSpace(srv.BaseUrl) || string.IsNullOrWhiteSpace(srv.Model))
                     return false;
+
+                // Validate BaseUrl: must be absolute http/https, host present, valid port if specified
+                try
+                {
+                    var uri = NormalizeBaseUri(srv.BaseUrl);
+                    if (uri == null) return false;
+                }
+                catch
+                {
+                    return false;
+                }
 
                 server = srv;
                 return true;
