@@ -159,13 +159,30 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             var requestDefaults = settings.GlobalSettings != null ? settings.GlobalSettings["requestDefaults"] as JObject : null;
             if (requestDefaults == null) requestDefaults = new JObject();
+            // MODIFICADO METODO LoadAdvancedControls - ID: 20260117_124200
+            // Force Stream as the only option in UI: checked + disabled
             var streamValue = requestDefaults.Value<bool?>("stream") ?? true;
-            StreamToggle_Modal.IsChecked = streamValue;
+            try { StreamToggle_Modal.IsChecked = true; StreamToggle_Modal.IsEnabled = false; } catch { }
 
             var streamOptions = requestDefaults["streamOptions"] as JObject;
             var includeUsage = streamOptions != null ? streamOptions.Value<bool?>("includeUsage") ?? false : false;
             IncludeUsageToggle_Modal.IsChecked = includeUsage;
             IncludeUsageToggle_Modal.IsEnabled = provider == "lmstudio";
+
+            // hydrate temperature and maxTokens
+            try
+            {
+                var temp = requestDefaults.Value<double?>("temperature") ?? 0.2;
+                TemperatureTextBox_Modal.Text = temp.ToString("G");
+            }
+            catch { TemperatureTextBox_Modal.Text = "0.2"; }
+
+            try
+            {
+                var mt = requestDefaults.Value<int?>("maxTokens") ?? 0;
+                MaxTokensTextBox_Modal.Text = mt.ToString();
+            }
+            catch { MaxTokensTextBox_Modal.Text = "0"; }
 
             var agent = settings.GlobalSettings != null ? settings.GlobalSettings["agent"] as JObject : null;
             if (agent == null) agent = new JObject();
@@ -195,6 +212,17 @@ namespace AgenteIALocalVSIX.ToolWindows
                 IncludeUsageToggle_Modal.Unchecked -= IncludeUsageToggle_Modal_Checked;
                 IncludeUsageToggle_Modal.Checked += IncludeUsageToggle_Modal_Checked;
                 IncludeUsageToggle_Modal.Unchecked += IncludeUsageToggle_Modal_Checked;
+
+                // Temperature and MaxTokens handlers
+                TemperatureTextBox_Modal.TextChanged -= TemperatureTextBox_Modal_TextChanged;
+                TemperatureTextBox_Modal.LostFocus -= TemperatureTextBox_Modal_LostFocus;
+                TemperatureTextBox_Modal.TextChanged += TemperatureTextBox_Modal_TextChanged;
+                TemperatureTextBox_Modal.LostFocus += TemperatureTextBox_Modal_LostFocus;
+
+                MaxTokensTextBox_Modal.TextChanged -= MaxTokensTextBox_Modal_TextChanged;
+                MaxTokensTextBox_Modal.LostFocus -= MaxTokensTextBox_Modal_LostFocus;
+                MaxTokensTextBox_Modal.TextChanged += MaxTokensTextBox_Modal_TextChanged;
+                MaxTokensTextBox_Modal.LostFocus += MaxTokensTextBox_Modal_LostFocus;
 
                 AgentIdeIntegrationToggle_Modal.Checked -= AgentIdeIntegrationToggle_Modal_Checked;
                 AgentIdeIntegrationToggle_Modal.Unchecked -= AgentIdeIntegrationToggle_Modal_Checked;
@@ -249,15 +277,36 @@ namespace AgenteIALocalVSIX.ToolWindows
             return false;
         }
 
-        // NUEVO METODO ProviderCombo_Modal_SelectionChanged - ID: 20250304_170003
+        // NUEVO METODO NormalizeProviderId - ID: 20260117_234000
+        // Normaliza el texto visible del combo Provider a un identificador corto de proveedor.
+        // Entrada: texto (ej. "LM Studio", "JAN") -> salida: "lmstudio" | "jan" | ""
+        private static string NormalizeProviderId(string text)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+                var s = text.Trim().ToLowerInvariant();
+                // remove spaces and hyphens for tolerant matching
+                s = s.Replace(" ", string.Empty).Replace("-", string.Empty);
+                if (s == "lmstudio" || s == "lmstudio") return "lmstudio";
+                if (s == "lmstudio") return "lmstudio"; // defensive
+                if (s.StartsWith("lmstudio")) return "lmstudio";
+                if (s.StartsWith("lmstudio")) return "lmstudio";
+                if (s == "jan" || s.StartsWith("jan")) return "jan";
+                return string.Empty;
+            }
+            catch { return string.Empty; }
+        }
+
+        // MODIFICADO METODO ProviderCombo_Modal_SelectionChanged - ID: 20260117_234000
         private void ProviderCombo_Modal_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_isInitializingAdvancedUi) return;
 
             try
             {
-                var provider = GetSelectedComboContent(ProviderCombo_Modal).ToLowerInvariant();
-                var targetServerId = string.Equals(provider, "jan", StringComparison.OrdinalIgnoreCase) ? "jan-local" : "lmstudio-local";
+                var providerId = NormalizeProviderId(GetSelectedComboContent(ProviderCombo_Modal));
+                var targetServerId = string.Equals(providerId, "jan", StringComparison.OrdinalIgnoreCase) ? "jan-local" : "lmstudio-local";
 
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
                 if (settings.Servers == null) settings.Servers = new List<ServerConfig>();
@@ -272,11 +321,19 @@ namespace AgenteIALocalVSIX.ToolWindows
                     settings.ActiveServerId = targetServerId;
                     AgentSettingsStore.Save(settings);
                 }
-
                 var srv = settings.Servers.Find(s => string.Equals(s.Id, targetServerId, StringComparison.OrdinalIgnoreCase));
                 ApplyServerToUi(targetServerId, srv);
 
-                IncludeUsageToggle_Modal.IsEnabled = string.Equals(provider, "lmstudio", StringComparison.OrdinalIgnoreCase);
+                // Enable include-usage toggle only for LM Studio; disable and clear otherwise
+                try
+                {
+                    IncludeUsageToggle_Modal.IsEnabled = string.Equals(providerId, "lmstudio", StringComparison.OrdinalIgnoreCase);
+                    if (!string.Equals(providerId, "lmstudio", StringComparison.OrdinalIgnoreCase))
+                    {
+                        IncludeUsageToggle_Modal.IsChecked = false;
+                    }
+                }
+                catch { }
 
                 try
                 {
@@ -300,8 +357,12 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var runMode = string.Equals(selected, "Agente", StringComparison.OrdinalIgnoreCase) ? "agente" : "preguntar";
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
                 if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
+                var before = (settings.GlobalSettings as JObject)?.DeepClone() as JObject ?? new JObject();
                 settings.GlobalSettings["runMode"] = runMode;
+                string provider = null;
+                try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch { }
                 AgentSettingsStore.Save(settings);
+                try { AgentComposition.LogGlobalSettingsPersistence("RunModeCombo_Modal_SelectionChanged", before, settings.GlobalSettings, provider); } catch { }
             }
             catch (Exception ex)
             {
@@ -315,12 +376,18 @@ namespace AgenteIALocalVSIX.ToolWindows
             if (_isInitializingAdvancedUi) return;
             try
             {
+                // Ensure requestDefaults.stream is always true on save
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
                 if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
+                var before = (settings.GlobalSettings as JObject)?.DeepClone() as JObject ?? new JObject();
                 var requestDefaults = settings.GlobalSettings["requestDefaults"] as JObject ?? new JObject();
                 settings.GlobalSettings["requestDefaults"] = requestDefaults;
-                requestDefaults["stream"] = StreamToggle_Modal.IsChecked == true;
+                requestDefaults["stream"] = true;
+                // provider for tracing
+                string provider = null;
+                try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch { }
                 AgentSettingsStore.Save(settings);
+                try { AgentComposition.LogGlobalSettingsPersistence("StreamToggle_Modal_Checked", before, settings.GlobalSettings, provider); } catch { }
             }
             catch (Exception ex)
             {
@@ -328,23 +395,15 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // NUEVO METODO IncludeUsageToggle_Modal_Checked - ID: 20250304_170006
+        // MODIFICADO METODO IncludeUsageToggle_Modal_Checked - ID: 20260117_234000
         private void IncludeUsageToggle_Modal_Checked(object sender, RoutedEventArgs e)
         {
             if (_isInitializingAdvancedUi) return;
             try
             {
-                var provider = GetSelectedComboContent(ProviderCombo_Modal).ToLowerInvariant();
-                if (!string.Equals(provider, "lmstudio", StringComparison.OrdinalIgnoreCase)) return;
-
-                var settings = AgentSettingsStore.Load() ?? new AgentSettings();
-                if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
-                var requestDefaults = settings.GlobalSettings["requestDefaults"] as JObject ?? new JObject();
-                settings.GlobalSettings["requestDefaults"] = requestDefaults;
-                var streamOptions = requestDefaults["streamOptions"] as JObject ?? new JObject();
-                requestDefaults["streamOptions"] = streamOptions;
-                streamOptions["includeUsage"] = IncludeUsageToggle_Modal.IsChecked == true;
-                AgentSettingsStore.Save(settings);
+                var providerId = NormalizeProviderId(GetSelectedComboContent(ProviderCombo_Modal));
+                // Delegate to unified persister which sets includeUsage according to provider
+                PersistRequestDefaultsFromUi();
             }
             catch (Exception ex)
             {
@@ -385,10 +444,14 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             var settings = AgentSettingsStore.Load() ?? new AgentSettings();
             if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
+            var before = (settings.GlobalSettings as JObject)?.DeepClone() as JObject ?? new JObject();
             var agent = settings.GlobalSettings["agent"] as JObject ?? new JObject();
             settings.GlobalSettings["agent"] = agent;
             agent[key] = value;
+            string provider = null;
+            try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch { }
             AgentSettingsStore.Save(settings);
+            try { AgentComposition.LogGlobalSettingsPersistence($"PersistAgentFlag:{key}", before, settings.GlobalSettings, provider); } catch { }
         }
 
         // NUEVO METODO AgentMaxStepsTextBox_Modal_TextChanged - ID: 20250304_170010
@@ -422,10 +485,97 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             var settings = AgentSettingsStore.Load() ?? new AgentSettings();
             if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
+            var before = (settings.GlobalSettings as JObject)?.DeepClone() as JObject ?? new JObject();
             var agent = settings.GlobalSettings["agent"] as JObject ?? new JObject();
             settings.GlobalSettings["agent"] = agent;
             agent["maxSteps"] = value;
+            string provider = null;
+            try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch { }
             AgentSettingsStore.Save(settings);
+            try { AgentComposition.LogGlobalSettingsPersistence("PersistAgentMaxSteps", before, settings.GlobalSettings, provider); } catch { }
+        }
+
+        // NUEVO METODO PersistRequestDefaultsFromUi - ID: 20260118_000001
+        private void PersistRequestDefaultsFromUi()
+        {
+            if (_isInitializingAdvancedUi) return;
+            try
+            {
+                var settings = AgentSettingsStore.Load() ?? new AgentSettings();
+                if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
+
+                var before = (settings.GlobalSettings as JObject)?.DeepClone() as JObject ?? new JObject();
+
+                var requestDefaults = settings.GlobalSettings["requestDefaults"] as JObject ?? new JObject();
+                settings.GlobalSettings["requestDefaults"] = requestDefaults;
+
+                // Force stream true
+                requestDefaults["stream"] = true;
+
+                // streamOptions.includeUsage depends on provider
+                var providerId = NormalizeProviderId(GetSelectedComboContent(ProviderCombo_Modal));
+                var streamOptions = requestDefaults["streamOptions"] as JObject ?? new JObject();
+                requestDefaults["streamOptions"] = streamOptions;
+                if (string.Equals(providerId, "lmstudio", StringComparison.OrdinalIgnoreCase))
+                {
+                    streamOptions["includeUsage"] = IncludeUsageToggle_Modal.IsChecked == true;
+                }
+                else
+                {
+                    streamOptions["includeUsage"] = false;
+                }
+
+                // temperature
+                double temp = 0.2;
+                try
+                {
+                    double parsed;
+                    if (double.TryParse(TemperatureTextBox_Modal.Text, out parsed)) temp = parsed;
+                }
+                catch { }
+                requestDefaults["temperature"] = temp;
+
+                // maxTokens
+                int maxTokens = 0;
+                try
+                {
+                    int parsed;
+                    if (int.TryParse(MaxTokensTextBox_Modal.Text, out parsed) && parsed >= 0) maxTokens = parsed;
+                }
+                catch { }
+                requestDefaults["maxTokens"] = maxTokens;
+
+                string provider = null;
+                try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch { }
+                AgentSettingsStore.Save(settings);
+                try { AgentComposition.LogGlobalSettingsPersistence("PersistRequestDefaultsFromUi", before, settings.GlobalSettings, provider); } catch { }
+            }
+            catch (Exception ex)
+            {
+                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: PersistRequestDefaultsFromUi error: " + ex.Message, ex); } catch { }
+            }
+        }
+
+        private void TemperatureTextBox_Modal_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isInitializingAdvancedUi) return;
+            // no-op; persist on LostFocus
+        }
+
+        private void TemperatureTextBox_Modal_LostFocus(object sender, RoutedEventArgs e)
+        {
+            PersistRequestDefaultsFromUi();
+        }
+
+        private void MaxTokensTextBox_Modal_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isInitializingAdvancedUi) return;
+            // no-op; persist on LostFocus
+        }
+
+        private void MaxTokensTextBox_Modal_LostFocus(object sender, RoutedEventArgs e)
+        {
+            PersistRequestDefaultsFromUi();
         }
 
         // NUEVO METODO ParseMaxSteps - ID: 20250304_170013
@@ -530,6 +680,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         }
 
         // NUEVO METODO HandleBaseUrlTextChangedAsync - ID: 20250310_000004
+        // MODIFICADO METODO HandleBaseUrlTextChangedAsync - ID: 20260117_120000
         private async Task HandleBaseUrlTextChangedAsync()
         {
             try
@@ -662,9 +813,30 @@ namespace AgenteIALocalVSIX.ToolWindows
                         }
                         catch (Exception)
                         {
-                            // both attempts failed
+                            // both attempts failed -> try offline fallback using persisted model
                             try { ShowBaseUrlError("Servidor no responde (/v1/models)"); } catch { }
-                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                            try
+                            {
+                                var offlineModels = new System.Collections.Generic.List<string>();
+                                try
+                                {
+                                    var settings = AgentSettingsStore.Load();
+                                    if (settings != null && settings.Servers != null)
+                                    {
+                                        var srv = settings.Servers.Find(s => string.Equals(s.Id, ActiveServerIdTextBox_Modal.Text, StringComparison.OrdinalIgnoreCase));
+                                        if (srv != null && !string.IsNullOrWhiteSpace(srv.Model)) offlineModels.Add(srv.Model);
+                                    }
+                                }
+                                catch { }
+
+                                if (offlineModels.Count > 0)
+                                {
+                                    try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in offlineModels) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch { }
+                                }
+
+                                try { BaseUrlHealthChanged?.Invoke(false, baseUrl, offlineModels); } catch { }
+                            }
+                            catch { try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new System.Collections.Generic.List<string>()); } catch { } }
                             return;
                         }
                     }
@@ -674,7 +846,27 @@ namespace AgenteIALocalVSIX.ToolWindows
                         // If cancelled, do not touch UI
                         if (ct.IsCancellationRequested) return;
                         try { ShowBaseUrlError(firstEx.Message); } catch { }
-                        try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                        try
+                        {
+                            var offlineModels = new System.Collections.Generic.List<string>();
+                            try
+                            {
+                                var settings = AgentSettingsStore.Load();
+                                if (settings != null && settings.Servers != null)
+                                {
+                                    var srv = settings.Servers.Find(s => string.Equals(s.Id, ActiveServerIdTextBox_Modal.Text, StringComparison.OrdinalIgnoreCase));
+                                    if (srv != null && !string.IsNullOrWhiteSpace(srv.Model)) offlineModels.Add(srv.Model);
+                                }
+                            }
+                            catch { }
+
+                            if (offlineModels.Count > 0)
+                            {
+                                try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in offlineModels) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch { }
+                            }
+                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, offlineModels); } catch { }
+                        }
+                        catch { try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new System.Collections.Generic.List<string>()); } catch { } }
                         return;
                     }
 
@@ -683,7 +875,27 @@ namespace AgenteIALocalVSIX.ToolWindows
                         // stale check
                         if (myFetchVersion != _modelsFetchVersion) return; // discard
                         try { ShowBaseUrlError("Servidor no responde (/v1/models)"); } catch { }
-                        try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                        try
+                        {
+                            var offlineModels = new System.Collections.Generic.List<string>();
+                            try
+                            {
+                                var settings = AgentSettingsStore.Load();
+                                if (settings != null && settings.Servers != null)
+                                {
+                                    var srv = settings.Servers.Find(s => string.Equals(s.Id, ActiveServerIdTextBox_Modal.Text, StringComparison.OrdinalIgnoreCase));
+                                    if (srv != null && !string.IsNullOrWhiteSpace(srv.Model)) offlineModels.Add(srv.Model);
+                                }
+                            }
+                            catch { }
+
+                            if (offlineModels.Count > 0)
+                            {
+                                try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in offlineModels) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch { }
+                            }
+                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, offlineModels); } catch { }
+                        }
+                        catch { try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new System.Collections.Generic.List<string>()); } catch { } }
                         return;
                     }
 
@@ -730,15 +942,28 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 // fallback to persisted single model if exists
                                 try
                                 {
-                                    var settings = AgentSettingsStore.Load();
-                                    if (settings != null && settings.Servers != null)
+                                var settings = AgentSettingsStore.Load();
+                                if (settings != null && settings.Servers != null)
+                                {
+                                    var srv = settings.Servers.Find(s => string.Equals(s.Id, ActiveServerIdTextBox_Modal.Text, StringComparison.OrdinalIgnoreCase));
+                                    if (srv != null && !string.IsNullOrWhiteSpace(srv.Model))
                                     {
-                                        var srv = settings.Servers.Find(s => string.Equals(s.Id, ActiveServerIdTextBox_Modal.Text, StringComparison.OrdinalIgnoreCase));
-                                        if (srv != null && !string.IsNullOrWhiteSpace(srv.Model))
+                                        try
                                         {
-                                            try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.Items.Add(srv.Model); ServerModelCombo_Modal.SelectedIndex = 0; } catch { }
+                                            if (AgenteIALocalControl.IsChatModelId(srv.Model))
+                                            {
+                                                ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.Items.Add(srv.Model); ServerModelCombo_Modal.SelectedIndex = 0;
+                                            }
+                                            else
+                                            {
+                                                // persisted model is not chat-capable -> do not inject, show error
+                                                try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch { }
+                                                try { ShowBaseUrlError("Modelo no compatible (embedding)"); } catch { }
+                                            }
                                         }
+                                        catch { }
                                     }
+                                }
                                 }
                                 catch { }
                             }
@@ -756,8 +981,32 @@ namespace AgenteIALocalVSIX.ToolWindows
                     else
                     {
                         try { ShowBaseUrlError("Servidor responde " + resp.StatusCode); } catch { }
-                        try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch { }
-                        try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                        // non-success (other than auth): try offline fallback before clearing
+                        try
+                        {
+                            var offlineModels = new System.Collections.Generic.List<string>();
+                            try
+                            {
+                                var settings = AgentSettingsStore.Load();
+                                if (settings != null && settings.Servers != null)
+                                {
+                                    var srv = settings.Servers.Find(s => string.Equals(s.Id, ActiveServerIdTextBox_Modal.Text, StringComparison.OrdinalIgnoreCase));
+                                    if (srv != null && !string.IsNullOrWhiteSpace(srv.Model)) offlineModels.Add(srv.Model);
+                                }
+                            }
+                            catch { }
+
+                            if (offlineModels.Count > 0)
+                            {
+                                try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in offlineModels) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch { }
+                            }
+                            else
+                            {
+                                try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch { }
+                            }
+                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, offlineModels); } catch { }
+                        }
+                        catch { try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch { } try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new System.Collections.Generic.List<string>()); } catch { } }
                     }
                 }
             }
@@ -843,6 +1092,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
 
                 srv.BaseUrl = baseUrl;
+                // Persist only BaseUrl/server related fields here. requestDefaults persistence handled elsewhere
+                // Apply modal globals (provider/runMode/requestDefaults/agent) before final save
+                ApplyModalGlobalsToSettings(settings);
+
                 settings.ActiveServerId = targetId;
                 AgentSettingsStore.Save(settings);
                 _lastPersistedBaseUrl = baseUrl;
@@ -1034,6 +1287,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         {
                             // fallback also failed
                             try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync both primary and fallback failed: " + exAlt.Message, exAlt); } catch { }
+                            try { AgenteIALocalControl.FilterChatModelsInPlace(result); } catch { }
                             return result;
                         }
                         }
@@ -1041,6 +1295,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         {
                             // fallback also failed
                             try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync both primary and fallback failed: " + exAlt.Message, exAlt); } catch { }
+                            try { AgenteIALocalControl.FilterChatModelsInPlace(result); } catch { }
                             return result;
                         }
                     }
@@ -1080,6 +1335,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 }
                                 catch { }
                             }
+                            try { AgenteIALocalControl.FilterChatModelsInPlace(result); } catch { }
                             return result;
                         }
 
@@ -1164,7 +1420,18 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                 if (!string.IsNullOrEmpty(selectedModel))
                 {
-                    srv.Model = selectedModel;
+                    // MODIFICADO METODO SaveButton_Click - ID: 20260117_132400
+                    // Do not persist embedding/non-chat models
+                    if (AgenteIALocalControl.IsChatModelId(selectedModel))
+                    {
+                        srv.Model = selectedModel;
+                    }
+                    else
+                    {
+                        // do not persist; clear selection and inform user via UI error
+                        srv.Model = string.Empty;
+                        try { ShowBaseUrlError("Modelo no compatible (embedding) - no guardado"); } catch { }
+                    }
                 }
 
                 settings.ActiveServerId = targetId;
@@ -1257,6 +1524,42 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Close error: " + ex.Message, ex); } catch { }
             }
+        }
+
+        // NUEVO METODO ApplyModalGlobalsToSettings - ID: 20260118_000002
+        private void ApplyModalGlobalsToSettings(AgentSettings settings)
+        {
+            if (settings == null) return;
+            try
+            {
+                // provider -> active server selection already applied via servers list
+                if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
+
+                // runMode
+                try
+                {
+                    var selected = GetSelectedComboContent(RunModeCombo_Modal);
+                    var runMode = string.Equals(selected, "Agente", StringComparison.OrdinalIgnoreCase) ? "agente" : "preguntar";
+                    settings.GlobalSettings["runMode"] = runMode;
+                }
+                catch { }
+
+                // agent settings
+                try
+                {
+                    var agent = settings.GlobalSettings["agent"] as JObject ?? new JObject();
+                    settings.GlobalSettings["agent"] = agent;
+                    agent["ideIntegration"] = AgentIdeIntegrationToggle_Modal.IsChecked == true;
+                    agent["applyChanges"] = AgentApplyChangesToggle_Modal.IsChecked == true;
+                    int ms = ParseMaxSteps(AgentMaxStepsTextBox_Modal.Text);
+                    agent["maxSteps"] = ms;
+                }
+                catch { }
+
+                // requestDefaults via unified persister
+                PersistRequestDefaultsFromUi();
+            }
+            catch { }
         }
 
         protected override void OnClosed(EventArgs e)

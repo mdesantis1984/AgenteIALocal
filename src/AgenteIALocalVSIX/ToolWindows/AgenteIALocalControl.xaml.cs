@@ -19,6 +19,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
+using System.Collections.Specialized;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -87,6 +88,8 @@ namespace AgenteIALocalVSIX.ToolWindows
         private int _streamingFlushedLength = 0; // NUEVO CAMPO - ID: 20260114_000031
         private Paragraph _streamingAiParagraph = null; // NUEVO CAMPO - ID: 20260114_000032
         private Run _streamingAiLastRun = null; // NUEVO CAMPO - ID: 20260114_000033
+        // NUEVO CAMPO UiLogBuffer - ID: 20260118_190200
+        private AgenteIALocal.Infrastructure.LoggingV2.UiLogBuffer _uiLogBuffer;
         // NUEVO CAMPO _isRefreshingUiProvider - ID: 20260115_123000
         private bool _isRefreshingUiProvider = false;
         // NUEVO CAMPO guard para evitar reentrancia en RefreshFromSettings via SettingsSaved - ID: 20260116_173500
@@ -117,6 +120,129 @@ namespace AgenteIALocalVSIX.ToolWindows
                 UpdateStateProperties(value);
             }
         }
+
+        // NUEVO METODO IsChatModelId - ID: 20260117_133300
+        internal static bool IsChatModelId(string modelId)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(modelId)) return false;
+                var s = modelId.Trim().ToLowerInvariant();
+                if (s.StartsWith("text-embedding-")) return false;
+                if (s.Contains("embedding")) return false;
+                if (s.Contains("nomic-embed")) return false;
+                if (s.Contains("embed-text")) return false;
+                if (s.Contains("-embed-")) return false;
+                if (s.EndsWith("-embed")) return false;
+                return true;
+            }
+            catch { return false; }
+        }
+
+        // NUEVO METODO FilterChatModelsInPlace - ID: 20260117_133310
+        internal static void FilterChatModelsInPlace(System.Collections.Generic.List<string> models)
+        {
+            try
+            {
+                if (models == null || models.Count == 0) return;
+                for (int i = models.Count - 1; i >= 0; i--)
+                {
+                    try
+                    {
+                        var id = models[i];
+                        if (!IsChatModelId(id)) models.RemoveAt(i);
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+        }
+
+        // MODIFICADO METODO TypeActivitie_SelectionChanged - ID: 20260116_173000
+        private void TypeActivitie_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                if (!IsLoaded) return;
+                if (_isRefreshingFromSettings) return; // avoid persisting during programmatic refresh
+
+                var cb = sender as ComboBox;
+                var selected = cb?.SelectedItem as ComboBoxItem;
+                string text = null;
+                try { text = selected?.Content?.ToString(); } catch { text = null; }
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    try { text = cb?.SelectedItem?.ToString(); } catch { text = null; }
+                }
+
+                if (string.IsNullOrWhiteSpace(text)) return;
+
+                string normalized = null;
+                if (string.Equals(text, "Agente", StringComparison.OrdinalIgnoreCase)) normalized = "agente";
+                else normalized = "preguntar";
+
+                try
+                {
+                    var settings = AgentSettingsStore.Load() ?? new AgentSettings();
+                    var current = settings.GlobalSettings != null ? settings.GlobalSettings.Value<string>("runMode") : null;
+                    if (!string.Equals(current ?? string.Empty, normalized ?? string.Empty, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Persist new runMode value (this will raise SettingsSaved event)
+                        try
+                        {
+                            if (settings.GlobalSettings == null) settings.GlobalSettings = new Newtonsoft.Json.Linq.JObject();
+                            settings.GlobalSettings["runMode"] = normalized;
+                            AgentSettingsStore.Save(settings);
+                        }
+                        catch { }
+                    }
+                }
+                catch { }
+            }
+            catch { }
+        }
+
+        // MODIFICADO METODO GetRunModeNormalized - ID: 20260116_173000
+        public string GetRunModeNormalized()
+        {
+            try
+            {
+                // 1) Prefer explicit UI selection if available
+                try
+                {
+                    if (TypeActivitie != null)
+                    {
+                        string txt = null;
+                        try
+                        {
+                            var cbi = TypeActivitie.SelectedItem as ComboBoxItem;
+                            if (cbi != null) txt = cbi.Content?.ToString();
+                            if (string.IsNullOrWhiteSpace(txt)) txt = TypeActivitie.SelectedItem?.ToString();
+                        }
+                        catch { txt = null; }
+
+                        if (!string.IsNullOrWhiteSpace(txt))
+                        {
+                            if (string.Equals(txt, "Agente", StringComparison.OrdinalIgnoreCase)) return "agente";
+                            return "preguntar";
+                        }
+                    }
+                }
+                catch { }
+
+                // 2) Fallback to persisted settings
+                try
+                {
+                    var settings = AgentSettingsStore.Load();
+                    var runMode = settings != null && settings.GlobalSettings != null ? settings.GlobalSettings.Value<string>("runMode") : null;
+                    if (string.IsNullOrWhiteSpace(runMode)) return "preguntar";
+                    return runMode;
+                }
+                catch { return "preguntar"; }
+            }
+            catch { return "preguntar"; }
+        }
+        
 
         // NUEVO METODO TrySelectComboByText - ID: 20260116_180500
         // Selects an existing ComboBox item by comparing display text case-insensitively.
@@ -889,20 +1015,27 @@ namespace AgenteIALocalVSIX.ToolWindows
         // NUEVO METODO RunLogRefreshLoopAsync - ID: 20250310_000005
         private async Task RunLogRefreshLoopAsync(CancellationToken ct)
         {
+            // Ensure UI buffer and subscription to hub
+            try { EnsureUiLogBuffer(); } catch { }
+
             while (!ct.IsCancellationRequested)
             {
                 try
                 {
-                    var content = await Task.Run(() => ReadLogFile());
-
                     await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
 
                     var bytes = TryGetLogFileSizeBytes();
                     UpdateLogFileSizeLabelFromBytes(bytes);
 
-                    LogText.Text = string.IsNullOrEmpty(content)
-                        ? "(no logs)"
-                        : content;
+                    // LogText is updated via collection changed handler from the UiLogBuffer
+                    try
+                    {
+                        if (_uiLogBuffer == null || _uiLogBuffer.Items.Count == 0)
+                        {
+                            LogText.Text = "(no logs)";
+                        }
+                    }
+                    catch { }
 
                     ScrollLogToEnd(force: false);
                 }
@@ -910,12 +1043,48 @@ namespace AgenteIALocalVSIX.ToolWindows
                 {
                     await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
                     UpdateLogFileSizeLabelFromBytes(0);
-                    LogText.Text = "(unable to read logs)";
+                    try { LogText.Text = "(unable to read logs)"; } catch { }
                     ScrollLogToEnd(force: false);
                 }
 
                 try { await Task.Delay(2000, ct); } catch { }
             }
+        }
+
+        // NUEVO METODO EnsureUiLogBuffer - ID: 20260118_190200
+        private void EnsureUiLogBuffer()
+        {
+            try
+            {
+                if (_uiLogBuffer != null) return;
+                _uiLogBuffer = new AgenteIALocal.Infrastructure.LoggingV2.UiLogBuffer((a) => { try { this.Dispatcher.BeginInvoke(a); } catch { try { this.Dispatcher.Invoke(a); } catch { } } }, 250);
+
+                // Bind Items to LogText by listening changes and re-joining lines
+                _uiLogBuffer.Items.CollectionChanged += (s, e) =>
+                {
+                    try
+                    {
+                        this.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            try
+                            {
+                                // join lines into the single LogText.Text for backward compatibility
+                                LogText.Text = string.Join(Environment.NewLine, _uiLogBuffer.Items);
+                                ScrollLogToEnd(force: false);
+                            }
+                            catch { }
+                        }));
+                    }
+                    catch { }
+                };
+
+                // subscribe hub
+                AgenteIALocal.Infrastructure.LoggingV2.LogEventHub.OnLog += (line, entry) =>
+                {
+                    try { _uiLogBuffer.Publish(line, entry); } catch { }
+                };
+            }
+            catch { }
         }
 
         public void SetSolutionInfo(string solutionName, int projectCount)
@@ -1125,7 +1294,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                         catch (Exception exAlt)
                         {
                             try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: primary and fallback failed: {exAlt.Message}", exAlt); } catch { }
-                            return result;
+            // Filter out embedding/non-chat models before returning
+            try { FilterChatModelsInPlace(result); } catch { }
+            return result;
                         }
                             firstEx = null;
                         }
@@ -1256,6 +1427,26 @@ namespace AgenteIALocalVSIX.ToolWindows
                             ModelOfLLM.SelectedIndex = 0;
                         }
                     }
+                    else
+                    {
+                        // No models returned: preserve persisted model if present AND chat-capable (offline mode)
+                        try
+                        {
+                            if (!string.IsNullOrWhiteSpace(srv.Model) && AgenteIALocalControl.IsChatModelId(srv.Model))
+                            {
+                                ModelOfLLM.Items.Clear();
+                                ModelOfLLM.Items.Add(srv.Model);
+                                ModelOfLLM.SelectedIndex = 0;
+                            }
+                            else
+                            {
+                                // keep empty (no persisted chat model) to force user to pick when server returns
+                                ModelOfLLM.Items.Clear();
+                                ModelOfLLM.SelectedItem = null;
+                            }
+                        }
+                        catch { }
+                    }
                 }
                 catch { }
             }
@@ -1274,6 +1465,13 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (!IsLoaded) return;
                 var sel = ModelOfLLM.SelectedItem as string;
                 if (string.IsNullOrEmpty(sel)) return;
+                // MODIFICADO METODO ModelOfLLM_SelectionChanged - ID: 20260117_132900
+                // If user selected a non-chat model, revert selection and do not persist
+                if (!AgenteIALocalControl.IsChatModelId(sel))
+                {
+                    try { ModelOfLLM.SelectedItem = null; } catch { }
+                    return;
+                }
                 AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelOfLLM: selection changed modelPresent=true modelIdLength={sel.Length}");
 
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
@@ -1307,60 +1505,60 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // NUEVO METODO TypeActivitie_SelectionChanged - ID: 20260116_181200
-        private void TypeActivitie_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            try
-            {
-                if (_isRefreshingFromSettings) return;
-                if (!IsLoaded) return;
-
-                var selected = TypeActivitie.SelectedItem as string ?? TypeActivitie.SelectedItem?.ToString() ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(selected)) return;
-
-                var runMode = string.Equals(selected, "Agente", StringComparison.OrdinalIgnoreCase) ? "agente" : "preguntar";
-                var settings = AgentSettingsStore.Load() ?? new AgentSettings();
-                if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
-
-                var prev = settings.GlobalSettings.Value<string>("runMode") ?? string.Empty;
-                if (string.Equals(prev, runMode, StringComparison.OrdinalIgnoreCase)) return;
-
-                settings.GlobalSettings["runMode"] = runMode;
-                AgentSettingsStore.Save(settings);
-
-                try { AgentComposition.RecomposeFromSettings("ui:runmode-changed-toolwindow"); } catch { }
-            }
-            catch (Exception ex)
-            {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "TypeActivitie change failed: " + ex.Message, ex); } catch { }
-            }
-        }
-
         // NUEVO METODO ApplyConfigHealthFromModal - ID: 20260114_000078
+        // MODIFICADO METODO ApplyConfigHealthFromModal - ID: 20260117_121500
         internal void ApplyConfigHealthFromModal(bool ok, IReadOnlyList<string> models)
         {
             try
             {
-                ConfigLabel = ok ? "OK Config" : "Not Config";
+                // Do NOT set ConfigLabel directly from health; recompute from persisted settings completeness
+                try
+                {
+                    var settings = AgentSettingsStore.Load();
+                    ComputeIsLlmConfigured(settings);
+                }
+                catch { }
 
                 if (ModelOfLLM != null)
                 {
-                    ModelOfLLM.Items.Clear();
-                    if (ok && models != null)
+                    // If models provided from health check: populate
+                    if (models != null && models.Count > 0)
                     {
-                        foreach (var m in models) ModelOfLLM.Items.Add(m);
-                        if (ModelOfLLM.Items.Count > 0)
+                        try
                         {
-                            ModelOfLLM.SelectedIndex = 0;
+                            ModelOfLLM.Items.Clear();
+                            foreach (var m in models) ModelOfLLM.Items.Add(m);
+                            if (ModelOfLLM.Items.Count > 0) ModelOfLLM.SelectedIndex = 0;
                         }
-                        else
-                        {
-                            ModelOfLLM.SelectedItem = null;
-                        }
+                        catch { }
                     }
                     else
                     {
-                        ModelOfLLM.SelectedItem = null;
+                        // No models from health. Preserve existing selection if present; otherwise try persisted model
+                        try
+                        {
+                            var currentSel = ModelOfLLM.SelectedItem as string;
+                            if (!string.IsNullOrWhiteSpace(currentSel))
+                            {
+                                // keep current selection
+                            }
+                            else
+                            {
+                                var settings = AgentSettingsStore.Load();
+                                var srv = (settings != null && settings.Servers != null && !string.IsNullOrEmpty(settings.ActiveServerId)) ? settings.Servers.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase)) : null;
+                                if (srv != null && !string.IsNullOrWhiteSpace(srv.Model))
+                                {
+                                    ModelOfLLM.Items.Clear();
+                                    ModelOfLLM.Items.Add(srv.Model);
+                                    ModelOfLLM.SelectedIndex = 0;
+                                }
+                                else
+                                {
+                                    // leave as-is (clear only if explicitly requested elsewhere)
+                                }
+                            }
+                        }
+                        catch { }
                     }
                 }
 
@@ -1566,10 +1764,57 @@ namespace AgenteIALocalVSIX.ToolWindows
             var baseUrl = (server.BaseUrl ?? string.Empty).TrimEnd('/');
             var url = baseUrl + "/v1/chat/completions";
 
+            // MODIFICADO METODO ExecuteLmStudioStreamingAsync - ID: 20260117_123000
+            // Build payload: always stream=true. When in 'preguntar' mode, apply requestDefaults (temperature, max_tokens)
             var payload = new JObject();
             if (!string.IsNullOrWhiteSpace(server.Model)) payload["model"] = server.Model;
+            // Force streaming mode always
             payload["stream"] = true;
-            try { payload["stream_options"] = new JObject(new JProperty("include_usage", true)); } catch { }
+
+            try
+            {
+                // Apply requestDefaults only when run mode is 'preguntar'
+                try
+                {
+                    var runMode = GetRunModeNormalized();
+                    if (string.Equals(runMode, "preguntar", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var settings = AgentSettingsStore.Load();
+                        var requestDefaults = settings != null && settings.GlobalSettings != null ? settings.GlobalSettings["requestDefaults"] as JObject : null;
+
+                        // temperature (default 0.2 if missing)
+                        double temperature = 0.2;
+                        try { temperature = requestDefaults?.Value<double?>("temperature") ?? 0.2; } catch { temperature = 0.2; }
+                        payload["temperature"] = temperature;
+
+                        // max_tokens only if > 0
+                        try
+                        {
+                            var maxTokens = requestDefaults != null ? requestDefaults.Value<int?>("maxTokens") ?? 0 : 0;
+                            if (maxTokens > 0) payload["max_tokens"] = maxTokens;
+                        }
+                        catch { }
+
+                        // stream_options.include_usage only for LM Studio providers when requested
+                        try
+                        {
+                            var includeUsage = false;
+                            var streamOptions = requestDefaults != null ? requestDefaults["streamOptions"] as JObject : null;
+                            includeUsage = streamOptions != null ? streamOptions.Value<bool?>("includeUsage") ?? false : false;
+
+                            var provider = server.Provider ?? string.Empty;
+                            if (string.Equals(provider, "lmstudio", StringComparison.OrdinalIgnoreCase) && includeUsage)
+                            {
+                                payload["stream_options"] = new JObject(new JProperty("include_usage", true));
+                            }
+                        }
+                        catch { }
+                    }
+                }
+                catch { }
+            }
+            catch { }
+
             payload["messages"] = new JArray(new JObject { ["role"] = "user", ["content"] = BuildLmStudioPrompt(req) });
 
             try
@@ -1588,7 +1833,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         httpReq.Content = new StringContent(payload.ToString(Formatting.None), Encoding.UTF8, "application/json");
 
                         HttpResponseMessage httpResp = await client.SendAsync(httpReq, HttpCompletionOption.ResponseHeadersRead, ct);
-                        if (!httpResp.IsSuccessStatusCode && httpResp.StatusCode == System.Net.HttpStatusCode.BadRequest && payload["stream_options"] != null)
+                                if (!httpResp.IsSuccessStatusCode && httpResp.StatusCode == System.Net.HttpStatusCode.BadRequest && payload["stream_options"] != null)
                         {
                             try { httpResp.Dispose(); } catch { }
                             payload.Remove("stream_options");
@@ -1601,7 +1846,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                                     try { retryReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", server.ApiKey); } catch { }
                                 }
                                 retryReq.Content = new StringContent(payload.ToString(Formatting.None), Encoding.UTF8, "application/json");
-                                try { httpResp = await client.SendAsync(retryReq, HttpCompletionOption.ResponseHeadersRead, ct); try { AgentComposition.Info(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "LM Studio: stream_options.include_usage rejected by server; retrying without it."); } catch { } }
+                                try { httpResp = await client.SendAsync(retryReq, HttpCompletionOption.ResponseHeadersRead, ct); }
                                 catch (Exception exRetry) { respObj.Error = "LM Studio retry failed: " + exRetry.Message; return respObj; }
                             }
                         }
@@ -1681,9 +1926,27 @@ namespace AgenteIALocalVSIX.ToolWindows
                         try { if (aiBubble != null) aiBubble.Content = finalText; } catch { }
                         try { await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct); if (ReferenceEquals(aiBubble, _streamingAiMessage) && _streamingAiRun != null) _streamingAiRun.Text = finalText; if (ReferenceEquals(aiBubble, _streamingAiMessage) && _streamingAiViewer != null) { try { _streamingAiViewer.BringIntoView(); } catch { } } } catch { }
 
+
                         if (ct.IsCancellationRequested) { ClearStreamingPlaceholder(); respObj.Error = "Cancelled"; return respObj; }
 
-                        try { int finalTokens = (completionTokens ?? totalTokens) ?? 0; try { TrySetProp(aiBubble, "Tokens", finalTokens); } catch { } try { TrySetProp(aiBubble, "TokenCount", finalTokens); } catch { } try { TrySetProp(aiBubble, "TotalTokens", finalTokens); } catch { } try { TrySetTokensForMessage(chat.Id, TryGetDateTimeProp(aiBubble, "Timestamp"), "IA", finalText, finalTokens); } catch { } } catch { }
+                        // MODIFICADO METODO ExecuteLmStudioStreamingAsync - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+                        // Only set Tokens on AI bubble and persist UI state when usage info was actually provided by the server.
+                        try
+                        {
+                            int? finalTokensNullable = null;
+                            if (totalTokens.HasValue) finalTokensNullable = totalTokens.Value;
+                            else if (completionTokens.HasValue) finalTokensNullable = completionTokens.Value;
+
+                            if (finalTokensNullable.HasValue)
+                            {
+                                var finalTokens = finalTokensNullable.Value;
+                                try { TrySetProp(aiBubble, "Tokens", finalTokens); } catch { }
+                                try { TrySetProp(aiBubble, "TokenCount", finalTokens); } catch { }
+                                try { TrySetProp(aiBubble, "TotalTokens", finalTokens); } catch { }
+                                try { TrySetTokensForMessage(chat.Id, TryGetDateTimeProp(aiBubble, "Timestamp"), "IA", finalText, finalTokens); } catch { }
+                            }
+                        }
+                        catch { }
 
                         TryPersistChat(chat);
                         RenderActiveChatToUi();

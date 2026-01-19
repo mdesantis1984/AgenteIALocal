@@ -262,6 +262,7 @@ namespace AgenteIALocalVSIX
         }
 
         // NUEVO METODO EnsureGlobalSettings - ID: 20250304_120000
+        // MODIFICADO METODO EnsureGlobalSettings - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
         private static bool EnsureGlobalSettings(AgentSettings settings)
         {
             if (settings == null) throw new ArgumentNullException(nameof(settings));
@@ -291,7 +292,17 @@ namespace AgenteIALocalVSIX
                 changed = true;
             }
 
-            if (requestDefaults["stream"] == null || requestDefaults["stream"].Type == JTokenType.Null || requestDefaults["stream"].Type == JTokenType.Undefined)
+            // FORZAR stream=true (stream-only mode)
+            try
+            {
+                var currentStream = requestDefaults.Value<bool?>("stream");
+                if (!currentStream.HasValue || currentStream.Value != true)
+                {
+                    requestDefaults["stream"] = true;
+                    changed = true;
+                }
+            }
+            catch
             {
                 requestDefaults["stream"] = true;
                 changed = true;
@@ -307,6 +318,28 @@ namespace AgenteIALocalVSIX
             {
                 requestDefaults["maxTokens"] = 0;
                 changed = true;
+            }
+
+            // Ensure streamOptions.includeUsage exists (default false) - used by LM Studio streaming requests
+            try
+            {
+                var streamOptions = requestDefaults["streamOptions"] as JObject;
+                if (streamOptions == null)
+                {
+                    streamOptions = new JObject();
+                    requestDefaults["streamOptions"] = streamOptions;
+                    changed = true;
+                }
+
+                if (streamOptions["includeUsage"] == null || streamOptions["includeUsage"].Type == JTokenType.Null || streamOptions["includeUsage"].Type == JTokenType.Undefined)
+                {
+                    streamOptions["includeUsage"] = false;
+                    changed = true;
+                }
+            }
+            catch
+            {
+                // ignore
             }
 
             var agentToken = global["agent"];

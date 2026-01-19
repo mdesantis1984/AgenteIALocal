@@ -33,6 +33,9 @@ namespace AgenteIALocal.Infrastructure.LoggingV2
             return v >= 9150 && v <= 9153;
         }
 
+        private static readonly long RollingMaxBytes = 3L * 1024 * 1024; // 3MB
+        private static RollingFileWriter rollingWriter;
+
         public void Write(LogEntry entry)
         {
             try
@@ -45,15 +48,21 @@ namespace AgenteIALocal.Infrastructure.LoggingV2
 
                 var line = AgenteIALocal.Core.Logging.LogEntryTextFormatter.Format(entry);
 
-                lock (gate)
+                // Publish to hub for UI sinks
+                try { LogEventHub.Publish(line, entry); } catch { }
+
+                try
                 {
-                    try
+                    lock (gate)
                     {
-                        LogFileRolling.EnsureRolled(logFilePath, LogFileRolling.MaxBytesDefault);
-                        File.AppendAllText(logFilePath, line + Environment.NewLine, Encoding.UTF8);
+                        if (rollingWriter == null)
+                        {
+                            rollingWriter = new RollingFileWriter(logFilePath, RollingMaxBytes);
+                        }
+                        rollingWriter.WriteLine(line);
                     }
-                    catch { }
                 }
+                catch { }
             }
             catch
             {

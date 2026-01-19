@@ -12,5 +12,9 @@ namespace AgenteIALocal.Core.Agents
         public bool Stream { get; set; }
 
         public Action<string> OnDelta { get; set; }
+
+        // Optional OpenAI-style tuning parameters
+        public double? Temperature { get; set; }
+        public int? MaxTokens { get; set; }
     }
 }

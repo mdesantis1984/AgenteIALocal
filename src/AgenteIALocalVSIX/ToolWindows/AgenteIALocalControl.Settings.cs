@@ -59,7 +59,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                         if (srv != null)
                         {
                             baseUrlPresent = !string.IsNullOrWhiteSpace(srv.BaseUrl);
-                            modelPresent = !string.IsNullOrWhiteSpace(srv.Model);
+                            // MODIFICADO METODO ComputeIsLlmConfigured - ID: 20260117_131200
+                            // Only consider the model present if it's a chat-capable model
+                            modelPresent = !string.IsNullOrWhiteSpace(srv.Model) && AgenteIALocalVSIX.ToolWindows.AgenteIALocalControl.IsChatModelId(srv.Model);
                             if (baseUrlPresent && modelPresent) configured = true;
                         }
                     }

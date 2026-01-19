@@ -39,6 +39,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 });
             }
 
+            // MODIFICADO METODO RunAsync - ID: 20260117_094500
             public async Task RunAsync(object sender, RoutedEventArgs e)
             {
                 var o = _owner;
@@ -130,85 +131,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                         ProjectCount = int.TryParse(o.ProjectCountText.Text, out var pc) ? pc : 0
                     };
 
+                    var runMode = o.GetRunModeNormalized();
                     AgentHostResponse response = null;
-
-                    AgenteIALocalVSIX.ServerConfig lmServer = null;
-                    var canStreamOpenAi = o.TryGetActiveOpenAiCompatibleServer(out lmServer);
-
-                    if (canStreamOpenAi)
-                    {
-                        o._streamingAiMessage = aiBubble;
-                        o._streamingAiRun = null;
-                        o._streamingAiViewer = null;
-                        o._chatService.RenderActiveChatToUi();
-                        // Use existing LM Studio streaming implementation for OpenAI-compatible providers (LM Studio, JAN)
-                        try
-                        {
-                            // Log provider info once when it changes (never log ApiKey)
-                            try
-                            {
-                                var prov = (lmServer != null ? (lmServer.Provider ?? string.Empty).ToLowerInvariant() : string.Empty);
-                                var host = string.Empty;
-                                try { host = new Uri((lmServer?.BaseUrl ?? string.Empty)).Host; } catch { host = lmServer != null ? lmServer.BaseUrl ?? string.Empty : string.Empty; }
-                                var model = lmServer != null ? lmServer.Model ?? string.Empty : string.Empty;
-                                var info = prov + "|" + host + "|" + model;
-                                if (!string.Equals(o._lastLoggedProviderInfo, info, StringComparison.Ordinal))
-                                {
-                                    o._lastLoggedProviderInfo = info;
-                                    try { AgentComposition.Info(o.activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "OpenAI-compatible provider used: " + prov + " host=" + host + " model=" + model); } catch { }
-                                }
-                            }
-                            catch { }
-
-                            response = await o.ExecuteLmStudioStreamingAsync(req, lmServer, o.activeChat, aiBubble, ct);
-                        }
-                        catch (Exception)
-                        {
-                            throw;
-                        }
-                    }
-                    else
-                    {
-                        o._streamingAiMessage = null;
-                        o._streamingAiRun = null;
-                        o._streamingAiViewer = null;
-                        o._chatService.RenderActiveChatToUi();
-                        var execTask = Task.Run(() =>
-                        {
-                            try
-                            {
-                                if (AgentComposition.AgentService != null)
-                                {
-                                    return AgentComposition.AgentService.Execute(req);
-                                }
-
-                                o.AppendLog("AgentService not composed; using MockAgentExecutor fallback.");
-                                return AgenteIALocalVSIX.Execution.MockAgentExecutor.Execute(req);
-                            }
-                            catch (Exception ex)
-                            {
-                                var corr = !string.IsNullOrEmpty(req?.CorrelationId) ? req.CorrelationId : !string.IsNullOrEmpty(req?.RequestId) ? req.RequestId : "-";
-                                try
-                                {
-                                    AgentComposition.Error(corr, AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] Execution exception in background task: " + ex.Message, ex);
-                                }
-                                catch { }
-
-                                o.AppendLog("Execution exception in background task: " + ex.Message);
-                                throw;
-                            }
-                        });
-
-                        var completed = await Task.WhenAny(execTask, Task.Delay(Timeout.Infinite, ct));
-                        if (completed != execTask)
-                        {
-                            _ = execTask.ContinueWith(t => { _ = t.Exception; }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
-                            o._chatService.TryRemoveEmptyAiBubble(o.activeChat, aiBubble);
-                            return;
-                        }
-
-                        response = await execTask;
-                    }
+                    response = await ExecuteSendAccordingToRunModeAsync(runMode, req, aiBubble, ct);
 
                     if (ct.IsCancellationRequested) { o._chatService.TryRemoveEmptyAiBubble(o.activeChat, aiBubble); return; }
                     if (myVersion != o._runVersion) { o._chatService.TryRemoveEmptyAiBubble(o.activeChat, aiBubble); return; }
@@ -339,6 +264,201 @@ namespace AgenteIALocalVSIX.ToolWindows
                         try { o.RefreshLogFromFile(); } catch { }
                     }).ConfigureAwait(false);
                 }
+            }
+
+            // MODIFICADO METODO ExecuteSendAccordingToRunModeAsync - ID: 20260116_170000
+            private async Task<AgentHostResponse> ExecuteSendAccordingToRunModeAsync(string runMode, AgentHostRequest req, ChatMessage aiBubble, CancellationToken ct)
+            {
+                var o = _owner;
+                // Log routing once per send into the same pipeline used elsewhere (AgentComposition.LoggerV2 -> Vsix file sink)
+                try
+                {
+                    var settings = AgentSettingsStore.Load();
+                    var activeId = settings != null ? settings.ActiveServerId ?? string.Empty : string.Empty;
+                    string provider = string.Empty;
+                    string model = string.Empty;
+                    string baseUrl = string.Empty;
+                    try
+                    {
+                        if (!string.IsNullOrWhiteSpace(activeId) && settings != null && settings.Servers != null)
+                        {
+                            var srv = settings.Servers.Find(s => string.Equals(s.Id, activeId, StringComparison.OrdinalIgnoreCase));
+                            if (srv != null)
+                            {
+                                provider = srv.Provider ?? string.Empty;
+                                model = srv.Model ?? string.Empty;
+                                baseUrl = srv.BaseUrl ?? string.Empty;
+                            }
+                        }
+                    }
+                    catch { }
+
+                    var providerDisplay = string.Empty;
+                    if (!string.IsNullOrWhiteSpace(provider))
+                    {
+                        providerDisplay = string.Equals(provider, "lmstudio", StringComparison.OrdinalIgnoreCase) ? "LM Studio" :
+                                          (string.Equals(provider, "jan", StringComparison.OrdinalIgnoreCase) ? "JAN" : provider);
+                    }
+
+                    var safeModel = string.IsNullOrWhiteSpace(model) ? string.Empty : model;
+
+                    // Determine execution path without performing network operations.
+                    string executionPath = string.Empty;
+                    try
+                    {
+                        if (string.Equals(runMode, "agente", StringComparison.OrdinalIgnoreCase))
+                        {
+                            executionPath = AgentComposition.AgentService != null ? "AgentService" : "MockAgent";
+                        }
+                        else
+                        {
+                            // Reuse the same inexpensive check used later to know if streaming is available.
+                            AgenteIALocalVSIX.ServerConfig tmpServer = null;
+                            var tmpCanStream = o.TryGetActiveOpenAiCompatibleServer(out tmpServer);
+                            if (tmpCanStream)
+                            {
+                                executionPath = "ChatStreaming";
+                            }
+                            else
+                            {
+                                // If configured server lacks baseUrl or model, consider it guarded (no HTTP)
+                                var guarded = string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(safeModel);
+                                if (guarded) executionPath = "GuardedNoHttp";
+                                else executionPath = AgentComposition.AgentService != null ? "AgentService" : "MockAgent";
+                            }
+                        }
+                    }
+                    catch { executionPath = string.Empty; }
+
+                    // Extend routing log to include requestDefaults and agent flags in one single line
+                    double? temperature = null;
+                    int? maxTokensVal = null;
+                    bool includeUsage = false;
+                    bool ideIntegration = true;
+                    bool applyChanges = false;
+                    int? agentMaxSteps = null;
+
+                    try
+                    {
+                        var global = settings != null ? settings.GlobalSettings : null;
+                        var reqDefaults = global != null ? global["requestDefaults"] as Newtonsoft.Json.Linq.JObject : null;
+                        if (reqDefaults != null)
+                        {
+                            temperature = reqDefaults.Value<double?>("temperature");
+                            var mt = reqDefaults.Value<int?>("maxTokens");
+                            if (mt.HasValue && mt.Value > 0) maxTokensVal = mt.Value;
+                            var so = reqDefaults["streamOptions"] as Newtonsoft.Json.Linq.JObject;
+                            includeUsage = so != null ? so.Value<bool?>("includeUsage") ?? false : false;
+                        }
+
+                        var agentObj = global != null ? global["agent"] as Newtonsoft.Json.Linq.JObject : null;
+                        if (agentObj != null)
+                        {
+                            ideIntegration = agentObj.Value<bool?>("ideIntegration") ?? ideIntegration;
+                            applyChanges = agentObj.Value<bool?>("applyChanges") ?? applyChanges;
+                            agentMaxSteps = agentObj.Value<int?>("maxSteps") ?? (int?)null;
+                        }
+                    }
+                    catch { }
+
+                    var tempStr = temperature.HasValue ? temperature.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "n/a";
+                    var maxTStr = maxTokensVal.HasValue ? maxTokensVal.Value.ToString() : "n/a";
+                    var includeUsageStr = includeUsage ? "true" : "false";
+                    var ideStr = ideIntegration ? "true" : "false";
+                    var applyStr = applyChanges ? "true" : "false";
+                    var maxStepsStr = agentMaxSteps.HasValue ? agentMaxSteps.Value.ToString() : "n/a";
+
+                    var logMsg = $"Routing send runMode={runMode} activeServerId={activeId} provider={providerDisplay} model={safeModel} executionPath={executionPath} temperature={tempStr} maxTokens={maxTStr} includeUsage={includeUsageStr} ideIntegration={ideStr} applyChanges={applyStr} maxSteps={maxStepsStr}";
+                    try { o.AppendLog(logMsg); } catch { }
+                }
+                catch { }
+                AgenteIALocalVSIX.ServerConfig lmServer = null;
+                var canStreamOpenAi = o.TryGetActiveOpenAiCompatibleServer(out lmServer);
+
+                if (string.Equals(runMode, "agente", StringComparison.OrdinalIgnoreCase))
+                {
+                    return await ExecuteAgentServiceAsync(req, aiBubble, ct);
+                }
+
+                if (canStreamOpenAi)
+                {
+                    o._streamingAiMessage = aiBubble;
+                    o._streamingAiRun = null;
+                    o._streamingAiViewer = null;
+                    o._chatService.RenderActiveChatToUi();
+                    try
+                    {
+                        // Log provider info once when it changes (never log ApiKey)
+                        try
+                        {
+                            var prov = (lmServer != null ? (lmServer.Provider ?? string.Empty).ToLowerInvariant() : string.Empty);
+                            var host = string.Empty;
+                            try { host = new Uri((lmServer?.BaseUrl ?? string.Empty)).Host; } catch { host = lmServer != null ? lmServer.BaseUrl ?? string.Empty : string.Empty; }
+                            var model = lmServer != null ? lmServer.Model ?? string.Empty : string.Empty;
+                            var info = prov + "|" + host + "|" + model;
+                            if (!string.Equals(o._lastLoggedProviderInfo, info, StringComparison.Ordinal))
+                            {
+                                o._lastLoggedProviderInfo = info;
+                                try { AgentComposition.Info(o.activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "OpenAI-compatible provider used: " + prov + " host=" + host + " model=" + model); } catch { }
+                            }
+                        }
+                        catch { }
+
+                        return await o.ExecuteLmStudioStreamingAsync(req, lmServer, o.activeChat, aiBubble, ct);
+                    }
+                    catch (Exception)
+                    {
+                        throw;
+                    }
+                }
+
+                return await ExecuteAgentServiceAsync(req, aiBubble, ct);
+            }
+
+            // NUEVO METODO ExecuteAgentServiceAsync - ID: 20260117_094500
+            private async Task<AgentHostResponse> ExecuteAgentServiceAsync(AgentHostRequest req, ChatMessage aiBubble, CancellationToken ct)
+            {
+                var o = _owner;
+                o._streamingAiMessage = null;
+                o._streamingAiRun = null;
+                o._streamingAiViewer = null;
+                o._chatService.RenderActiveChatToUi();
+
+                var execTask = Task.Run(() =>
+                {
+                    try
+                    {
+                        if (AgentComposition.AgentService != null)
+                        {
+                            return AgentComposition.AgentService.Execute(req);
+                        }
+
+                        o.AppendLog("AgentService not composed; using MockAgentExecutor fallback.");
+                        return AgenteIALocalVSIX.Execution.MockAgentExecutor.Execute(req);
+                    }
+                    catch (Exception ex)
+                    {
+                        var corr = !string.IsNullOrEmpty(req?.CorrelationId) ? req.CorrelationId : !string.IsNullOrEmpty(req?.RequestId) ? req.RequestId : "-";
+                        try
+                        {
+                            AgentComposition.Error(corr, AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] Execution exception in background task: " + ex.Message, ex);
+                        }
+                        catch { }
+
+                        o.AppendLog("Execution exception in background task: " + ex.Message);
+                        throw;
+                    }
+                });
+
+                var completed = await Task.WhenAny(execTask, Task.Delay(Timeout.Infinite, ct));
+                if (completed != execTask)
+                {
+                    _ = execTask.ContinueWith(t => { _ = t.Exception; }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+                    o._chatService.TryRemoveEmptyAiBubble(o.activeChat, aiBubble);
+                    return null;
+                }
+
+                return await execTask;
             }
         }
     }

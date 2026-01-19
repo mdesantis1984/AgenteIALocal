@@ -55,6 +55,15 @@ namespace AgenteIALocal.Infrastructure.Agents
 
                     // H3: stable payload additions
                     if (wroteField) sb.Append(',');
+                    // include temperature/max_tokens from AgentRequest when present
+                    if (request.Temperature.HasValue)
+                    {
+                        sb.AppendFormat("\"temperature\":{0},", request.Temperature.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    }
+                    if (request.MaxTokens.HasValue && request.MaxTokens.Value > 0)
+                    {
+                        sb.AppendFormat("\"max_tokens\":{0},", request.MaxTokens.Value);
+                    }
                     sb.Append("\"stream\":false,");
                     sb.Append("\"messages\":[{");
                     sb.Append("\"role\":\"user\",\"content\":\"");

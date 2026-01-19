@@ -361,14 +361,14 @@
 
             <!-- MODIFICADO - ID: 20260116_094500 -->
             <!-- Root shell: Header (42) / Body (*) / Footer (96) -->
-            <Grid Grid.Row="1" Margin="24">
+            <Grid Grid.Row="1" Margin="0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="280" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Sidebar -->
-                <Border Grid.Column="0" Background="{StaticResource HeaderBackgroundBrush}" Padding="16,16,8,16">
+                <Border Grid.Column="0" Background="{StaticResource HeaderBackgroundBrush}" Padding="16,16,16,16">
                     <StackPanel Orientation="Vertical" VerticalAlignment="Top">
                         <!-- Navigation items: ToggleButtons with icon + text - mutual exclusive implemented manually - MODIFICADO - ID: 20260116_112500 -->
                         <ToggleButton x:Name="NavIdiomaToggle" IsChecked="False" Margin="0,0,0,12" Height="56" Style="{StaticResource SidebarNavToggleStyle}" Checked="NavToggle_Checked">
@@ -481,8 +481,21 @@
                         <!-- Checkboxes and max steps -->
                         <StackPanel Grid.Row="3" Orientation="Vertical" >
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <CheckBox x:Name="StreamToggle_Modal" Content="Stream" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+                                <CheckBox x:Name="StreamToggle_Modal" Content="Stream" Foreground="{StaticResource HeaderHighEmphasisBrush}" Visibility="Collapsed" />
                                 <CheckBox x:Name="IncludeUsageToggle_Modal" Content="Include usage" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" />
+                            </StackPanel>
+
+                            <!-- Temperature and MaxTokens controls for requestDefaults -->
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0" VerticalAlignment="Center">
+                                <StackPanel Orientation="Vertical">
+                                    <TextBlock Text="Temperature" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,6" />
+                                    <TextBox x:Name="TemperatureTextBox_Modal" Style="{StaticResource UxTextBox}" Width="140" />
+                                </StackPanel>
+
+                                <StackPanel Orientation="Vertical" Margin="12,0,0,0">
+                                    <TextBlock Text="Max tokens" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,6" />
+                                    <TextBox x:Name="MaxTokensTextBox_Modal" Style="{StaticResource UxTextBox}" Width="120" />
+                                </StackPanel>
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,6,0,0">

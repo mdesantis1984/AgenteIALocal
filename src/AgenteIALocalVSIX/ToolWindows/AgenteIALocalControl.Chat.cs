@@ -406,21 +406,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                         }
 
                         // If ui_state had no entry and this is a completed AI message with non-empty content,
-                        // set Tokens = 0 as a safe default (migration of legacy nulls).
-                        if (!filled)
-                        {
-                            try
-                            {
-                                var sLower = (sender ?? string.Empty).Trim().ToLowerInvariant();
-                                var isAi = (sLower == "ia" || sLower == "ai" || sLower == "assistant" || sLower == "system" || sLower == "robot");
-                                if (isAi && !string.IsNullOrWhiteSpace(content))
-                                {
-                                    TrySetProp(m, "Tokens", 0);
-                                    didRepair = true;
-                                }
-                            }
-                            catch { }
-                        }
+                        // DO NOT set Tokens = 0 by default. Showing '0' is misleading when server did not provide usage.
+                        // Leave token properties unset so UI displays '-' for unknown usage.
+                        // MODIFICADO METODO RepairMissingMessageTokensFromUiState - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
                     }
                     catch { }
                 }
@@ -647,17 +635,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 else
                 {
-                    // If streaming in progress, show '-' to indicate partial content
-                    if (isStreamingAi)
-                    {
-                        tokText = "-";
-                    }
-                    else
-                    {
-                        // Completed AI message with no usage info -> show 0 (don't leave as '-')
-                        var sLower = (TryGetStringProp(null, "") ?? string.Empty);
-                        tokText = "0";
-                    }
+                    // MODIFICADO METODO CreateBubbleBlock - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+                    // If streaming in progress, show '-' to indicate partial content. If completed but no usage available, show '-'
+                    // to avoid displaying misleading '0' tokens when server didn't provide usage.
+                    tokText = "-";
                 }
 
                 var meta = new TextBlock

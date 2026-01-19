@@ -38,6 +38,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             }, System.Threading.CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
         }
 
+        // NOTE: Chat model filtering helpers moved to main control file to avoid partial-class ordering issues.
+
         // SAFE FORGET wrapper with same semantics (alias)
         private void SafeForget(Task task, string op)
         {

@@ -38,6 +38,8 @@ public AgentLoggerV2(ILogSink sink)
             try { sink.Write(entry); } catch { }
         }
 
+        // (hub publishing handled by sinks)
+
         private static bool IsStreamingV2(LogEventId id)
         {
             var v = id.Id;

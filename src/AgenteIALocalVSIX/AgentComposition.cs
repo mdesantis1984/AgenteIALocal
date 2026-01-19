@@ -242,6 +242,88 @@ namespace AgenteIALocalVSIX
             catch { }
         }
 
+        // NUEVO METODO LogGlobalSettingsPersistence - ID: 20260118_182300
+        // Emits a single-line trace when globalSettings relevant fields change between snapshots.
+        public static void LogGlobalSettingsPersistence(string source, Newtonsoft.Json.Linq.JObject before, Newtonsoft.Json.Linq.JObject after, string provider = null)
+        {
+            try
+            {
+                if (before == null) before = new Newtonsoft.Json.Linq.JObject();
+                if (after == null) after = new Newtonsoft.Json.Linq.JObject();
+
+                string runModeBefore = before.Value<string>("runMode");
+                if (string.IsNullOrEmpty(runModeBefore))
+                {
+                    try
+                    {
+                        var gs = before["globalSettings"] as Newtonsoft.Json.Linq.JObject;
+                        runModeBefore = gs != null ? gs.Value<string>("runMode") : null;
+                    }
+                    catch { runModeBefore = null; }
+                }
+                string runModeAfter = after.Value<string>("runMode");
+                if (string.IsNullOrEmpty(runModeAfter))
+                {
+                    try
+                    {
+                        var gs = after["globalSettings"] as Newtonsoft.Json.Linq.JObject;
+                        runModeAfter = gs != null ? gs.Value<string>("runMode") : null;
+                    }
+                    catch { runModeAfter = null; }
+                }
+
+                var reqBefore = before["requestDefaults"] as Newtonsoft.Json.Linq.JObject ?? new Newtonsoft.Json.Linq.JObject();
+                var reqAfter = after["requestDefaults"] as Newtonsoft.Json.Linq.JObject ?? new Newtonsoft.Json.Linq.JObject();
+
+                var agentBefore = before["agent"] as Newtonsoft.Json.Linq.JObject ?? new Newtonsoft.Json.Linq.JObject();
+                var agentAfter = after["agent"] as Newtonsoft.Json.Linq.JObject ?? new Newtonsoft.Json.Linq.JObject();
+
+                bool streamBefore = reqBefore.Value<bool?>("stream") ?? false;
+                bool streamAfter = reqAfter.Value<bool?>("stream") ?? false;
+                double? tempBefore = reqBefore.Value<double?>("temperature");
+                double? tempAfter = reqAfter.Value<double?>("temperature");
+                int? maxBefore = reqBefore.Value<int?>("maxTokens");
+                int? maxAfter = reqAfter.Value<int?>("maxTokens");
+                var soBefore = reqBefore["streamOptions"] as Newtonsoft.Json.Linq.JObject;
+                var soAfter = reqAfter["streamOptions"] as Newtonsoft.Json.Linq.JObject;
+                bool includeBefore = soBefore != null ? soBefore.Value<bool?>("includeUsage") ?? false : false;
+                bool includeAfter = soAfter != null ? soAfter.Value<bool?>("includeUsage") ?? false : false;
+
+                bool ideBefore = agentBefore.Value<bool?>("ideIntegration") ?? false;
+                bool ideAfter = agentAfter.Value<bool?>("ideIntegration") ?? false;
+                bool applyBefore = agentBefore.Value<bool?>("applyChanges") ?? false;
+                bool applyAfter = agentAfter.Value<bool?>("applyChanges") ?? false;
+                int? stepsBefore = agentBefore.Value<int?>("maxSteps");
+                int? stepsAfter = agentAfter.Value<int?>("maxSteps");
+
+                var changed = new System.Collections.Generic.List<string>();
+                if (!string.Equals(runModeBefore, runModeAfter, StringComparison.OrdinalIgnoreCase)) changed.Add("runMode");
+                if (streamBefore != streamAfter) changed.Add("requestDefaults.stream");
+                if (tempBefore.GetValueOrDefault() != tempAfter.GetValueOrDefault()) changed.Add("requestDefaults.temperature");
+                if (maxBefore.GetValueOrDefault() != maxAfter.GetValueOrDefault()) changed.Add("requestDefaults.maxTokens");
+                if (includeBefore != includeAfter) changed.Add("requestDefaults.streamOptions.includeUsage");
+                if (ideBefore != ideAfter) changed.Add("agent.ideIntegration");
+                if (applyBefore != applyAfter) changed.Add("agent.applyChanges");
+                if (stepsBefore.GetValueOrDefault() != stepsAfter.GetValueOrDefault()) changed.Add("agent.maxSteps");
+
+                if (changed.Count == 0) return; // nothing relevant changed -> no log
+
+                var tempStr = tempAfter.HasValue ? tempAfter.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "n/a";
+                var maxStr = (maxAfter.HasValue && maxAfter.Value > 0) ? maxAfter.Value.ToString() : "n/a";
+                var includeStr = includeAfter ? "true" : "false";
+                var ideStr = ideAfter ? "true" : "false";
+                var applyStr = applyAfter ? "true" : "false";
+                var stepsStr = stepsAfter.HasValue ? stepsAfter.Value.ToString() : "n/a";
+                var runStr = string.IsNullOrEmpty(runModeAfter) ? "preguntar" : runModeAfter;
+                var prov = string.IsNullOrEmpty(provider) ? "" : provider;
+
+                var msg = $"ConfigPersist source={source} provider={prov} runMode={runStr} stream={streamAfter} temp={tempStr} maxTokens={maxStr} includeUsage={includeStr} ideIntegration={ideStr} applyChanges={applyStr} maxSteps={stepsStr} changed=[{string.Join(",", changed)}]";
+
+                try { LoggerV2.Info("-", new LogEventId(9002, "VSIX.ConfigPersist"), msg); } catch { }
+            }
+            catch { }
+        }
+
         // ... other levels as needed (Debug, Warning, Critical)
     }
 
@@ -274,15 +356,74 @@ namespace AgenteIALocalVSIX
         {
             try
             {
-                var prompt = (req?.Action ?? string.Empty) + " " + (req?.SolutionName ?? string.Empty);
+                // Build prompt and include optional AgentConfig instructions based on persisted settings
+                var settings = AgentSettingsStore.Load();
+                var global = settings != null ? settings.GlobalSettings : null;
+
+                // agent config defaults
+                bool ideIntegration = true;
+                bool applyChanges = false;
+                int maxSteps = 5;
+
+                try
+                {
+                    var agentObj = global != null ? global["agent"] as Newtonsoft.Json.Linq.JObject : null;
+                    if (agentObj != null)
+                    {
+                        ideIntegration = agentObj.Value<bool?>("ideIntegration") ?? ideIntegration;
+                        applyChanges = agentObj.Value<bool?>("applyChanges") ?? applyChanges;
+                        maxSteps = agentObj.Value<int?>("maxSteps") ?? maxSteps;
+                    }
+                }
+                catch { }
+
+                // Build a short AgentConfig block to prepend to the prompt when runMode=agente
+                var agentConfigBlock = "";
+                try
+                {
+                    agentConfigBlock = "[AgentConfig] " + "ideIntegration=" + (ideIntegration ? "true" : "false") + "; applyChanges=" + (applyChanges ? "true" : "false") + "; maxSteps=" + maxSteps + "\n";
+                }
+                catch { agentConfigBlock = string.Empty; }
+
+                // Compose prompt
+                string promptBody = (req?.Action ?? string.Empty) ?? string.Empty;
+                if (ideIntegration)
+                {
+                    var sol = req?.SolutionName ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(sol)) promptBody = string.IsNullOrWhiteSpace(promptBody) ? sol : (promptBody + " " + sol);
+                    // ProjectCount is kept out of prompt when ideIntegration=false; when true, append count if present
+                    try
+                    {
+                        var pc = req?.ProjectCount ?? 0;
+                        if (pc > 0) promptBody = promptBody + " (ProjectCount=" + pc + ")";
+                    }
+                    catch { }
+                }
+
+                var fullPrompt = string.IsNullOrWhiteSpace(agentConfigBlock) ? promptBody : (agentConfigBlock + promptBody);
+
                 // Build Core AgentRequest and propagate correlation id
                 var agentReq = new AgenteIALocal.Core.Agents.AgentRequest
                 {
-                    Prompt = prompt,
+                    Prompt = fullPrompt,
                     CorrelationId = req?.CorrelationId,
                     Stream = req != null && req.Stream,
                     OnDelta = req?.OnDelta
                 };
+
+                // Populate temperature/maxTokens from settings.requestDefaults when present
+                try
+                {
+                    var requestDefaults = global != null ? global["requestDefaults"] as Newtonsoft.Json.Linq.JObject : null;
+                    if (requestDefaults != null)
+                    {
+                        var temp = requestDefaults.Value<double?>("temperature");
+                        if (temp.HasValue) agentReq.Temperature = temp.Value;
+                        var mt = requestDefaults.Value<int?>("maxTokens");
+                        if (mt.HasValue && mt.Value > 0) agentReq.MaxTokens = mt.Value;
+                    }
+                }
+                catch { }
                 var agentResp = Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.Run(
                     () => appService.RunAsync(agentReq, System.Threading.CancellationToken.None)
                     );
