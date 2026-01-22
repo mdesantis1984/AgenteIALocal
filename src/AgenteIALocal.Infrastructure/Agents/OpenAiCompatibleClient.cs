@@ -11,12 +11,17 @@ using AgenteIALocal.Core.Networking;
 
 namespace AgenteIALocal.Infrastructure.Agents
 {
-    public class LmStudioClient : IAgentClient
+    // RENOMBRADO DE LmStudioClient - ID: 20260122_000400
+    // OpenAiCompatibleClient funciona con cualquier provider compatible con OpenAI API:
+    // - LM Studio (lmstudio)
+    // - Jan (jan)
+    // - Cualquier otro servicio que implemente /v1/chat/completions estándar
+    public class OpenAiCompatibleClient : IAgentClient
     {
         private readonly LmStudioSettings settings;
         private readonly IAgentEndpointResolver endpointResolver;
 
-        public LmStudioClient(LmStudioSettings settings, IAgentEndpointResolver endpointResolver)
+        public OpenAiCompatibleClient(LmStudioSettings settings, IAgentEndpointResolver endpointResolver)
         {
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             this.endpointResolver = endpointResolver ?? throw new ArgumentNullException(nameof(endpointResolver));
@@ -31,7 +36,7 @@ namespace AgenteIALocal.Infrastructure.Agents
                 var model = settings.Model ?? string.Empty;
                 var apiKey = settings.ApiKey ?? string.Empty;
 
-                // H1: ensure authorization header present; default to 'lm-studio' if empty
+                // H1: ensure authorization header present; default to 'lm-studio' if empty (compatibility fallback)
                 if (string.IsNullOrEmpty(apiKey)) apiKey = "lm-studio";
 
                 var uri = endpointResolver.GetChatCompletionsEndpoint();
@@ -55,7 +60,7 @@ namespace AgenteIALocal.Infrastructure.Agents
 
                     // H3: stable payload additions
                     if (wroteField) sb.Append(',');
-                    // include temperature/max_tokens from AgentRequest when present
+                    // include temperature/max_tokens from AgentRequest when present (A7 - applies requestDefaults)
                     if (request.Temperature.HasValue)
                     {
                         sb.AppendFormat("\"temperature\":{0},", request.Temperature.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
@@ -113,7 +118,7 @@ namespace AgenteIALocal.Infrastructure.Agents
                         {
                             // return clear error without throwing
                             var sample = trimmed.Length > 300 ? trimmed.Substring(0, 300) + "..." : trimmed;
-                            return new AgentResponse { IsSuccess = false, Error = "Non-JSON response from LM Studio: " + sample };
+                            return new AgentResponse { IsSuccess = false, Error = "Non-JSON response from OpenAI-compatible provider: " + sample };
                         }
 
                         try

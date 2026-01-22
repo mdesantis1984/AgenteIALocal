@@ -13,7 +13,7 @@ namespace AgenteIALocalVSIX.Application
                 var vsContextType = (Type)null;
                 try
                 {
-                    var infraAsm = typeof(AgenteIALocal.Infrastructure.Agents.LmStudioClient).Assembly;
+                    var infraAsm = typeof(AgenteIALocal.Infrastructure.Agents.OpenAiCompatibleClient).Assembly; // RENOMBRADO - ID: 20260122_000405
                     vsContextType = infraAsm.GetType("AgenteIALocal.Infrastructure.Workspace.VisualStudioSolutionContext", throwOnError: false, ignoreCase: false);
                 }
                 catch

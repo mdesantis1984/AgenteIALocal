@@ -1589,30 +1589,302 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // NUEVO METODO ExecuteLmStudioStreamingAsync - ID: 20260121_233400
-        internal async Task<AgentHostResponse> ExecuteLmStudioStreamingAsync(AgentHostRequest req, ServerConfig server, ChatSession chat, ChatMessage aiBubble, CancellationToken ct)
+        // NUEVO METODO BuildStreamingPayload - ID: 20260122_000100
+        // Construye payload JSON para OpenAI-compatible streaming (LM Studio + Jan)
+        // Aplica requestDefaults: temperature, maxTokens, includeUsage (solo LM Studio)
+        private string BuildStreamingPayload(string model, string userPrompt, string provider, double? temperature, int? maxTokens, bool includeUsage)
         {
-            // TODO: Implement actual streaming logic
-            // For now, return a mock response to avoid compilation errors
             try
             {
-                AgentComposition.LoggerV2.Info(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9113, "StreamingExec"), $"ExecuteLmStudioStreamingAsync called (not yet implemented): provider={server?.Provider} model={server?.Model}");
+                var sb = new StringBuilder();
+                sb.Append('{');
 
-                await Task.Delay(100, ct).ConfigureAwait(false);
+                // model (required)
+                if (!string.IsNullOrWhiteSpace(model))
+                {
+                    sb.Append("\"model\":\"");
+                    sb.Append(JsonEscape(model));
+                    sb.Append("\",");
+                }
+
+                // messages[] (required)
+                sb.Append("\"messages\":[{\"role\":\"user\",\"content\":\"");
+                sb.Append(JsonEscape(userPrompt ?? string.Empty));
+                sb.Append("\"}],");
+
+                // stream: true (required)
+                sb.Append("\"stream\":true");
+
+                // temperature (optional - solo si existe)
+                if (temperature.HasValue)
+                {
+                    sb.Append(",\"temperature\":");
+                    sb.Append(temperature.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                }
+
+                // max_tokens (optional - solo si >0)
+                if (maxTokens.HasValue && maxTokens.Value > 0)
+                {
+                    sb.Append(",\"max_tokens\":");
+                    sb.Append(maxTokens.Value.ToString());
+                }
+
+                // stream_options.include_usage (solo LM Studio)
+                if (includeUsage && string.Equals(provider, "lmstudio", StringComparison.OrdinalIgnoreCase))
+                {
+                    sb.Append(",\"stream_options\":{\"include_usage\":true}");
+                }
+
+                sb.Append('}');
+                return sb.ToString();
+            }
+            catch
+            {
+                // Fallback minimal payload si falla construcción
+                return "{\"model\":\"" + JsonEscape(model ?? string.Empty) + "\",\"messages\":[{\"role\":\"user\",\"content\":\"" + JsonEscape(userPrompt ?? string.Empty) + "\"}],\"stream\":true}";
+            }
+        }
+
+        // NUEVO METODO JsonEscape - ID: 20260122_000101
+        // Escapa caracteres especiales para JSON sin dependencias externas
+        private static string JsonEscape(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return string.Empty;
+            return s.Replace("\\", "\\\\")
+                    .Replace("\"", "\\\"")
+                    .Replace("\n", "\\n")
+                    .Replace("\r", "\\r")
+                    .Replace("\t", "\\t");
+        }
+
+        // NUEVO METODO ExecuteOpenAiCompatibleStreamingAsync - ID: 20260122_000200
+        // Streaming SSE genérico para OpenAI-compatible providers (LM Studio + Jan)
+        // Aplica requestDefaults: temperature, maxTokens, stream_options.include_usage (solo LM Studio)
+        // MIGRADO A SERILOG - ID: 20260122_000303
+        internal async Task<AgentHostResponse> ExecuteLmStudioStreamingAsync(AgentHostRequest req, ServerConfig server, ChatSession chat, ChatMessage aiBubble, CancellationToken ct)
+        {
+            var startTime = DateTime.UtcNow;
+            var responseBuilder = new StringBuilder();
+            int? promptTokensExtracted = null;
+            int? completionTokensExtracted = null;
+            int? totalTokensExtracted = null;
+
+            try
+            {
+                if (server == null || string.IsNullOrWhiteSpace(server.BaseUrl))
+                {
+                    return new AgentHostResponse
+                    {
+                        Success = false,
+                        Error = "Server configuration missing or invalid",
+                        RequestId = req?.RequestId,
+                        Timestamp = DateTime.UtcNow.ToString("o")
+                    };
+                }
+
+                // Leer requestDefaults desde settings
+                double? temperature = null;
+                int? maxTokens = null;
+                bool includeUsage = false;
+                try
+                {
+                    var settings = AgentSettingsStore.Load();
+                    var global = settings != null ? settings.GlobalSettings : null;
+                    var reqDefaults = global != null ? global["requestDefaults"] as Newtonsoft.Json.Linq.JObject : null;
+                    if (reqDefaults != null)
+                    {
+                        temperature = reqDefaults.Value<double?>("temperature");
+                        var mt = reqDefaults.Value<int?>("maxTokens");
+                        if (mt.HasValue && mt.Value > 0) maxTokens = mt.Value;
+                        var so = reqDefaults["streamOptions"] as Newtonsoft.Json.Linq.JObject;
+                        includeUsage = so != null ? so.Value<bool?>("includeUsage") ?? false : false;
+                    }
+                }
+                catch (Exception exSettings)
+                {
+                    try { AgentComposition.Warning(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9116, "StreamReqDefaultsError"), $"Failed to read requestDefaults: {exSettings.Message}"); } catch { }
+                }
+
+                var provider = (server.Provider ?? string.Empty).ToLowerInvariant();
+                var model = server.Model ?? string.Empty;
+                var baseUrl = (server.BaseUrl ?? string.Empty).TrimEnd('/');
+                var apiKey = server.ApiKey ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(apiKey)) apiKey = "lm-studio"; // default
+
+                var endpoint = baseUrl + "/v1/chat/completions";
+                var payload = BuildStreamingPayload(model, req?.Action ?? string.Empty, provider, temperature, maxTokens, includeUsage);
+
+                var payloadBytes = Encoding.UTF8.GetBytes(payload);
+
+                var httpReq = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(endpoint);
+                httpReq.Method = "POST";
+                httpReq.ContentType = "application/json";
+                httpReq.Accept = "text/event-stream";
+                httpReq.Headers[System.Net.HttpRequestHeader.Authorization] = "Bearer " + apiKey;
+                httpReq.ContentLength = payloadBytes.Length;
+                httpReq.Timeout = 300000; // 5 min timeout
+                httpReq.ReadWriteTimeout = 300000;
+
+                using (var reqStream = httpReq.GetRequestStream())
+                {
+                    reqStream.Write(payloadBytes, 0, payloadBytes.Length);
+                }
+
+                using (var httpResp = (System.Net.HttpWebResponse)httpReq.GetResponse())
+                using (var respStream = httpResp.GetResponseStream())
+                using (var reader = new StreamReader(respStream, Encoding.UTF8))
+                {
+                    if (httpResp.StatusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        var errorBody = reader.ReadToEnd();
+                        return new AgentHostResponse
+                        {
+                            Success = false,
+                            Error = $"HTTP {(int)httpResp.StatusCode} {httpResp.StatusDescription}: {errorBody}",
+                            RequestId = req?.RequestId,
+                            Timestamp = DateTime.UtcNow.ToString("o")
+                        };
+                    }
+
+                    string line;
+                    while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) != null)
+                    {
+                        if (ct.IsCancellationRequested) break;
+
+                        // SSE format: "data: {...}" or "data: [DONE]"
+                        if (!line.StartsWith("data:", StringComparison.Ordinal)) continue;
+
+                        var jsonPart = line.Substring(5).TrimStart();
+                        if (string.Equals(jsonPart, "[DONE]", StringComparison.Ordinal)) break;
+
+                        // Parse chunk JSON
+                        try
+                        {
+                            var chunk = Newtonsoft.Json.Linq.JObject.Parse(jsonPart);
+                            var choices = chunk["choices"] as Newtonsoft.Json.Linq.JArray;
+                            if (choices != null && choices.Count > 0)
+                            {
+                                var first = choices[0] as Newtonsoft.Json.Linq.JObject;
+                                if (first != null)
+                                {
+                                    var delta = first["delta"] as Newtonsoft.Json.Linq.JObject;
+                                    if (delta != null)
+                                    {
+                                        var content = delta.Value<string>("content");
+                                        if (!string.IsNullOrEmpty(content))
+                                        {
+                                            responseBuilder.Append(content);
+
+                                            // Update UI incrementally usando helper existente
+                                            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+                                            try { ApplyStreamingDeltaFrom(responseBuilder); } catch { }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Extract usage tokens from last chunk (if includeUsage=true)
+                            if (includeUsage)
+                            {
+                                var usage = chunk["usage"] as Newtonsoft.Json.Linq.JObject;
+                                if (usage != null)
+                                {
+                                    promptTokensExtracted = usage.Value<int?>("prompt_tokens");
+                                    completionTokensExtracted = usage.Value<int?>("completion_tokens");
+                                    totalTokensExtracted = usage.Value<int?>("total_tokens");
+                                }
+                            }
+                        }
+                        catch (Exception exParse)
+                        {
+                            try { AgentComposition.Warning(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9117, "StreamChunkParseError"), $"Failed to parse SSE chunk: {exParse.Message}"); } catch { }
+                        }
+                    }
+                }
+
+                var finalOutput = responseBuilder.ToString();
 
                 return new AgentHostResponse
                 {
                     Success = true,
-                    Output = "ExecuteLmStudioStreamingAsync: Not yet implemented. This is a placeholder to satisfy compilation.",
+                    Output = finalOutput,
                     Error = null,
-                    RequestId = Guid.NewGuid().ToString("N"),
+                    RequestId = req?.RequestId,
+                    Timestamp = DateTime.UtcNow.ToString("o"),
+                    PromptTokens = promptTokensExtracted,
+                    CompletionTokens = completionTokensExtracted,
+                    TotalTokens = totalTokensExtracted
+                };
+            }
+            catch (System.Net.WebException wex)
+            {
+                try
+                {
+                    string errorBody = null;
+                    try
+                    {
+                        using (var errStream = wex.Response?.GetResponseStream())
+                        {
+                            if (errStream != null)
+                            {
+                                using (var errReader = new StreamReader(errStream))
+                                {
+                                    errorBody = errReader.ReadToEnd();
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+
+                    var errorMsg = wex.Message + (string.IsNullOrWhiteSpace(errorBody) ? string.Empty : " - " + errorBody);
+
+                    if (wex.Status == System.Net.WebExceptionStatus.Timeout)
+                    {
+                        errorMsg = "Timeout: " + errorMsg;
+                    }
+
+                    AgentComposition.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9118, "StreamWebException"), $"Streaming request failed (WebException): {errorMsg}", wex);
+
+                    return new AgentHostResponse
+                    {
+                        Success = false,
+                        Error = errorMsg,
+                        RequestId = req?.RequestId,
+                        Timestamp = DateTime.UtcNow.ToString("o")
+                    };
+                }
+                catch
+                {
+                    return new AgentHostResponse
+                    {
+                        Success = false,
+                        Error = wex.Message,
+                        RequestId = req?.RequestId,
+                        Timestamp = DateTime.UtcNow.ToString("o")
+                    };
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                try { AgentComposition.Info(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9119, "StreamCancelled"), "Streaming request cancelled by user"); } catch { }
+                return new AgentHostResponse
+                {
+                    Success = false,
+                    Error = "Operación cancelada",
+                    RequestId = req?.RequestId,
                     Timestamp = DateTime.UtcNow.ToString("o")
                 };
             }
             catch (Exception ex)
             {
-                AgentComposition.LoggerV2.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9114, "StreamingExecError"), $"ExecuteLmStudioStreamingAsync failed: {ex.Message}", ex);
-                throw;
+                try { AgentComposition.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9120, "StreamException"), $"Streaming request failed: {ex.Message}", ex); } catch { }
+                return new AgentHostResponse
+                {
+                    Success = false,
+                    Error = ex.Message,
+                    RequestId = req?.RequestId,
+                    Timestamp = DateTime.UtcNow.ToString("o")
+                };
             }
         }
 

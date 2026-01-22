@@ -20,6 +20,42 @@ namespace AgenteIALocalVSIX
         public const string PackageGuidString = "12e93cca-8723-4160-ac43-96fe08854111";
 
         private static int _loggerConfigured;
+        private static int _serilogConfigured; // NUEVO CAMPO - ID: 20260122_000300
+
+        // NUEVO METODO ConfigureSerilogOnce - ID: 20260122_000301
+        // Inicializa Serilog en paralelo al logging legacy (coexistencia temporal durante migración)
+        private static void ConfigureSerilogOnce()
+        {
+            if (Interlocked.Exchange(ref _serilogConfigured, 1) == 1) return;
+
+            try
+            {
+                var settings = new AgenteIALocal.Logging.LogSettings
+                {
+                    AppName = "AgenteIALocal",
+                    Enabled = true,
+                    All = false, // niveles individuales
+                    Verbose = false,
+                    Debug = false,
+                    Information = true,
+                    Warning = true,
+                    Error = true,
+                    Critical = true,
+                    RollingFileSizeBytes = 3L * 1024 * 1024, // 3MB
+                    RetainedFileCount = 10
+                };
+
+                AgenteIALocal.Logging.Log.Configure(settings);
+                
+                // Log inicial usando nuevo API Serilog
+                AgenteIALocal.Logging.Log.Information("-", 9000, "VSIX.Startup", "Serilog configured successfully", null);
+            }
+            catch (Exception ex)
+            {
+                // Fallback: log error usando VsixSafeLog (legacy)
+                VsixSafeLog.Error("VSIX.Startup", "Failed to configure Serilog pipeline.", ex, 9000);
+            }
+        }
 
         // Startup logging MUST never break package load.
         private static void ConfigureLoggerV2Once()
@@ -79,7 +115,9 @@ namespace AgenteIALocalVSIX
         {
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
-            ConfigureLoggerV2Once();
+            ConfigureLoggerV2Once(); // Legacy logging (mantener durante migración)
+            // COMENTADO TEMPORALMENTE - ID: 20260122_000305 - Serilog tiene problemas de versioning en VSIX, se migrará en Fase 2 (B1-B6)
+            // ConfigureSerilogOnce(); // Serilog logging
 
             try
             {

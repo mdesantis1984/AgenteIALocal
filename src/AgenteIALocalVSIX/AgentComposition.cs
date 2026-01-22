@@ -119,13 +119,13 @@ namespace AgenteIALocalVSIX
                 };
 
                 var resolver = new LmStudioEndpointResolver(lmSettings);
-                var client = new LmStudioClient(lmSettings, resolver);
+                var client = new OpenAiCompatibleClient(lmSettings, resolver); // RENOMBRADO - ID: 20260122_000401
                 var appService = new AgenteIALocal.Application.Agents.AgentService(client);
                 var adapter = new CoreAgentServiceAdapter(appService);
 
                 AgentService = adapter;
 
-                LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Real LM Studio backend composed and active.");
+                LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Real OpenAI-compatible backend composed and active.");
             }
             catch (Exception ex)
             {
@@ -191,13 +191,13 @@ namespace AgenteIALocalVSIX
                     };
 
                     var resolver = new LmStudioEndpointResolver(lmSettings);
-                    var client = new LmStudioClient(lmSettings, resolver);
+                    var client = new OpenAiCompatibleClient(lmSettings, resolver); // RENOMBRADO - ID: 20260122_000402
                     var appService = new AgenteIALocal.Application.Agents.AgentService(client);
                     var adapter = new CoreAgentServiceAdapter(appService);
 
                     AgentService = adapter;
 
-                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "RecomposeFromSettings: Real LM Studio backend composed and active.");
+                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "RecomposeFromSettings: Real OpenAI-compatible backend composed and active.");
                     return;
                 }
                 catch (Exception ex)

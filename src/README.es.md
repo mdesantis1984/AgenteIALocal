@@ -137,7 +137,7 @@ Ejecución real:
 ## Proveedores LLM soportados (LM Studio, JAN) y cómo se seleccionan
 
 ### LM Studio (soportado en ejecución real)
-- Cliente HTTP: `AgenteIALocal.Infrastructure/Agents/LmStudioClient.cs`.
+- Cliente HTTP: `AgenteIALocal.Infrastructure/Agents/OpenAiCompatibleClient.cs` (renombrado de LmStudioClient - ID: 20260122_000400).
 - Endpoint base: `LmStudioEndpointResolver` (Infrastructure).
 - Endpoint usado por default en composición VSIX: `ChatCompletionsPath = "/v1/chat/completions"`.
 

@@ -58,7 +58,7 @@ namespace AgenteIALocal.Infrastructure.Workspace
                     Type adapterType = null;
                     try
                     {
-                        var infraAsm = typeof(AgenteIALocal.Infrastructure.Agents.LmStudioClient).Assembly;
+                        var infraAsm = typeof(AgenteIALocal.Infrastructure.Agents.OpenAiCompatibleClient).Assembly; // RENOMBRADO - ID: 20260122_000403
                         adapterType = infraAsm.GetType("AgenteIALocal.Infrastructure.Workspace.VsSdkDocumentContextAdapter", throwOnError: false, ignoreCase: false);
                     }
                     catch
@@ -93,7 +93,7 @@ namespace AgenteIALocal.Infrastructure.Workspace
                     Type adapterType = null;
                     try
                     {
-                        var infraAsm = typeof(AgenteIALocal.Infrastructure.Agents.LmStudioClient).Assembly;
+                        var infraAsm = typeof(AgenteIALocal.Infrastructure.Agents.OpenAiCompatibleClient).Assembly; // RENOMBRADO - ID: 20260122_000404
                         adapterType = infraAsm.GetType("AgenteIALocal.Infrastructure.Workspace.VsSdkDocumentContextAdapter", throwOnError: false, ignoreCase: false);
                     }
                     catch

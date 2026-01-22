@@ -18,5 +18,14 @@
   <ItemGroup>
     <PackageReference Include="MSTest.TestFramework" Version="3.2.2" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.2.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <!-- NUEVO - ID: 20260122_000500 - ProjectReferences para tests A6-A8 -->
+  <ItemGroup>
+    <ProjectReference Include="..\AgenteIALocal.Core\AgenteIALocal.Core.csproj" />
+    <ProjectReference Include="..\AgenteIALocal.Infrastructure\AgenteIALocal.Infrastructure.csproj" />
+    <ProjectReference Include="..\AgenteIALocal.Application\AgenteIALocal.Application.csproj" />
   </ItemGroup>
 </Project>
