@@ -213,11 +213,13 @@ namespace AgenteIALocalVSIX
             try
             {
                 AgentComposition.EnsureComposition();
-                AgentComposition.Info("-", new LogEventId(9000, "VSIX.Startup"), "VSIX initialized.");
+                // MODIFICADO - ID: 20260122_010800 - Migrado de AgentComposition.Info → Serilog
+                AgenteIALocal.Logging.Log.Information("-", 9000, "VSIX.Startup", "VSIX initialized", null);
             }
             catch (Exception ex)
             {
                 VsixSafeLog.Error("VSIX.Startup", "InitializeAsync failed.", ex, 9000);
+                // MODIFICADO - ID: 20260122_010800 - Agregado log Serilog en catch
                 AgenteIALocal.Logging.Log.Error("-", 9000, "VSIX.Startup", "InitializeAsync failed", ex);
             }
 

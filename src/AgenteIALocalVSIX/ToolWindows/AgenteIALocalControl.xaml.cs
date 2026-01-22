@@ -326,7 +326,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 _lastActiveServerIdUi = activeId;
                                 RefreshFromSettings(refreshModels: true);
                             }
-                            try { AgentComposition.Verbose("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "SettingsSaved handler executed: " + reason); } catch { }
+                            try { AgenteIALocal.Logging.Log.Verbose("-", 9100, "Control.SettingsSaved", "SettingsSaved handler executed: " + reason, null); } catch { }
                         }
                         catch { }
                     });
@@ -483,11 +483,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                     try { RefreshFromSettings(refreshModels: true); } catch { }
                     try { AgentComposition.RecomposeFromSettings("ui:provider-changed-toolwindow"); } catch { }
 
-                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"Server provider changed: {prev} -> {newActiveId}"); } catch { }
+                    try { AgenteIALocal.Logging.Log.Information("-", 9100, "Control.ServerChanged", $"Server provider changed: {prev} -> {newActiveId}", null); } catch { }
                 }
                 catch (Exception ex)
                 {
-                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ServerLLM selection handler failed: " + ex.Message, ex); } catch { }
+                    try { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.ServerChanged", "ServerLLM selection handler failed: " + ex.Message, ex); } catch { }
                 }
             }
             catch { }
@@ -1112,7 +1112,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 PopulateSettingsPanel(settings);
                 ComputeIsLlmConfigured(settings);
                 UpdateUiState(CurrentExecutionState);
-                try { AgentComposition.Verbose("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigStatus: RefreshFromSettings completed label={ConfigLabel} isConfigured={IsLlmConfigured}"); } catch { }
+                try { AgenteIALocal.Logging.Log.Verbose("-", 9100, "Control.RefreshSettings", $"ConfigStatus: RefreshFromSettings completed label={ConfigLabel} isConfigured={IsLlmConfigured}", null); } catch { }
                 // Update footer UI controls: Provider (ServerLLM), Model (ModelOfLLM), RunMode (TypeActivitie)
                 try
                 {
@@ -1195,7 +1195,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"[AgenteIALocalControl] RefreshFromSettings error: {ex.Message}", ex); } catch { }
+                try { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.RefreshSettings", $"[AgenteIALocalControl] RefreshFromSettings error: {ex.Message}", ex); } catch { }
             }
         }
 
@@ -1212,14 +1212,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var baseUri = NormalizeBaseUri(baseUrl);
                 if (baseUri == null)
                 {
-                    try { AgentComposition.Warning("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: invalid baseUrl. raw='{rawBaseUrl}'"); } catch { }
+                    try { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.ModelsFetch", $"ModelsFetch: invalid baseUrl. raw='{rawBaseUrl}'", null); } catch { }
                     return result;
                 }
 
                 var primary = BuildModelsUri(baseUri);
                 if (string.IsNullOrWhiteSpace(primary))
                 {
-                    try { AgentComposition.Warning("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: cannot build models uri. raw='{rawBaseUrl}' normalized='{baseUri}'"); } catch { }
+                    try { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.ModelsFetch", $"ModelsFetch: cannot build models uri. raw='{rawBaseUrl}' normalized='{baseUri}'", null); } catch { }
                     return result;
                 }
 
@@ -1247,7 +1247,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                     try
                     {
-                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: GET {primary} (raw='{rawBaseUrl}' normalized='{baseUri}')"); } catch { }
+                        try { AgenteIALocal.Logging.Log.Information("-", 9100, "Control.ModelsFetch", $"ModelsFetch: GET {primary} (raw='{rawBaseUrl}' normalized='{baseUri}')", null); } catch { }
                         using (var req = new HttpRequestMessage(HttpMethod.Get, primary))
                         {
                             req.Headers.Accept.Clear();
@@ -1270,7 +1270,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         var alt = BuildModelsUri(altBase);
                         try
                         {
-                            try { AgentComposition.Warning("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: primary failed (connection refused). Retrying alt='{alt}'"); } catch { }
+                            try { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.ModelsFetch", $"ModelsFetch: primary failed (connection refused). Retrying alt='{alt}'", null); } catch { }
                             using (var req = new HttpRequestMessage(HttpMethod.Get, alt))
                             {
                                 req.Headers.Accept.Clear();
@@ -1285,14 +1285,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                         }
                         catch (Exception exAlt)
                         {
-                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: primary and fallback failed: {exAlt.Message}", exAlt); } catch { }
+                            try { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.ModelsFetch", $"ModelsFetch: primary and fallback failed: {exAlt.Message}", exAlt); } catch { }
                             return result;
                         }
                     }
 
                     if (firstEx != null)
                     {
-                        try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: error: {firstEx.Message}", firstEx); } catch { }
+                        try { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.ModelsFetch", $"ModelsFetch: error: {firstEx.Message}", firstEx); } catch { }
                         return result;
                     }
 
@@ -1300,7 +1300,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                     if (!resp.IsSuccessStatusCode)
                     {
-                        try { AgentComposition.Warning("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: non-success status {(int)resp.StatusCode} {resp.ReasonPhrase}"); } catch { }
+                        try { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.ModelsFetch", $"ModelsFetch: non-success status {(int)resp.StatusCode} {resp.ReasonPhrase}", null); } catch { }
                         return result;
                     }
 
@@ -1361,13 +1361,13 @@ namespace AgenteIALocalVSIX.ToolWindows
                     }
                     catch (Exception exParse)
                     {
-                        try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: parse error: {exParse.Message}", exParse); } catch { }
+                        try { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.ModelsFetch", $"ModelsFetch: parse error: {exParse.Message}", exParse); } catch { }
                     }
                 }
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ModelsFetch: fatal: {ex.Message}", ex); } catch { }
+                try { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.ModelsFetch", $"ModelsFetch: fatal: {ex.Message}", ex); } catch { }
             }
 
             try { FilterChatModelsInPlace(result); } catch { }
@@ -1389,7 +1389,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 try
                 {
-                    AgentComposition.LoggerV2.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9100, "PromptKeyDown"), "PromptTextBox_KeyDown failed: " + ex.Message, ex);
+                    AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9100, "Control.PromptKeyDown", "PromptTextBox_KeyDown failed: " + ex.Message, ex);
                 }
                 catch { }
             }
@@ -1418,18 +1418,18 @@ namespace AgenteIALocalVSIX.ToolWindows
                     if (settings.GlobalSettings == null) settings.GlobalSettings = new Newtonsoft.Json.Linq.JObject();
                     settings.GlobalSettings["selectedModel"] = modelId;
                     AgentSettingsStore.Save(settings);
-                    AgentComposition.LoggerV2.Info(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9101, "ModelChanged"), "Model selection changed to: " + modelId);
+                    AgenteIALocal.Logging.Log.Information(activeCorrelationId ?? "-", 9101, "Control.ModelChanged", "Model selection changed to: " + modelId, null);
                 }
                 catch (Exception ex)
                 {
-                    AgentComposition.LoggerV2.Warning(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9102, "ModelChangeFailed"), "Failed to persist model selection: " + ex.Message, ex);
+                    AgenteIALocal.Logging.Log.Warning(activeCorrelationId ?? "-", 9102, "Control.ModelChanged", "Failed to persist model selection: " + ex.Message, ex);
                 }
             }
             catch (Exception ex)
             {
                 try
                 {
-                    AgentComposition.LoggerV2.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9103, "ModelSelectionError"), "ModelOfLLM_SelectionChanged failed: " + ex.Message, ex);
+                    AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9103, "Control.ModelChanged", "ModelOfLLM_SelectionChanged failed: " + ex.Message, ex);
                 }
                 catch { }
             }
@@ -1442,7 +1442,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 if (_runExecutor == null)
                 {
-                    AgentComposition.LoggerV2.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9104, "RunExecutorMissing"), "RunButton_Click: _runExecutor is null");
+                    AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9104, "Control.RunButton", "RunButton_Click: _runExecutor is null", null);
                     return;
                 }
                 FireAndForget(_runExecutor.RunAsync(sender, e), "RunButton_Click->RunAsync");
@@ -1451,7 +1451,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 try
                 {
-                    AgentComposition.LoggerV2.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9105, "RunButtonError"), "RunButton_Click failed: " + ex.Message, ex);
+                    AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9105, "Control.RunButton", "RunButton_Click failed: " + ex.Message, ex);
                 }
                 catch { }
             }
@@ -1540,11 +1540,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                     }
                 }
 
-                AgentComposition.LoggerV2.Info(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9110, "ModelsRefresh"), $"RefreshModelsForActiveServerAsync: {models.Count} models fetched from {srv.BaseUrl} (source: {source})");
+                AgenteIALocal.Logging.Log.Information(activeCorrelationId ?? "-", 9110, "Control.ModelsRefresh", $"RefreshModelsForActiveServerAsync: {models.Count} models fetched from {srv.BaseUrl} (source: {source})", null);
             }
             catch (Exception ex)
             {
-                AgentComposition.LoggerV2.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9111, "ModelsRefreshError"), $"RefreshModelsForActiveServerAsync failed: {ex.Message}", ex);
+                AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9111, "Control.ModelsRefresh", $"RefreshModelsForActiveServerAsync failed: {ex.Message}", ex);
             }
         }
 
@@ -1584,7 +1584,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                AgentComposition.LoggerV2.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9112, "GetServerError"), $"TryGetActiveOpenAiCompatibleServer failed: {ex.Message}", ex);
+                AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9112, "Control.GetServer", $"TryGetActiveOpenAiCompatibleServer failed: {ex.Message}", ex);
                 return false;
             }
         }
@@ -1702,7 +1702,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 catch (Exception exSettings)
                 {
-                    try { AgentComposition.Warning(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9116, "StreamReqDefaultsError"), $"Failed to read requestDefaults: {exSettings.Message}"); } catch { }
+                    try { AgenteIALocal.Logging.Log.Warning(activeCorrelationId ?? "-", 9116, "Control.StreamRequest", $"Failed to read requestDefaults: {exSettings.Message}", null); } catch { }
                 }
 
                 var provider = (server.Provider ?? string.Empty).ToLowerInvariant();
@@ -1797,7 +1797,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         }
                         catch (Exception exParse)
                         {
-                            try { AgentComposition.Warning(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9117, "StreamChunkParseError"), $"Failed to parse SSE chunk: {exParse.Message}"); } catch { }
+                            try { AgenteIALocal.Logging.Log.Warning(activeCorrelationId ?? "-", 9117, "Control.StreamRequest", $"Failed to parse SSE chunk: {exParse.Message}", null); } catch { }
                         }
                     }
                 }
@@ -1843,7 +1843,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         errorMsg = "Timeout: " + errorMsg;
                     }
 
-                    AgentComposition.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9118, "StreamWebException"), $"Streaming request failed (WebException): {errorMsg}", wex);
+                    AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9118, "Control.StreamRequest", $"Streaming request failed (WebException): {errorMsg}", wex);
 
                     return new AgentHostResponse
                     {
@@ -1866,7 +1866,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (OperationCanceledException)
             {
-                try { AgentComposition.Info(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9119, "StreamCancelled"), "Streaming request cancelled by user"); } catch { }
+                try { AgenteIALocal.Logging.Log.Information(activeCorrelationId ?? "-", 9119, "Control.StreamRequest", "Streaming request cancelled by user", null); } catch { }
                 return new AgentHostResponse
                 {
                     Success = false,
@@ -1877,7 +1877,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9120, "StreamException"), $"Streaming request failed: {ex.Message}", ex); } catch { }
+                // MODIFICADO - ID: 20260122_010803 - Migrado a Serilog
+                try { AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9120, "Control.StreamRequest", $"Streaming request failed: {ex.Message}", ex); } catch { }
                 return new AgentHostResponse
                 {
                     Success = false,
@@ -1916,16 +1917,16 @@ namespace AgenteIALocalVSIX.ToolWindows
                 {
                     list.Remove(aiBubble);
                     TryPersistChat(chat);
-                    AgentComposition.LoggerV2.Info(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9115, "RemoveEmptyBubble"), "Removed empty AI bubble from chat");
+                    AgenteIALocal.Logging.Log.Information(activeCorrelationId ?? "-", 9115, "Control.ChatCleanup", "Removed empty AI bubble from chat", null);
                 }
                 catch (Exception ex)
                 {
-                    AgentComposition.LoggerV2.Warning(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9116, "RemoveEmptyBubbleError"), $"TryRemoveEmptyAiBubble: failed to remove: {ex.Message}", ex);
+                    AgenteIALocal.Logging.Log.Warning(activeCorrelationId ?? "-", 9116, "Control.ChatCleanup", $"TryRemoveEmptyAiBubble: failed to remove: {ex.Message}", ex);
                 }
             }
             catch (Exception ex)
             {
-                AgentComposition.LoggerV2.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9117, "RemoveEmptyBubbleError"), $"TryRemoveEmptyAiBubble failed: {ex.Message}", ex);
+                AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9117, "Control.ChatCleanup", $"TryRemoveEmptyAiBubble failed: {ex.Message}", ex);
             }
         }
     }

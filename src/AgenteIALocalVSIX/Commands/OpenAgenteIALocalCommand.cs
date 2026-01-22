@@ -23,14 +23,14 @@ namespace AgenteIALocalVSIX.Commands
             var menuItem = new MenuCommand(this.Execute, menuCommandID);
             commandService.AddCommand(menuItem);
 
-            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "Command: OleMenuCommand registered"); } catch { }
+            try { AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Init", "OleMenuCommand registered", null); } catch { }
         }
 
         public static OpenAgenteIALocalCommand Instance { get; private set; }
 
         public static async Task InitializeAsync(AsyncPackage package)
         {
-            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "Command: InitializeAsync start"); } catch { }
+            try { AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Init", "InitializeAsync start", null); } catch { }
 
             if (package == null) throw new ArgumentNullException(nameof(package));
 
@@ -41,7 +41,7 @@ namespace AgenteIALocalVSIX.Commands
 
             if (commandService == null)
             {
-                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "Command: OleMenuCommandService is null"); } catch { }
+                try { AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Init", "OleMenuCommandService is null", null); } catch { }
                 return;
             }
 
@@ -50,13 +50,13 @@ namespace AgenteIALocalVSIX.Commands
 
         private void Execute(object sender, EventArgs e)
         {
-            AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "Command: OpenAgenteIALocal Execute invoked");
+            AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "OpenAgenteIALocal Execute invoked", null);
 
             try
             {
                 try
                 {
-                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "Command: OpenAgenteIALocal invoked");
+                    AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "OpenAgenteIALocal invoked", null);
                 }
                 catch { }
 
@@ -68,7 +68,7 @@ namespace AgenteIALocalVSIX.Commands
                 {
                     try
                     {
-                        AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "Command: IVsUIShell service not available");
+                        AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "IVsUIShell service not available", null);
                     }
                     catch { }
 
@@ -82,7 +82,7 @@ namespace AgenteIALocalVSIX.Commands
 
                 try
                 {
-                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "FindToolWindow HR=0x" + hrFind.ToString("X"));
+                    AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "FindToolWindow HR=0x" + hrFind.ToString("X"), null);
                 }
                 catch { }
 
@@ -90,7 +90,7 @@ namespace AgenteIALocalVSIX.Commands
                 {
                     try
                     {
-                        AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "Command: ToolWindow frame is null after FindToolWindow");
+                        AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "ToolWindow frame is null after FindToolWindow", null);
                     }
                     catch { }
 
@@ -101,13 +101,13 @@ namespace AgenteIALocalVSIX.Commands
 
                 try
                 {
-                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "Show HR=0x" + hrShow.ToString("X"));
+                    AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "Show HR=0x" + hrShow.ToString("X"), null);
                 }
                 catch { }
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "Command: exception opening ToolWindow: " + ex.Message, ex); } catch { }
+                try { AgenteIALocal.Logging.Log.Error("-", 9200, "Command.Execute", "exception opening ToolWindow: " + ex.Message, ex); } catch { }
             }
         }
     }

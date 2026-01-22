@@ -271,9 +271,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
 
                 // Route verbose diagnostics through the canonical V2 logger so persisted lines are produced by the formatter
+                // MODIFICADO - ID: 20260122_010801 - Migrado de AgentComposition.Verbose → Serilog
                 try
                 {
-                    AgenteIALocalVSIX.AgentComposition.Verbose(string.IsNullOrEmpty(correlationId) ? "-" : correlationId, new AgenteIALocal.Core.Logging.LogEventId(9200, "Normalize"), sb.ToString());
+                    var corr = string.IsNullOrEmpty(correlationId) ? "-" : correlationId;
+                    AgenteIALocal.Logging.Log.Verbose(corr, 9200, "ResponseNormalizer.Normalize", sb.ToString(), null);
                 }
                 catch
                 {

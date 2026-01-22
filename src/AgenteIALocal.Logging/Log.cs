@@ -1,7 +1,9 @@
 using Serilog;
 using Serilog.Events;
 using System;
+using System.Collections.Generic; // NUEVO - ID: 20260122_010901 - Para GetRecentLogs
 using System.IO;
+using AgenteIALocal.Logging.Sinks; // NUEVO - ID: 20260122_010901 - UiLogSink
 
 namespace AgenteIALocal.Logging
 {
@@ -14,6 +16,7 @@ namespace AgenteIALocal.Logging
         private static LogSettings _settings = new LogSettings();
         private static ILogger _logger = Serilog.Log.Logger;
         private static string _currentPath;
+        private static UiLogSink _uiSink; // NUEVO - ID: 20260122_010901 - UI buffer sink
 
         public static LogSettings CurrentSettings
         {
@@ -38,20 +41,45 @@ namespace AgenteIALocal.Logging
                     var dir = settings.ResolveLogDirectory();
                     if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
+
                     // MODIFICADO - ID: 20260122_010700 - Path con separador para RollingInterval.Day
                     // Genera: AgenteIALocal_yyyyMMdd.log (ej: AgenteIALocal_20260122.log)
                     _currentPath = Path.Combine(dir, "AgenteIALocal_.log");
 
-                    // Always build the pipeline even if disabled so errors during config are visible.
-                    // MODIFICADO - ID: 20260122_010400 - Async wrapper TEMPORALMENTE removido para diagnóstico B1
-                    // TODO: Restaurar WriteTo.Async en B4 cuando implementemos UI sink + buffer config
-                    // MODIFICADO - ID: 20260122_010700 - RollingInterval.Day para naming con fecha ISO (yyyyMMdd)
-                    var cfg = new LoggerConfiguration()
-                        .MinimumLevel.Verbose()
-                        .Enrich.WithProperty("app", settings.AppName ?? "AgenteIALocal")
+                    // MODIFICADO - ID: 20260122_010901 - UI sink + filtrado por niveles (B3 + B4)
+                    // B3: UI sink buffer 250 + formato usuario final
+                    // B4: MinimumLevel según settings + Async wrapper restaurado
+                    _uiSink = new UiLogSink(250);
+
+                    var cfg = new LoggerConfiguration();
+
+                    // B4: Configurar MinimumLevel según settings
+                    if (settings.All)
+                    {
+                        cfg.MinimumLevel.Verbose();
+                    }
+                    else
+                    {
+                        // Default: Information como base
+                        cfg.MinimumLevel.Information();
+
+                        // Override por nivel específico
+                        if (settings.Verbose) cfg.MinimumLevel.Verbose();
+                        else if (settings.Debug) cfg.MinimumLevel.Debug();
+                        else if (settings.Information) cfg.MinimumLevel.Information();
+                        else if (settings.Warning) cfg.MinimumLevel.Warning();
+                        else if (settings.Error) cfg.MinimumLevel.Error();
+                        else if (settings.Critical) cfg.MinimumLevel.Fatal();
+                    }
+
+                    cfg.Enrich.WithProperty("app", settings.AppName ?? "AgenteIALocal")
                         .Enrich.WithProperty("pid", System.Diagnostics.Process.GetCurrentProcess().Id)
-                        .Enrich.WithProperty("proc", System.Diagnostics.Process.GetCurrentProcess().ProcessName)
-                        .WriteTo.File(
+                        .Enrich.WithProperty("proc", System.Diagnostics.Process.GetCurrentProcess().ProcessName);
+
+                    // B4: Restaurar Async wrapper con configuración adecuada
+                    cfg.WriteTo.Async(a =>
+                    {
+                        a.File(
                             path: _currentPath,
                             rollingInterval: RollingInterval.Day,
                             rollOnFileSizeLimit: true,
@@ -60,6 +88,10 @@ namespace AgenteIALocal.Logging
                             shared: true,
                             outputTemplate: "ts={Timestamp:O} lvl={Level:u3} corr={corr} eid={eid} src={src} msg={Message:lj} ex={Exception}{NewLine}"
                         );
+                    }, bufferSize: 1000, blockWhenFull: false);
+
+                    // B3: Agregar UI sink (siempre síncrono para visibilidad inmediata en panel)
+                    cfg.WriteTo.Sink(_uiSink);
 
                     _logger = cfg.CreateLogger();
                     Serilog.Log.Logger = _logger;
@@ -135,6 +167,39 @@ namespace AgenteIALocal.Logging
             catch
             {
                 // never throw
+            }
+        }
+
+        // NUEVO METODO - ID: 20260122_010902 - B3: API para UI consumir buffer
+        /// <summary>
+        /// Obtiene las últimas N entradas del buffer UI (formato usuario final).
+        /// Thread-safe. Default 250.
+        /// </summary>
+        public static List<string> GetRecentLogs(int count = 250)
+        {
+            try
+            {
+                return _uiSink?.GetRecentLogs(count) ?? new List<string>();
+            }
+            catch
+            {
+                return new List<string>();
+            }
+        }
+
+        // NUEVO METODO - ID: 20260122_010902 - B3: Limpiar buffer UI
+        /// <summary>
+        /// Limpia el buffer UI. Thread-safe.
+        /// </summary>
+        public static void ClearUiBuffer()
+        {
+            try
+            {
+                _uiSink?.Clear();
+            }
+            catch
+            {
+                // Never throw
             }
         }
     }

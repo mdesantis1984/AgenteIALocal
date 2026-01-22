@@ -16,35 +16,35 @@ namespace AgenteIALocalVSIX.Commands
                 var codePackageGuid = new Guid(AgenteIALocalVSIX.AgenteIALocalVSIXPackage.PackageGuidString);
                 if (VsctPackageGuid != codePackageGuid)
                 {
-                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_Command,
+                    AgenteIALocal.Logging.Log.Information("-", 9200, "Command.VsctValidator",
                         "VSCT mismatch: Package GUID VSCT=" + VsctPackageGuid.ToString("B") +
-                        " Code=" + codePackageGuid.ToString("B"));
+                        " Code=" + codePackageGuid.ToString("B"), null);
                 }
                 else
                 {
-                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_Command, "VSCT match: Package GUID=" + codePackageGuid.ToString("B"));
+                    AgenteIALocal.Logging.Log.Information("-", 9200, "Command.VsctValidator", "VSCT match: Package GUID=" + codePackageGuid.ToString("B"), null);
                 }
 
                 if (VsctCommandSetGuid != OpenAgenteIALocalCommand.CommandSet)
                 {
-                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_Command,
+                    AgenteIALocal.Logging.Log.Information("-", 9200, "Command.VsctValidator",
                         "VSCT mismatch: CommandSet GUID VSCT=" + VsctCommandSetGuid.ToString("B") +
-                        " Code=" + OpenAgenteIALocalCommand.CommandSet.ToString("B"));
+                        " Code=" + OpenAgenteIALocalCommand.CommandSet.ToString("B"), null);
                 }
                 else
                 {
-                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_Command, "VSCT match: CommandSet GUID=" + OpenAgenteIALocalCommand.CommandSet.ToString("B"));
+                    AgenteIALocal.Logging.Log.Information("-", 9200, "Command.VsctValidator", "VSCT match: CommandSet GUID=" + OpenAgenteIALocalCommand.CommandSet.ToString("B"), null);
                 }
 
                 if (VsctCommandId != OpenAgenteIALocalCommand.CommandId)
                 {
-                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_Command,
+                    AgenteIALocal.Logging.Log.Information("-", 9200, "Command.VsctValidator",
                         "VSCT mismatch: CommandId VSCT=0x" + VsctCommandId.ToString("X") +
-                        " Code=0x" + OpenAgenteIALocalCommand.CommandId.ToString("X"));
+                        " Code=0x" + OpenAgenteIALocalCommand.CommandId.ToString("X"), null);
                 }
                 else
                 {
-                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_Command, "VSCT match: CommandId=0x" + OpenAgenteIALocalCommand.CommandId.ToString("X"));
+                    AgenteIALocal.Logging.Log.Information("-", 9200, "Command.VsctValidator", "VSCT match: CommandId=0x" + OpenAgenteIALocalCommand.CommandId.ToString("X"), null);
                 }
             }
             catch { }

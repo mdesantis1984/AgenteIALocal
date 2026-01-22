@@ -635,7 +635,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var message = $"baseUrl={baseUrl} models={models?.Count ?? 0}";
                 if (isOk)
                 {
-                    AgentComposition.LoggerV2.Info(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9118, "ConfigHealthOk"), $"ApplyConfigHealthFromModal: OK - {message}");
+                    AgenteIALocal.Logging.Log.Information(activeCorrelationId ?? "-", 9118, "Control.ConfigHealth", $"ApplyConfigHealthFromModal: OK - {message}", null);
                     // Update config status if there are properties for that
                     try
                     {
@@ -648,7 +648,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 else
                 {
-                    AgentComposition.LoggerV2.Warning(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9119, "ConfigHealthBad"), $"ApplyConfigHealthFromModal: NOT OK - {message}");
+                    AgenteIALocal.Logging.Log.Warning(activeCorrelationId ?? "-", 9119, "Control.ConfigHealth", $"ApplyConfigHealthFromModal: NOT OK - {message}", null);
                     try
                     {
                         _configStatusLabel = "ERROR";
@@ -661,7 +661,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                AgentComposition.LoggerV2.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9120, "ConfigHealthError"), $"ApplyConfigHealthFromModal failed: {ex.Message}", ex);
+                AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9120, "Control.ConfigHealth", $"ApplyConfigHealthFromModal failed: {ex.Message}", ex);
             }
         }
     }

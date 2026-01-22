@@ -36,7 +36,8 @@ namespace AgenteIALocalVSIX.ToolWindows
         public override void OnToolWindowCreated()
         {
             base.OnToolWindowCreated();
-            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "AgenteIALocalToolWindow: OnToolWindowCreated"); } catch { }
+            // MODIFICADO - ID: 20260122_010802 - Migrado a Serilog
+            try { AgenteIALocal.Logging.Log.Information("-", 9100, "ToolWindow.OnCreated", "OnToolWindowCreated", null); } catch { }
 
             ThreadHelper.JoinableTaskFactory.Run(async () =>
             {
@@ -59,9 +60,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                 catch { }
             });
 
+            // MODIFICADO - ID: 20260122_010802 - Migrado a Serilog
             try
             {
-                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ToolWindow created; skipping optional settings provider injection in this build.");
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ToolWindow.OnCreated", "ToolWindow created; skipping optional settings provider injection", null);
             }
             catch { }
 
@@ -134,7 +136,8 @@ namespace AgenteIALocalVSIX.ToolWindows
                     dteSolutionEvents.Opened += OnSolutionOpened;
                     dteSolutionEvents.AfterClosing += OnSolutionAfterClosing;
                     solutionEventsHooked = true;
-                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "AgenteIALocalToolWindow: Hooked SolutionEvents"); } catch { }
+                    // MODIFICADO - ID: 20260122_010802 - Migrado a Serilog
+                    try { AgenteIALocal.Logging.Log.Information("-", 9100, "ToolWindow.HookEvents", "Hooked SolutionEvents", null); } catch { }
                 }
             }
             catch
@@ -187,9 +190,10 @@ namespace AgenteIALocalVSIX.ToolWindows
         private async Task TryUpdateSolutionInfoAsync(AgenteIALocalControl control, string source)
         {
             await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+             // MODIFICADO - ID: 20260122_010802 - Migrado a Serilog
              try
              {
-                 AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: UpdateSolutionInfo start ({source})");
+                 AgenteIALocal.Logging.Log.Information("-", 9100, "ToolWindow.UpdateSolution", $"UpdateSolutionInfo start ({source})", null);
 
                  // Retry loop if solution not yet open/loaded
                  const int maxAttempts = 6;
@@ -205,9 +209,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                          var dteObj = ServiceProvider.GlobalProvider.GetService(typeof(SDTE));
                          var dte = dteObj as EnvDTE.DTE;
 
-                         if (dte == null)
-                         {
-                             AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: DTE null (attempt={attempt + 1})");
+                          if (dte == null)
+                          {
+                              // MODIFICADO - ID: 20260122_010802 - Migrado a Serilog
+                              AgenteIALocal.Logging.Log.Information("-", 9100, "ToolWindow.UpdateSolution", $"DTE null (attempt={attempt + 1})", null);
                              // wait and retry
                              try { await Task.Delay(delayMs).ConfigureAwait(false); } catch { }
                              continue;
@@ -223,43 +228,50 @@ namespace AgenteIALocalVSIX.ToolWindows
                          {
                              // Prefer FullName-derived name but fallback to Solution.Name
                              string solutionName = !string.IsNullOrEmpty(fullName) ? Path.GetFileNameWithoutExtension(fullName) : name ?? string.Empty;
-                             int projectCount = CountSolutionProjects(sol);
+                              int projectCount = CountSolutionProjects(sol);
 
-                             AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: Solution '{solutionName}' projects={projectCount} (attempt={attempt + 1})");
+                              // MODIFICADO - ID: 20260122_010802 - Migrado a Serilog
+                              AgenteIALocal.Logging.Log.Information("-", 9100, "ToolWindow.UpdateSolution", $"Solution '{solutionName}' projects={projectCount} (attempt={attempt + 1})", null);
 
                              try
                              {
                                  // Ensure SetSolutionInfo runs on UI thread
                                  await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                                 control.SetSolutionInfo(solutionName, projectCount);
-                                 solutionInfoSet = true;
-                                 AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: SetSolutionInfo done ({source})");
+                                  control.SetSolutionInfo(solutionName, projectCount);
+                                  solutionInfoSet = true;
+                                  // MODIFICADO - ID: 20260122_010802 - Migrado a Serilog
+                                  AgenteIALocal.Logging.Log.Information("-", 9100, "ToolWindow.UpdateSolution", $"SetSolutionInfo done ({source})", null);
                              }
-                             catch (Exception ex)
-                             {
-                                 AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: SetSolutionInfo failed: {ex.Message}", ex);
+                              catch (Exception ex)
+                              {
+                                  // MODIFICADO - ID: 20260122_010802 - Migrado a Serilog
+                                  AgenteIALocal.Logging.Log.Error("-", 9100, "ToolWindow.UpdateSolution", $"SetSolutionInfo failed: {ex.Message}", ex);
                              }
 
                              return; // done
                          }
 
-                         // Log state for diagnostics
-                         AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: No open solution (attempt={attempt + 1}) - hasSolution={hasSolution} IsOpen={isOpen} FullNameLen={fullName?.Length ?? 0} Name='{name}'");
+                          // Log state for diagnostics
+                          // MODIFICADO - ID: 20260122_010802 - Migrado a Serilog
+                          AgenteIALocal.Logging.Log.Information("-", 9100, "ToolWindow.UpdateSolution", $"No open solution (attempt={attempt + 1}) - hasSolution={hasSolution} IsOpen={isOpen} FullNameLen={fullName?.Length ?? 0} Name='{name}'", null);
                      }
-                     catch (Exception ex)
-                     {
-                         AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: Error checking solution (attempt={attempt + 1}): {ex.Message}");
+                      catch (Exception ex)
+                      {
+                          // MODIFICADO - ID: 20260122_010802 - Migrado a Serilog
+                          AgenteIALocal.Logging.Log.Error("-", 9100, "ToolWindow.UpdateSolution", $"Error checking solution (attempt={attempt + 1}): {ex.Message}", ex);
                      }
 
                      // wait before next attempt (do not block UI thread)
                      try { await Task.Delay(delayMs).ConfigureAwait(false); } catch { }
-                 }
+                  }
 
-                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: UpdateSolutionInfo giving up after retries ({source})");
+                // MODIFICADO - ID: 20260122_010802 - Migrado a Serilog
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ToolWindow.UpdateSolution", $"UpdateSolutionInfo giving up after retries ({source})", null);
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"AgenteIALocalToolWindow: Unexpected error in TryUpdateSolutionInfoAsync: {ex.Message}"); } catch { }
+                // MODIFICADO - ID: 20260122_010802 - Migrado a Serilog
+                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ToolWindow.UpdateSolution", $"Unexpected error in TryUpdateSolutionInfoAsync: {ex.Message}", ex); } catch { }
             }
         }
 

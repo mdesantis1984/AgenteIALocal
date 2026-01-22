@@ -74,12 +74,14 @@ namespace AgenteIALocalVSIX.ToolWindows
             try
             {
                 if (e.ChangedButton != MouseButton.Left) return;
-                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: DragMove start"); } catch { }
+                // MODIFICADO - ID: 20260122_010900 - Migrado a Serilog
+                try { AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.DragMove", "DragMove start", null); } catch { }
                 DragMove();
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: DragMove failed: " + ex.Message, ex); } catch { }
+                // MODIFICADO - ID: 20260122_010900 - Migrado a Serilog
+                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.DragMove", "DragMove failed: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -343,7 +345,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Provider change error: " + ex.Message, ex); } catch { }
+                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Provider", "Provider change error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -366,7 +368,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: RunMode change error: " + ex.Message, ex); } catch { }
+                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.RunMode", "RunMode change error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -391,7 +393,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Stream toggle error: " + ex.Message, ex); } catch { }
+                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Stream", "Stream toggle error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -407,7 +409,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: IncludeUsage toggle error: " + ex.Message, ex); } catch { }
+                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.IncludeUsage", "IncludeUsage toggle error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -435,7 +437,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Agent ApplyChanges toggle error: " + ex.Message, ex); } catch { }
+                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.AgentApplyChanges", "Agent ApplyChanges toggle error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -465,7 +467,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: MaxSteps change error: " + ex.Message, ex); } catch { }
+                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.MaxSteps", "MaxSteps change error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -545,7 +547,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                             // Parse failed - loguear Warning
                             try
                             {
-                                AgentComposition.Warning("-", new AgenteIALocal.Core.Logging.LogEventId(9200, "TempParseError"), $"Temperature parse failed: invalid value '{TemperatureTextBox_Modal.Text}'. Keeping previous value.");
+                                AgenteIALocal.Logging.Log.Warning("-", 9200, "ConfigModal.Parse", $"Temperature parse failed: invalid value '{TemperatureTextBox_Modal.Text}'. Keeping previous value.", null);
                             }
                             catch { }
                         }
@@ -560,7 +562,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 {
                     try
                     {
-                        AgentComposition.Warning("-", new AgenteIALocal.Core.Logging.LogEventId(9201, "TempParseException"), $"Temperature parse exception: {exTemp.Message}", exTemp);
+                        AgenteIALocal.Logging.Log.Warning("-", 9201, "ConfigModal.Parse", $"Temperature parse exception: {exTemp.Message}", exTemp);
                     }
                     catch { }
                     tempValue = 0.2; // fallback
@@ -591,7 +593,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 // Negativo - loguear Warning y no guardar
                                 try
                                 {
-                                    AgentComposition.Warning("-", new AgenteIALocal.Core.Logging.LogEventId(9202, "MaxTokensNegative"), $"MaxTokens negative value: {parsed}. Must be >= 0. Keeping previous value.");
+                                    AgenteIALocal.Logging.Log.Warning("-", 9202, "ConfigModal.Parse", $"MaxTokens negative value: {parsed}. Must be >= 0. Keeping previous value.", null);
                                 }
                                 catch { }
                             }
@@ -601,7 +603,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                             // Parse failed - loguear Warning
                             try
                             {
-                                AgentComposition.Warning("-", new AgenteIALocal.Core.Logging.LogEventId(9203, "MaxTokensParseError"), $"MaxTokens parse failed: invalid value '{MaxTokensTextBox_Modal.Text}'. Keeping previous value.");
+                                AgenteIALocal.Logging.Log.Warning("-", 9203, "ConfigModal.Parse", $"MaxTokens parse failed: invalid value '{MaxTokensTextBox_Modal.Text}'. Keeping previous value.", null);
                             }
                             catch { }
                         }
@@ -616,7 +618,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 {
                     try
                     {
-                        AgentComposition.Warning("-", new AgenteIALocal.Core.Logging.LogEventId(9204, "MaxTokensParseException"), $"MaxTokens parse exception: {exMax.Message}", exMax);
+                        AgenteIALocal.Logging.Log.Warning("-", 9204, "ConfigModal.Parse", $"MaxTokens parse exception: {exMax.Message}", exMax);
                     }
                     catch { }
                     maxTokensValue = 0; // fallback
@@ -635,7 +637,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: PersistRequestDefaultsFromUi error: " + ex.Message, ex); } catch { }
+                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Persist", "PersistRequestDefaultsFromUi error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -697,7 +699,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     var ex = t.Exception != null ? t.Exception.GetBaseException() : null;
                     if (ex != null)
                     {
-                        AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, op + " failed: " + ex.Message, ex);
+                        AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.FireAndForget", op + " failed: " + ex.Message, ex);
                     }
                 }
                 catch
@@ -752,7 +754,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception exOuter)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigWindow Loaded: unexpected error: " + exOuter.Message, exOuter); } catch { }
+                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Loaded", "ConfigWindow Loaded: unexpected error: " + exOuter.Message, exOuter); } catch { }
             }
         }
 
@@ -867,7 +869,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     // If primary failed with connection refused and a fallback host is available, retry
                     if (firstEx != null && IsConnectionRefused(firstEx) && !string.IsNullOrEmpty(fallbackHost))
                     {
-                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: primary GET failed, retrying with fallback host"); } catch { }
+                        try { AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.ModelsFetch", "primary GET failed, retrying with fallback host", null); } catch { }
                         var altBuilder = new UriBuilder(baseUri) { Host = fallbackHost };
                         var alt = BuildModelsUri(altBuilder.Uri);
                         try

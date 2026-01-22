@@ -514,7 +514,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (System.Exception ex)
             {
-                try { AgentComposition.Error(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] RenderResponseToDocument: unexpected error -> " + ex.Message, ex); } catch { }
+                // MODIFICADO - ID: 20260122_011004 - Migrado a Serilog
+                try { AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9100, "Control.Renderer", "[VERBOSE] RenderResponseToDocument: unexpected error -> " + ex.Message, ex); } catch { }
                 return CreatePlainDocument(content ?? raw ?? string.Empty);
             }
         }
