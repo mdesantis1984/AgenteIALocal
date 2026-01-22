@@ -38,23 +38,28 @@ namespace AgenteIALocal.Logging
                     var dir = settings.ResolveLogDirectory();
                     if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
-                    _currentPath = Path.Combine(dir, "AgenteIALocal.log");
+                    // MODIFICADO - ID: 20260122_010700 - Path con separador para RollingInterval.Day
+                    // Genera: AgenteIALocal_yyyyMMdd.log (ej: AgenteIALocal_20260122.log)
+                    _currentPath = Path.Combine(dir, "AgenteIALocal_.log");
 
                     // Always build the pipeline even if disabled so errors during config are visible.
+                    // MODIFICADO - ID: 20260122_010400 - Async wrapper TEMPORALMENTE removido para diagnóstico B1
+                    // TODO: Restaurar WriteTo.Async en B4 cuando implementemos UI sink + buffer config
+                    // MODIFICADO - ID: 20260122_010700 - RollingInterval.Day para naming con fecha ISO (yyyyMMdd)
                     var cfg = new LoggerConfiguration()
                         .MinimumLevel.Verbose()
                         .Enrich.WithProperty("app", settings.AppName ?? "AgenteIALocal")
                         .Enrich.WithProperty("pid", System.Diagnostics.Process.GetCurrentProcess().Id)
                         .Enrich.WithProperty("proc", System.Diagnostics.Process.GetCurrentProcess().ProcessName)
-                        .WriteTo.Async(a => a.File(
+                        .WriteTo.File(
                             path: _currentPath,
-                            rollingInterval: RollingInterval.Infinite,
+                            rollingInterval: RollingInterval.Day,
                             rollOnFileSizeLimit: true,
                             fileSizeLimitBytes: settings.RollingFileSizeBytes > 0 ? settings.RollingFileSizeBytes : 3L * 1024 * 1024,
                             retainedFileCountLimit: settings.RetainedFileCount > 0 ? settings.RetainedFileCount : 10,
                             shared: true,
                             outputTemplate: "ts={Timestamp:O} lvl={Level:u3} corr={corr} eid={eid} src={src} msg={Message:lj} ex={Exception}{NewLine}"
-                        ));
+                        );
 
                     _logger = cfg.CreateLogger();
                     Serilog.Log.Logger = _logger;

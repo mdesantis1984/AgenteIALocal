@@ -83,11 +83,13 @@
     </Compile>
     <Compile Include="ToolWindows\AgenteIALocalToolWindow.cs" />
     <Compile Include="ToolWindows\ResponseNormalizer.cs" />
+    <Compile Include="VsixSafeLog.cs" />
   </ItemGroup>
   <!-- XAML -->
   <ItemGroup>
     <Page Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Page>
     <Page Include="ToolWindows\AgenteIALocalConfigWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -128,14 +130,21 @@
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.14.2120" />
     <!-- NUEVO - ID: 20260122_000304 - Serilog packages para VSIX runtime -->
+    <!-- MODIFICADO - ID: 20260122_010100 - IncludeAssemblyInVSIXContainer para empaquetar en VSIX -->
     <PackageReference Include="Serilog">
       <Version>4.1.0</Version>
+      <IncludeAssets>compile; runtime; native</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Serilog.Sinks.Async">
       <Version>2.1.0</Version>
+      <IncludeAssets>compile; runtime; native</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Serilog.Sinks.File">
       <Version>6.0.0</Version>
+      <IncludeAssets>compile; runtime; native</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
@@ -154,6 +163,8 @@
     <ProjectReference Include="..\AgenteIALocal.Logging\AgenteIALocal.Logging.csproj">
       <Project>{DF45AAD0-2A6A-463F-A43A-814BD4F1A959}</Project>
       <Name>AgenteIALocal.Logging</Name>
+      <IncludeOutputGroupsInVSIX>BuiltProjectOutputGroup;DebugSymbolsProjectOutputGroup;GetCopyToOutputDirectoryItems;SatelliteDllsProjectOutputGroup</IncludeOutputGroupsInVSIX>
+      <IncludeOutputGroupsInVSIXLocalOnly>DebugSymbolsProjectOutputGroup</IncludeOutputGroupsInVSIXLocalOnly>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
