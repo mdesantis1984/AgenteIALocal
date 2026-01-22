@@ -23,12 +23,30 @@
 - Arquitectura: Clean Architecture, HttpClientFactory, desacople, MVVM (XAML), C#, interfaces, inyección de dependencias, documentación en cada método
 - Principios de desarrollo: SOLID
 - **Logging**: `AgenteIALocal.Logging.Log` (Serilog) - API único obligatorio:
-  - Firma: `Log.Information/Warning/Error/Debug/Verbose/Critical(correlationId, eventId, source, message, exception)`
-  - Ejemplo: `Log.Information("-", 9100, "ToolWindow.Init", "Initialized", null)`
-  - **PROHIBIDO**: AppendLog(), logs directos a archivo, Console.WriteLine, Debug.WriteLine, custom loggers
-  - Source format: "Clase.Metodo" o "Component.Action"
-  - EventId ranges: 9000-9099 (VSIX), 9100-9199 (UI), 9200-9299 (Commands)
-  - Sin spam: NO loguear en loops (chunks/retries/keypress) - 1 log por evento relevante
+- **OBLIGATORIO EN TODO**: Logging en TODOS los componentes, métodos críticos, excepciones y operaciones importantes
+- **PROHIBIDO try/catch vacíos**: TODO catch debe loguear la excepción - `Log.Error(corr, eventId, source, mensaje, ex)`
+- Firma: `Log.Information/Warning/Error/Debug/Verbose/Critical(correlationId, eventId, source, message, exception)`
+- Ejemplo: `Log.Information("-", 9100, "ToolWindow.Init", "Initialized", null)`
+- **Uso de TODOS los niveles de log**:
+  - `Verbose`: Trazas detalladas de desarrollo/debugging (payload JSON, valores intermedios)
+  - `Debug`: Información de diagnóstico (flujo de ejecución, decisiones lógicas)
+  - `Information`: Eventos normales de negocio (inicio/fin operaciones, cambios de estado)
+  - `Warning`: Situaciones anómalas recuperables (retry exitoso, valores por defecto aplicados)
+  - `Error`: Errores manejados que afectan operación actual (API timeout, validación fallida)
+  - `Critical`: Errores graves que afectan toda la aplicación (init failure, data corruption)
+- **Guidelines de logging obligatorio**:
+  - ✅ TODO método público: Log.Information al inicio/fin
+  - ✅ TODO catch: Log.Error con excepción completa
+  - ✅ TODA operación I/O: Log.Debug antes/después (file, HTTP, DB)
+  - ✅ TODA decisión lógica importante: Log.Debug con contexto
+  - ✅ TODO cambio de estado crítico: Log.Information con antes/después
+  - ❌ NO catch vacíos - SIEMPRE loguear
+  - ❌ NO swallow exceptions sin log
+  - ❌ NO logs en loops (use 1 log resumen fuera del loop)
+- **PROHIBIDO**: AppendLog(), logs directos a archivo, Console.WriteLine, Debug.WriteLine, custom loggers
+- Source format: "Clase.Metodo" o "Component.Action"
+- EventId ranges: 9000-9099 (VSIX), 9100-9199 (UI), 9200-9299 (Commands)
+- Sin spam: NO loguear en loops (chunks/retries/keypress) - 1 log por evento relevante
 - VSIX basado en ToolWindow, comandos bajo el menú Herramientas, persistencia de configuración
 - Implementado: AsyncPackage, VSCT, ToolWindow
 - IDE de desarrollo: Visual Studio 2026
