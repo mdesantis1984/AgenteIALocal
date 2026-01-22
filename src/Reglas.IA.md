@@ -22,6 +22,13 @@
 - Target Framework: .NET Framework 4.7.2
 - Arquitectura: Clean Architecture, HttpClientFactory, desacople, MVVM (XAML), C#, interfaces, inyección de dependencias, documentación en cada método
 - Principios de desarrollo: SOLID
+- **Logging**: `AgenteIALocal.Logging.Log` (Serilog) - API único obligatorio:
+  - Firma: `Log.Information/Warning/Error/Debug/Verbose/Critical(correlationId, eventId, source, message, exception)`
+  - Ejemplo: `Log.Information("-", 9100, "ToolWindow.Init", "Initialized", null)`
+  - **PROHIBIDO**: AppendLog(), logs directos a archivo, Console.WriteLine, Debug.WriteLine, custom loggers
+  - Source format: "Clase.Metodo" o "Component.Action"
+  - EventId ranges: 9000-9099 (VSIX), 9100-9199 (UI), 9200-9299 (Commands)
+  - Sin spam: NO loguear en loops (chunks/retries/keypress) - 1 log por evento relevante
 - VSIX basado en ToolWindow, comandos bajo el menú Herramientas, persistencia de configuración
 - Implementado: AsyncPackage, VSCT, ToolWindow
 - IDE de desarrollo: Visual Studio 2026
