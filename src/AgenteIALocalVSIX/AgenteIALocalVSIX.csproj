@@ -141,6 +141,10 @@
       <Project>{52B94B48-0ED4-C9B0-441A-BC825034B877}</Project>
       <Name>AgenteIALocal.Infrastructure</Name>
     </ProjectReference>
+    <ProjectReference Include="..\AgenteIALocal.Logging\AgenteIALocal.Logging.csproj">
+      <Project>{DF45AAD0-2A6A-463F-A43A-814BD4F1A959}</Project>
+      <Name>AgenteIALocal.Logging</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <!--<Content Include="AgenteIALocalVSIX.vsct" />-->

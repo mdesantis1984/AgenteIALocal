@@ -495,7 +495,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             try { AgentComposition.LogGlobalSettingsPersistence("PersistAgentMaxSteps", before, settings.GlobalSettings, provider); } catch { }
         }
 
-        // NUEVO METODO PersistRequestDefaultsFromUi - ID: 20260118_000001
+        // MODIFICADO METODO PersistRequestDefaultsFromUi - ID: 20260121_235000
+        // Parse robusto: temperature (coma/punto + InvariantCulture), maxTokens (int>=0 o null si vacío), includeUsage (bool)
         private void PersistRequestDefaultsFromUi()
         {
             if (_isInitializingAdvancedUi) return;
@@ -525,25 +526,107 @@ namespace AgenteIALocalVSIX.ToolWindows
                     streamOptions["includeUsage"] = false;
                 }
 
-                // temperature
-                double temp = 0.2;
+                // temperature - Parse robusto: acepta coma/punto, usa InvariantCulture
+                double? tempValue = null;
                 try
                 {
-                    double parsed;
-                    if (double.TryParse(TemperatureTextBox_Modal.Text, out parsed)) temp = parsed;
+                    var tempText = (TemperatureTextBox_Modal.Text ?? string.Empty).Trim();
+                    if (!string.IsNullOrWhiteSpace(tempText))
+                    {
+                        // Normalizar coma a punto para InvariantCulture
+                        tempText = tempText.Replace(',', '.');
+                        double parsed;
+                        if (double.TryParse(tempText, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out parsed))
+                        {
+                            tempValue = parsed;
+                        }
+                        else
+                        {
+                            // Parse failed - loguear Warning
+                            try
+                            {
+                                AgentComposition.Warning("-", new AgenteIALocal.Core.Logging.LogEventId(9200, "TempParseError"), $"Temperature parse failed: invalid value '{TemperatureTextBox_Modal.Text}'. Keeping previous value.");
+                            }
+                            catch { }
+                        }
+                    }
+                    else
+                    {
+                        // Vacío - usar default 0.2
+                        tempValue = 0.2;
+                    }
                 }
-                catch { }
-                requestDefaults["temperature"] = temp;
+                catch (Exception exTemp)
+                {
+                    try
+                    {
+                        AgentComposition.Warning("-", new AgenteIALocal.Core.Logging.LogEventId(9201, "TempParseException"), $"Temperature parse exception: {exTemp.Message}", exTemp);
+                    }
+                    catch { }
+                    tempValue = 0.2; // fallback
+                }
 
-                // maxTokens
-                int maxTokens = 0;
+                // Solo guardar si el parse fue exitoso
+                if (tempValue.HasValue)
+                {
+                    requestDefaults["temperature"] = tempValue.Value;
+                }
+
+                // maxTokens - Parse robusto: int >= 0, null si vacío
+                int? maxTokensValue = null;
                 try
                 {
-                    int parsed;
-                    if (int.TryParse(MaxTokensTextBox_Modal.Text, out parsed) && parsed >= 0) maxTokens = parsed;
+                    var maxText = (MaxTokensTextBox_Modal.Text ?? string.Empty).Trim();
+                    if (!string.IsNullOrWhiteSpace(maxText))
+                    {
+                        int parsed;
+                        if (int.TryParse(maxText, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out parsed))
+                        {
+                            if (parsed >= 0)
+                            {
+                                maxTokensValue = parsed;
+                            }
+                            else
+                            {
+                                // Negativo - loguear Warning y no guardar
+                                try
+                                {
+                                    AgentComposition.Warning("-", new AgenteIALocal.Core.Logging.LogEventId(9202, "MaxTokensNegative"), $"MaxTokens negative value: {parsed}. Must be >= 0. Keeping previous value.");
+                                }
+                                catch { }
+                            }
+                        }
+                        else
+                        {
+                            // Parse failed - loguear Warning
+                            try
+                            {
+                                AgentComposition.Warning("-", new AgenteIALocal.Core.Logging.LogEventId(9203, "MaxTokensParseError"), $"MaxTokens parse failed: invalid value '{MaxTokensTextBox_Modal.Text}'. Keeping previous value.");
+                            }
+                            catch { }
+                        }
+                    }
+                    else
+                    {
+                        // Vacío - guardar null (sin límite)
+                        maxTokensValue = 0; // 0 = sin límite según convención del backend
+                    }
                 }
-                catch { }
-                requestDefaults["maxTokens"] = maxTokens;
+                catch (Exception exMax)
+                {
+                    try
+                    {
+                        AgentComposition.Warning("-", new AgenteIALocal.Core.Logging.LogEventId(9204, "MaxTokensParseException"), $"MaxTokens parse exception: {exMax.Message}", exMax);
+                    }
+                    catch { }
+                    maxTokensValue = 0; // fallback
+                }
+
+                // Solo guardar si el parse fue exitoso
+                if (maxTokensValue.HasValue)
+                {
+                    requestDefaults["maxTokens"] = maxTokensValue.Value;
+                }
 
                 string provider = null;
                 try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch { }
@@ -1063,7 +1146,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             FireAndForget(HandleBaseUrlTextChangedAsync(), "ConfigModal.BaseUrlTextChanged");
         }
 
-        // NUEVO METODO PersistBaseUrlIfChanged - ID: 20260114_000075
+        // MODIFICADO METODO PersistBaseUrlIfChanged - ID: 20260122_000001
+        // Fix A5: persiste SOLO BaseUrl (sin tocar globalSettings)
         private void PersistBaseUrlIfChanged(string baseUrl)
         {
             if (_isInitializingAdvancedUi) return;
@@ -1092,14 +1176,13 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
 
                 srv.BaseUrl = baseUrl;
-                // Persist only BaseUrl/server related fields here. requestDefaults persistence handled elsewhere
-                // Apply modal globals (provider/runMode/requestDefaults/agent) before final save
-                ApplyModalGlobalsToSettings(settings);
+                // FIX A5: NO llamar ApplyModalGlobalsToSettings aquí - solo persiste BaseUrl
+                // ApplyModalGlobalsToSettings se ejecuta en SaveButton_Click para persistir todos los globals
 
                 settings.ActiveServerId = targetId;
                 AgentSettingsStore.Save(settings);
                 _lastPersistedBaseUrl = baseUrl;
-                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: BaseUrl ping OK, persisted '" + baseUrl + "' for server '" + targetId + "'"); } catch { }
+                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: BaseUrl persisted (live update) '" + baseUrl + "' for server '" + targetId + "'"); } catch { }
             }
             catch (Exception ex)
             {

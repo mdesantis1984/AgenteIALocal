@@ -588,7 +588,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     {
                         try
                         {
-                            FireAndForget(UiAsync(() => ApplyConfigHealthFromModal(ok, models)), "BaseUrlHealthChanged");
+                            FireAndForget(UiAsync(() => ApplyConfigHealthFromModal(ok, baseUrl, models)), "BaseUrlHealthChanged");
                         }
                         catch { }
                     };
@@ -625,6 +625,44 @@ namespace AgenteIALocalVSIX.ToolWindows
                 Clipboard.SetText(txt);
             }
             catch { }
+        }
+
+        // NUEVO METODO ApplyConfigHealthFromModal - ID: 20260121_233600
+        internal void ApplyConfigHealthFromModal(bool isOk, string baseUrl, System.Collections.Generic.IReadOnlyList<string> models)
+        {
+            try
+            {
+                var message = $"baseUrl={baseUrl} models={models?.Count ?? 0}";
+                if (isOk)
+                {
+                    AgentComposition.LoggerV2.Info(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9118, "ConfigHealthOk"), $"ApplyConfigHealthFromModal: OK - {message}");
+                    // Update config status if there are properties for that
+                    try
+                    {
+                        _configStatusLabel = "OK";
+                        _configStatusBrush = Brushes.LimeGreen;
+                        RaisePropertyChanged(nameof(ConfigStatusLabel));
+                        RaisePropertyChanged(nameof(ConfigStatusBrush));
+                    }
+                    catch { }
+                }
+                else
+                {
+                    AgentComposition.LoggerV2.Warning(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9119, "ConfigHealthBad"), $"ApplyConfigHealthFromModal: NOT OK - {message}");
+                    try
+                    {
+                        _configStatusLabel = "ERROR";
+                        _configStatusBrush = Brushes.IndianRed;
+                        RaisePropertyChanged(nameof(ConfigStatusLabel));
+                        RaisePropertyChanged(nameof(ConfigStatusBrush));
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                AgentComposition.LoggerV2.Error(activeCorrelationId ?? "-", new AgenteIALocal.Core.Logging.LogEventId(9120, "ConfigHealthError"), $"ApplyConfigHealthFromModal failed: {ex.Message}", ex);
+            }
         }
     }
 }

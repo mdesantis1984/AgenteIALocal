@@ -324,7 +324,17 @@ namespace AgenteIALocalVSIX
             catch { }
         }
 
-        // ... other levels as needed (Debug, Warning, Critical)
+        // NUEVO METODO Warning - ID: 20260121_233000
+        public static void Warning(string correlationId, LogEventId eventId, string message, Exception ex = null, System.Collections.Generic.IReadOnlyDictionary<string, string> ctx = null, string ns = null, string type = null, string assembly = null, [System.Runtime.CompilerServices.CallerMemberName] string member = "", [System.Runtime.CompilerServices.CallerFilePath] string file = "", [System.Runtime.CompilerServices.CallerLineNumber] int? line = null)
+        {
+            try
+            {
+                LoggerV2.Warning(string.IsNullOrEmpty(correlationId) ? "-" : correlationId, eventId, message, ex, ctx, member, file, line, ns, type, assembly);
+            }
+            catch { }
+        }
+
+        // ... other levels as needed (Debug, Critical)
     }
 
     // Minimal agent service interface local to VSIX project.

@@ -43,7 +43,9 @@ namespace AgenteIALocal.Infrastructure.LoggingV2
                 if (string.IsNullOrEmpty(logFilePath) || entry == null) return;
 
                 var isStreaming = IsStreamingV2(entry.EventId);
-                var isPersistable = entry.Level == LogLevel.Warning || entry.Level == LogLevel.Error || entry.Level == LogLevel.Critical || (isStreaming && entry.Level == LogLevel.Info);
+                var id = entry.EventId.Id;
+                var isStartupInfo = (id >= 9000 && id <= 9099) && entry.Level == LogLevel.Info;
+                var isPersistable = entry.Level == LogLevel.Warning || entry.Level == LogLevel.Error || entry.Level == LogLevel.Critical || isStartupInfo || (isStreaming && entry.Level == LogLevel.Info);
                 if (!isPersistable) return;
 
                 var line = AgenteIALocal.Core.Logging.LogEntryTextFormatter.Format(entry);

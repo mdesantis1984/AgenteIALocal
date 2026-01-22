@@ -394,13 +394,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                         var content = TryGetStringProp(m, "Content");
                         var key = ComputeMessageTokenKey(chat.Id, ts, sender ?? string.Empty, content ?? string.Empty);
 
-                        bool filled = false;
                         lock (_uiStateGate)
                         {
                             if (_uiState != null && _uiState.MessageTokens != null && _uiState.MessageTokens.TryGetValue(key, out var tval))
                             {
                                 TrySetProp(m, "Tokens", tval);
-                                filled = true;
                                 didRepair = true;
                             }
                         }
