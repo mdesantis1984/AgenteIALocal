@@ -1,7 +1,4 @@
-using AgenteIALocal.Core.Logging;
-using AgenteIALocal.Infrastructure.LoggingV2;
 using AgenteIALocalVSIX.Commands;
-using AgenteIALocalVSIX.LoggingV2;
 using Microsoft.VisualStudio.Shell;
 using System;
 using System.Linq; // NUEVO - ID: 20260122_010301 - Para Select() en diagnóstico
@@ -20,7 +17,6 @@ namespace AgenteIALocalVSIX
     {
         public const string PackageGuidString = "12e93cca-8723-4160-ac43-96fe08854111";
 
-        private static int _loggerConfigured;
         private static int _serilogConfigured; // NUEVO CAMPO - ID: 20260122_000300
 
         // NUEVO METODO ConfigureSerilogOnce - ID: 20260122_000301
@@ -31,7 +27,7 @@ namespace AgenteIALocalVSIX
             if (Interlocked.Exchange(ref _serilogConfigured, 1) == 1) return;
 
             // DIAGNÓSTICO: Confirmar entrada al método
-            VsixSafeLog.Info("VSIX.Startup", "[DIAG] ConfigureSerilogOnce: INICIO - empaquetado VSIX verificado", null, 9001);
+            System.Diagnostics.Trace.TraceInformation("[VSIX.Startup] ConfigureSerilogOnce: INICIO - empaquetado VSIX verificado");
 
             try
             {
@@ -41,7 +37,7 @@ namespace AgenteIALocalVSIX
                     Enabled = true,
                     All = false, // niveles individuales
                     Verbose = false,
-                    Debug = false,
+                    Debug = true, // HABILITADO para debugging SaveButton - ID: 20260122_030200
                     Information = true,
                     Warning = true,
                     Error = true,
@@ -51,69 +47,54 @@ namespace AgenteIALocalVSIX
                 };
 
                 // DIAGNÓSTICO: Confirmar antes de Configure()
-                VsixSafeLog.Info("VSIX.Startup", "[DIAG] ConfigureSerilogOnce: Llamando AgenteIALocal.Logging.Log.Configure()...", null, 9002);
+                System.Diagnostics.Trace.TraceInformation("[VSIX.Startup] ConfigureSerilogOnce: Llamando AgenteIALocal.Logging.Log.Configure()...");
 
                 AgenteIALocal.Logging.Log.Configure(settings);
                 
                 // DIAGNÓSTICO: Confirmar éxito Configure()
-                VsixSafeLog.Info("VSIX.Startup", "[DIAG] ConfigureSerilogOnce: Configure() exitoso - intentando primer log Serilog...", null, 9003);
+                System.Diagnostics.Trace.TraceInformation("[VSIX.Startup] ConfigureSerilogOnce: Configure() exitoso - intentando primer log Serilog...");
 
                 // Log inicial usando nuevo API Serilog
                 AgenteIALocal.Logging.Log.Information("-", 9000, "VSIX.Startup", "Serilog configured successfully", null);
 
                 // DIAGNÓSTICO: Confirmar éxito completo
-                VsixSafeLog.Info("VSIX.Startup", "[DIAG] ConfigureSerilogOnce: SUCCESS - Serilog.Information() ejecutado sin excepciones", null, 9004);
+                System.Diagnostics.Trace.TraceInformation("[VSIX.Startup] ConfigureSerilogOnce: SUCCESS - Serilog.Information() ejecutado sin excepciones");
             }
             catch (System.IO.FileNotFoundException fnfEx)
             {
-                VsixSafeLog.Error("VSIX.Startup", $"[DIAG] ConfigureSerilogOnce: FileNotFoundException - Assembly: {fnfEx.FileName}, Message: {fnfEx.Message}", fnfEx, 9010);
+                System.Diagnostics.Trace.TraceError($"[VSIX.Startup] ConfigureSerilogOnce: FileNotFoundException - Assembly: {fnfEx.FileName}, Message: {fnfEx.Message}");
             }
             catch (TypeLoadException tlEx)
             {
-                VsixSafeLog.Error("VSIX.Startup", $"[DIAG] ConfigureSerilogOnce: TypeLoadException - Type: {tlEx.TypeName}, Message: {tlEx.Message}", tlEx, 9011);
+                System.Diagnostics.Trace.TraceError($"[VSIX.Startup] ConfigureSerilogOnce: TypeLoadException - Type: {tlEx.TypeName}, Message: {tlEx.Message}");
             }
             catch (System.Reflection.ReflectionTypeLoadException rtlEx)
             {
                 var details = string.Join("; ", rtlEx.LoaderExceptions?.Select(e => e?.Message ?? "null") ?? new[] { "no loader exceptions" });
-                VsixSafeLog.Error("VSIX.Startup", $"[DIAG] ConfigureSerilogOnce: ReflectionTypeLoadException - LoaderExceptions: {details}", rtlEx, 9012);
+                System.Diagnostics.Trace.TraceError($"[VSIX.Startup] ConfigureSerilogOnce: ReflectionTypeLoadException - LoaderExceptions: {details}");
             }
             catch (Exception ex)
             {
                 var innerMsg = ex.InnerException != null ? $" | Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}" : "";
-                VsixSafeLog.Error("VSIX.Startup", $"[DIAG] ConfigureSerilogOnce: {ex.GetType().Name} - {ex.Message}{innerMsg}", ex, 9013);
+                System.Diagnostics.Trace.TraceError($"[VSIX.Startup] ConfigureSerilogOnce: {ex.GetType().Name} - {ex.Message}{innerMsg}");
             }
         }
 
-        // Startup logging MUST never break package load.
-        private static void ConfigureLoggerV2Once()
+        // ELIMINADO METODO ConfigureLoggerV2Once - ID: 20260122_195500
+        // Reemplazado completamente por Serilog (ConfigureSerilogOnce)
+        // AssemblyResolve handler movido a ConfigureSerilogOnce
+        
+        // NUEVO METODO RegisterAssemblyResolveHandler - ID: 20260122_195501
+        // Separado para claridad: handler AssemblyResolve + global exception handlers
+        private static void RegisterAssemblyResolveHandler()
         {
-            if (Interlocked.Exchange(ref _loggerConfigured, 1) == 1) return;
-
-            try
-            {
-                var sinks = new CompositeLogSink(new ILogSink[]
-                {
-                    new VsActivityLogSink(),
-                    new VsixFileLogSink("AgenteIALocal")
-                });
-
-                AgentComposition.LoggerV2 = new AgentLoggerV2(sinks);
-                VsixSafeLog.Info("VSIX.Startup", "LoggerV2 pipeline configured.", null, 9000);
-            }
-            catch (Exception ex)
-            {
-                try { AgentComposition.LoggerV2 = new AgentLoggerV2(new NullLogSink()); } catch { }
-                VsixSafeLog.Error("VSIX.Startup", "Failed to configure LoggerV2 pipeline.", ex, 9000);
-            }
-
-            // NUEVO - ID: 20260122_010600 - AssemblyResolve handler para Serilog dependencies
+            // AssemblyResolve handler para Serilog dependencies
             // VSIX context: netstandard2.0 assemblies (AgenteIALocal.Logging.dll) no pueden resolver
             // sus dependencies (Serilog*.dll) automáticamente en .NET Framework 4.7.2 host.
-            // Este handler intercepta cargas fallidas y apunta a VSIX extension folder.
             try
             {
                 var extensionFolder = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-                VsixSafeLog.Info("VSIX.Startup", $"[DIAG] AssemblyResolve: Extension folder = {extensionFolder}", null, 9007);
+                System.Diagnostics.Trace.TraceInformation($"[VSIX.Startup] AssemblyResolve: Extension folder = {extensionFolder}");
 
                 AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
                 {
@@ -125,101 +106,95 @@ namespace AgenteIALocalVSIX
                         if (!assemblyName.Name.StartsWith("Serilog", StringComparison.OrdinalIgnoreCase))
                             return null;
 
-                        VsixSafeLog.Info("VSIX.Startup", $"[DIAG] AssemblyResolve: Intercepted {assemblyName.Name}, Version={assemblyName.Version}", null, 9008);
+                        System.Diagnostics.Trace.TraceInformation($"[VSIX.Startup] AssemblyResolve: Intercepted {assemblyName.Name}, Version={assemblyName.Version}");
 
                         var dllPath = System.IO.Path.Combine(extensionFolder, assemblyName.Name + ".dll");
                         
                         if (System.IO.File.Exists(dllPath))
                         {
-                            VsixSafeLog.Info("VSIX.Startup", $"[DIAG] AssemblyResolve: Loading from {dllPath}", null, 9009);
+                            System.Diagnostics.Trace.TraceInformation($"[VSIX.Startup] AssemblyResolve: Loading from {dllPath}");
                             var loadedAssembly = System.Reflection.Assembly.LoadFrom(dllPath);
-                            VsixSafeLog.Info("VSIX.Startup", $"[DIAG] AssemblyResolve: SUCCESS loaded {loadedAssembly.FullName}", null, 9010);
+                            System.Diagnostics.Trace.TraceInformation($"[VSIX.Startup] AssemblyResolve: SUCCESS loaded {loadedAssembly.FullName}");
                             return loadedAssembly;
                         }
                         else
                         {
-                            VsixSafeLog.Warning("VSIX.Startup", $"[DIAG] AssemblyResolve: NOT FOUND {dllPath}", null, 9011);
+                            System.Diagnostics.Trace.TraceWarning($"[VSIX.Startup] AssemblyResolve: NOT FOUND {dllPath}");
                             return null;
                         }
                     }
                     catch (Exception resolveEx)
                     {
-                        VsixSafeLog.Error("VSIX.Startup", $"[DIAG] AssemblyResolve: Exception resolving {args.Name}", resolveEx, 9012);
+                        System.Diagnostics.Trace.TraceError($"[VSIX.Startup] AssemblyResolve: Exception resolving {args.Name} - {resolveEx.Message}");
                         return null;
                     }
                 };
 
-                VsixSafeLog.Info("VSIX.Startup", "[DIAG] AssemblyResolve: Handler registered successfully", null, 9013);
+                System.Diagnostics.Trace.TraceInformation("[VSIX.Startup] AssemblyResolve: Handler registered successfully");
             }
             catch (Exception resolveSetupEx)
             {
-                VsixSafeLog.Error("VSIX.Startup", "Failed to register AssemblyResolve handler.", resolveSetupEx, 9014);
+                System.Diagnostics.Trace.TraceError($"[VSIX.Startup] Failed to register AssemblyResolve handler: {resolveSetupEx.Message}");
             }
 
+            // Global exception handlers
             try
             {
                 AppDomain.CurrentDomain.UnhandledException += (s, e) =>
                 {
                     try
                     {
-                        // This event is raised in a variety of teardown scenarios.
-                        // Logging MUST be best-effort and MUST NEVER throw.
                         var ex = e.ExceptionObject as Exception;
-                        VsixSafeLog.Error("VSIX.Unhandled", "Unhandled exception", ex, 9000);
+                        System.Diagnostics.Trace.TraceError($"[VSIX.Unhandled] Unhandled exception: {ex?.Message}");
+                        AgenteIALocal.Logging.Log.Critical("-", 9999, "VSIX.Unhandled", "Unhandled AppDomain exception", ex);
                     }
-                    catch { }
+                    catch (Exception exTop) { System.Diagnostics.Trace.TraceWarning("UnhandledException handler failed: " + exTop.Message); }
                 };
 
                 TaskScheduler.UnobservedTaskException += (s, e) =>
                 {
                     try
                     {
-                        // Raised on the finalizer thread; VS services may already be torn down.
-                        // Always mark as observed and log via the always-safe path.
-                        try { e.SetObserved(); } catch { }
-                        VsixSafeLog.Error("VSIX.UnobservedTask", "Unobserved task exception", e.Exception, 9000);
+                        try { e.SetObserved(); } catch (Exception exObserve) { System.Diagnostics.Trace.TraceWarning("SetObserved failed: " + exObserve.Message); }
+                        System.Diagnostics.Trace.TraceError($"[VSIX.UnobservedTask] Unobserved task exception: {e.Exception?.Message}");
+                        AgenteIALocal.Logging.Log.Critical("-", 9999, "VSIX.UnobservedTask", "Unobserved task exception", e.Exception);
                     }
-                    catch { }
+                    catch (Exception exTop) { System.Diagnostics.Trace.TraceWarning("UnobservedTaskException handler failed: " + exTop.Message); }
                 };
             }
             catch (Exception ex)
             {
-                VsixSafeLog.Error("VSIX.Startup", "Failed to hook global exception handlers.", ex, 9000);
+                System.Diagnostics.Trace.TraceError($"[VSIX.Startup] Failed to hook global exception handlers: {ex.Message}");
             }
         }
 
 
-        // MODIFICADO - ID: 20260122_010500 - Reordenado según best practice VSIX + Serilog
-        // Best practice: Inicializar logging ANTES de SwitchToMainThreadAsync para capturar logs desde inicio
-        // Serilog NO requiere UI thread - puede configurarse en background thread
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
-            // PASO 1: Configurar logging PRIMERO (background thread OK)
-            ConfigureLoggerV2Once(); // Legacy fallback
-            ConfigureSerilogOnce(); // Serilog pipeline
+            // PASO 1: Registrar AssemblyResolve PRIMERO (antes de cargar Serilog)
+            RegisterAssemblyResolveHandler();
+            
+            // PASO 2: Configurar Serilog (único sistema de logging)
+            ConfigureSerilogOnce();
 
-            // PASO 2: Log diagnóstico ANTES de switch to main thread
-            VsixSafeLog.Info("VSIX.Startup", "[DIAG] InitializeAsync: Logging ready, switching to main thread...", null, 9005);
+            // PASO 3: Log diagnóstico ANTES de switch to main thread
             AgenteIALocal.Logging.Log.Information("-", 9005, "VSIX.Startup", "InitializeAsync: Logging ready, switching to main thread", null);
 
-            // PASO 3: Switch to main thread (CON logging ya disponible)
+            // PASO 4: Switch to main thread (CON logging ya disponible)
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
-            // PASO 4: Log diagnóstico DESPUÉS de switch to main thread
-            VsixSafeLog.Info("VSIX.Startup", "[DIAG] InitializeAsync: On main thread now", null, 9006);
+            // PASO 5: Log diagnóstico DESPUÉS de switch to main thread
             AgenteIALocal.Logging.Log.Information("-", 9006, "VSIX.Startup", "InitializeAsync: On main thread now", null);
 
-            // PASO 5: Resto de inicialización
+            // PASO 6: Resto de inicialización
             try
             {
                 AgentComposition.EnsureComposition();
-                // MODIFICADO - ID: 20260122_010800 - Migrado de AgentComposition.Info → Serilog
                 AgenteIALocal.Logging.Log.Information("-", 9000, "VSIX.Startup", "VSIX initialized", null);
             }
             catch (Exception ex)
             {
-                VsixSafeLog.Error("VSIX.Startup", "InitializeAsync failed.", ex, 9000);
-                // MODIFICADO - ID: 20260122_010800 - Agregado log Serilog en catch
+                System.Diagnostics.Trace.TraceError($"[VSIX.Startup] InitializeAsync failed: {ex.Message}");
                 AgenteIALocal.Logging.Log.Error("-", 9000, "VSIX.Startup", "InitializeAsync failed", ex);
             }
 

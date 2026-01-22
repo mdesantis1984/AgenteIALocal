@@ -23,14 +23,14 @@ namespace AgenteIALocalVSIX.Commands
             var menuItem = new MenuCommand(this.Execute, menuCommandID);
             commandService.AddCommand(menuItem);
 
-            try { AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Init", "OleMenuCommand registered", null); } catch { }
+            AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Init", "OleMenuCommand registered", null);
         }
 
         public static OpenAgenteIALocalCommand Instance { get; private set; }
 
         public static async Task InitializeAsync(AsyncPackage package)
         {
-            try { AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Init", "InitializeAsync start", null); } catch { }
+            AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Init", "InitializeAsync start", null);
 
             if (package == null) throw new ArgumentNullException(nameof(package));
 
@@ -41,7 +41,7 @@ namespace AgenteIALocalVSIX.Commands
 
             if (commandService == null)
             {
-                try { AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Init", "OleMenuCommandService is null", null); } catch { }
+                AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Init", "OleMenuCommandService is null", null);
                 return;
             }
 
@@ -54,11 +54,7 @@ namespace AgenteIALocalVSIX.Commands
 
             try
             {
-                try
-                {
-                    AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "OpenAgenteIALocal invoked", null);
-                }
-                catch { }
+                AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "OpenAgenteIALocal invoked", null);
 
                 ThreadHelper.ThrowIfNotOnUIThread();
 
@@ -66,12 +62,7 @@ namespace AgenteIALocalVSIX.Commands
                 var uiShell = sp?.GetService(typeof(SVsUIShell)) as IVsUIShell;
                 if (uiShell == null)
                 {
-                    try
-                    {
-                        AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "IVsUIShell service not available", null);
-                    }
-                    catch { }
-
+                    AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "IVsUIShell service not available", null);
                     return;
                 }
 
@@ -80,20 +71,11 @@ namespace AgenteIALocalVSIX.Commands
 
                 int hrFind = uiShell.FindToolWindow((uint)__VSFINDTOOLWIN.FTW_fForceCreate, ref persistenceGuid, out frame);
 
-                try
-                {
-                    AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "FindToolWindow HR=0x" + hrFind.ToString("X"), null);
-                }
-                catch { }
+                AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "FindToolWindow HR=0x" + hrFind.ToString("X"), null);
 
                 if (frame == null)
                 {
-                    try
-                    {
-                        AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "ToolWindow frame is null after FindToolWindow", null);
-                    }
-                    catch { }
-
+                    AgenteIALocal.Logging.Log.Information("-", 9200, "Command.Execute", "ToolWindow frame is null after FindToolWindow", null);
                     return;
                 }
 

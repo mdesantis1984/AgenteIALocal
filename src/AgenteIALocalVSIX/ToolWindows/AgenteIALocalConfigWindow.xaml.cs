@@ -40,10 +40,10 @@ namespace AgenteIALocalVSIX.ToolWindows
         public AgenteIALocalConfigWindow(string serverId = null)
         {
             InitializeComponent();
-            try { HeaderDragArea.MouseLeftButtonDown += HeaderDragArea_MouseLeftButtonDown; } catch { }
+            try { HeaderDragArea.MouseLeftButtonDown += HeaderDragArea_MouseLeftButtonDown; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Ctor", "HeaderDragArea wire failed: " + ex.Message, ex); }
             Loaded += AgenteIALocalConfigWindow_Loaded;
             // Subscribe to settings saved notifications to refresh modal when settings change elsewhere
-            try { AgentSettingsStore.SettingsSaved += OnSettingsSaved; } catch { }
+            try { AgentSettingsStore.SettingsSaved += OnSettingsSaved; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Ctor", "SettingsSaved subscribe failed: " + ex.Message, ex); }
             initialServerId = serverId ?? string.Empty;
             if (!string.IsNullOrEmpty(serverId))
             {
@@ -56,10 +56,10 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 var version = typeof(AgenteIALocalVSIXPackage).GetVsixVersionString();
                 var caption = $"Chat de Agente IA Local {version} - Configuracion";
-                try { this.Title = caption; } catch { }
-                try { HeaderTitleText.Text = caption; } catch { }
+                try { this.Title = caption; } catch (Exception exTitle) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Ctor", "Title set failed: " + exTitle.Message, exTitle); }
+                try { HeaderTitleText.Text = caption; } catch (Exception exHeader) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Ctor", "HeaderTitleText set failed: " + exHeader.Message, exHeader); }
             }
-            catch { }
+            catch (Exception exVer) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Ctor", "Version caption failed: " + exVer.Message, exVer); }
 
             // NUEVO: view switching is handled by XAML DataTriggers; no code-behind wiring required - ID: 20260116_094500
         }
@@ -75,13 +75,13 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 if (e.ChangedButton != MouseButton.Left) return;
                 // MODIFICADO - ID: 20260122_010900 - Migrado a Serilog
-                try { AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.DragMove", "DragMove start", null); } catch { }
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.DragMove", "DragMove start", null);
                 DragMove();
             }
             catch (Exception ex)
             {
                 // MODIFICADO - ID: 20260122_010900 - Migrado a Serilog
-                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.DragMove", "DragMove failed: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.DragMove", "DragMove failed: " + ex.Message, ex);
             }
         }
 
@@ -110,15 +110,18 @@ namespace AgenteIALocalVSIX.ToolWindows
                             ApplyServerToUi(targetId ?? string.Empty, srv);
                             LoadAdvancedControls(settings, srv);
                         }
-                        catch { }
+                        catch (Exception exRefresh)
+                        {
+                            AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.SettingsSaved", "RefreshFromSettings failed: " + exRefresh.Message, exRefresh);
+                        }
                         finally { _isInitializingAdvancedUi = false; }
                     });
 
                     _ = jt.Task.ContinueWith(t => { var _e = t.Exception; }, System.Threading.CancellationToken.None, System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted, System.Threading.Tasks.TaskScheduler.Default);
                 }
-                catch { }
+                catch (Exception exJt) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.SettingsSaved", "JoinableTask failed: " + exJt.Message, exJt); }
             }
-            catch { }
+            catch (Exception exOuter) { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.SettingsSaved", "OnSettingsSaved failed: " + exOuter.Message, exOuter); }
         }
 
         // NUEVO METODO NavToggle_Checked - ID: 20260116_112500
@@ -135,14 +138,17 @@ namespace AgenteIALocalVSIX.ToolWindows
                 // If Idioma was checked, uncheck LLM
                 if (tb == NavIdiomaToggle)
                 {
-                    try { NavLlmToggle.IsChecked = false; } catch { }
+                    try { NavLlmToggle.IsChecked = false; } catch (Exception exLlm) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.NavToggle", "NavLlmToggle uncheck failed: " + exLlm.Message, exLlm); }
                 }
                 else if (tb == NavLlmToggle)
                 {
-                    try { NavIdiomaToggle.IsChecked = false; } catch { }
+                    try { NavIdiomaToggle.IsChecked = false; } catch (Exception exIdioma) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.NavToggle", "NavIdiomaToggle uncheck failed: " + exIdioma.Message, exIdioma); }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.NavToggle", "NavToggle_Checked failed: " + ex.Message, ex);
+            }
             finally { _suppressNavToggleChecked_20260116 = false; }
         }
 
@@ -153,18 +159,18 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             var provider = (activeServer != null ? activeServer.Provider : string.Empty).ToLowerInvariant();
             // Use TrySelectComboByText to avoid creating new items and to select the existing item
-            try { TrySelectComboByText(ProviderCombo_Modal, provider == "jan" ? "JAN" : "LM Studio"); } catch { }
+            try { TrySelectComboByText(ProviderCombo_Modal, provider == "jan" ? "JAN" : "LM Studio"); } catch (Exception exProv) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "ProviderCombo select failed: " + exProv.Message, exProv); }
 
             var runMode = settings.GlobalSettings != null ? settings.GlobalSettings.Value<string>("runMode") : null;
             if (string.IsNullOrEmpty(runMode)) runMode = "preguntar";
-            try { TrySelectComboByText(RunModeCombo_Modal, string.Equals(runMode, "agente", StringComparison.OrdinalIgnoreCase) ? "Agente" : "Preguntar"); } catch { }
+            try { TrySelectComboByText(RunModeCombo_Modal, string.Equals(runMode, "agente", StringComparison.OrdinalIgnoreCase) ? "Agente" : "Preguntar"); } catch (Exception exMode) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "RunModeCombo select failed: " + exMode.Message, exMode); }
 
             var requestDefaults = settings.GlobalSettings != null ? settings.GlobalSettings["requestDefaults"] as JObject : null;
             if (requestDefaults == null) requestDefaults = new JObject();
             // MODIFICADO METODO LoadAdvancedControls - ID: 20260117_124200
             // Force Stream as the only option in UI: checked + disabled
             var streamValue = requestDefaults.Value<bool?>("stream") ?? true;
-            try { StreamToggle_Modal.IsChecked = true; StreamToggle_Modal.IsEnabled = false; } catch { }
+            try { StreamToggle_Modal.IsChecked = true; StreamToggle_Modal.IsEnabled = false; } catch (Exception exStream) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "StreamToggle init failed: " + exStream.Message, exStream); }
 
             var streamOptions = requestDefaults["streamOptions"] as JObject;
             var includeUsage = streamOptions != null ? streamOptions.Value<bool?>("includeUsage") ?? false : false;
@@ -177,14 +183,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var temp = requestDefaults.Value<double?>("temperature") ?? 0.2;
                 TemperatureTextBox_Modal.Text = temp.ToString("G");
             }
-            catch { TemperatureTextBox_Modal.Text = "0.2"; }
+            catch (Exception exTemp) { TemperatureTextBox_Modal.Text = "0.2"; AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "Temperature load failed: " + exTemp.Message, exTemp); }
 
             try
             {
                 var mt = requestDefaults.Value<int?>("maxTokens") ?? 0;
                 MaxTokensTextBox_Modal.Text = mt.ToString();
             }
-            catch { MaxTokensTextBox_Modal.Text = "0"; }
+            catch (Exception exMax) { MaxTokensTextBox_Modal.Text = "0"; AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "MaxTokens load failed: " + exMax.Message, exMax); }
 
             var agent = settings.GlobalSettings != null ? settings.GlobalSettings["agent"] as JObject : null;
             if (agent == null) agent = new JObject();
@@ -195,6 +201,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         }
 
         // NUEVO METODO WireAdvancedHandlersOnce - ID: 20250304_170002
+        // MODIFICADO - ID: 20260122_040100 - Agregado logging en catch (pauta obligatoria)
         private void WireAdvancedHandlersOnce()
         {
             try
@@ -241,7 +248,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                 AgentMaxStepsTextBox_Modal.TextChanged += AgentMaxStepsTextBox_Modal_TextChanged;
                 AgentMaxStepsTextBox_Modal.LostFocus += AgentMaxStepsTextBox_Modal_LostFocus;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.WireHandlers", "WireAdvancedHandlersOnce failed: " + ex.Message, ex);
+            }
         }
 
         // NUEVO METODO TrySelectComboByText - ID: 20260116_180500
@@ -259,11 +269,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                         var cbi = item as ComboBoxItem;
                         if (cbi != null)
                         {
-                            try { s = cbi.Content?.ToString(); } catch { s = null; }
+                            try { s = cbi.Content?.ToString(); } catch (Exception exContent) { s = null; AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.TrySelect", "ComboBoxItem.Content failed: " + exContent.Message, exContent); }
                         }
                         if (string.IsNullOrEmpty(s))
                         {
-                            try { s = item?.ToString(); } catch { s = null; }
+                            try { s = item?.ToString(); } catch (Exception exToString) { s = null; AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.TrySelect", "item.ToString() failed: " + exToString.Message, exToString); }
                         }
                         if (string.IsNullOrEmpty(s)) continue;
                         if (string.Equals(s, text, StringComparison.OrdinalIgnoreCase))
@@ -272,10 +282,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                             return true;
                         }
                     }
-                    catch { }
+                    catch (Exception exItem) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.TrySelect", "Item processing failed: " + exItem.Message, exItem); }
                 }
             }
-            catch { }
+            catch (Exception exLoop) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.TrySelect", "Foreach loop failed: " + exLoop.Message, exLoop); }
             return false;
         }
 
@@ -297,7 +307,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (s == "jan" || s.StartsWith("jan")) return "jan";
                 return string.Empty;
             }
-            catch { return string.Empty; }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.NormalizeProvider", "NormalizeProviderId failed: " + ex.Message, ex); return string.Empty; }
         }
 
         // MODIFICADO METODO ProviderCombo_Modal_SelectionChanged - ID: 20260117_234000
@@ -335,17 +345,23 @@ namespace AgenteIALocalVSIX.ToolWindows
                         IncludeUsageToggle_Modal.IsChecked = false;
                     }
                 }
-                catch { }
+                catch (Exception exToggle)
+                {
+                    AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Provider", "IncludeUsageToggle update failed: " + exToggle.Message, exToggle);
+                }
 
                 try
                 {
                     ServerBaseUrlTextBox_Modal_TextChanged(ServerBaseUrlTextBox_Modal, new TextChangedEventArgs(TextBox.TextChangedEvent, UndoAction.None));
                 }
-                catch { }
+                catch (Exception exBaseUrl)
+                {
+                    AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Provider", "ServerBaseUrlTextBox_Modal_TextChanged trigger failed: " + exBaseUrl.Message, exBaseUrl);
+                }
             }
             catch (Exception ex)
             {
-                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Provider", "Provider change error: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Provider", "Provider change error: " + ex.Message, ex);
             }
         }
 
@@ -362,13 +378,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var before = (settings.GlobalSettings as JObject)?.DeepClone() as JObject ?? new JObject();
                 settings.GlobalSettings["runMode"] = runMode;
                 string provider = null;
-                try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch { }
-                AgentSettingsStore.Save(settings);
-                try { AgentComposition.LogGlobalSettingsPersistence("RunModeCombo_Modal_SelectionChanged", before, settings.GlobalSettings, provider); } catch { }
+                try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch (Exception exFind) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.RunMode", "Provider lookup failed: " + exFind.Message, exFind); }
+                // DESHABILITADO live update - ID: 20260122_030100 - Solo SaveButton persiste
+                // AgentSettingsStore.Save(settings);
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.RunMode", $"RunMode UI changed to {runMode} (NOT saved yet - waiting for Save button)", null);
             }
             catch (Exception ex)
             {
-                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.RunMode", "RunMode change error: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.RunMode", "RunMode change error: " + ex.Message, ex);
             }
         }
 
@@ -387,13 +404,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                 requestDefaults["stream"] = true;
                 // provider for tracing
                 string provider = null;
-                try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch { }
-                AgentSettingsStore.Save(settings);
-                try { AgentComposition.LogGlobalSettingsPersistence("StreamToggle_Modal_Checked", before, settings.GlobalSettings, provider); } catch { }
+                try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch (Exception exFind) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.Stream", "Provider lookup failed: " + exFind.Message, exFind); }
+                // DESHABILITADO live update - ID: 20260122_030100 - Solo SaveButton persiste
+                // AgentSettingsStore.Save(settings);
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Stream", "Stream toggle changed (NOT saved yet - waiting for Save button)", null);
             }
             catch (Exception ex)
             {
-                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Stream", "Stream toggle error: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Stream", "Stream toggle error: " + ex.Message, ex);
             }
         }
 
@@ -409,7 +427,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.IncludeUsage", "IncludeUsage toggle error: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.IncludeUsage", "IncludeUsage toggle error: " + ex.Message, ex);
             }
         }
 
@@ -423,7 +441,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Agent IDE toggle error: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigWindow", "ConfigModal: Agent IDE toggle error: " + ex.Message, ex);
             }
         }
 
@@ -437,7 +455,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.AgentApplyChanges", "Agent ApplyChanges toggle error: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.AgentApplyChanges", "Agent ApplyChanges toggle error: " + ex.Message, ex);
             }
         }
 
@@ -449,11 +467,12 @@ namespace AgenteIALocalVSIX.ToolWindows
             var before = (settings.GlobalSettings as JObject)?.DeepClone() as JObject ?? new JObject();
             var agent = settings.GlobalSettings["agent"] as JObject ?? new JObject();
             settings.GlobalSettings["agent"] = agent;
-            agent[key] = value;
-            string provider = null;
-            try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch { }
-            AgentSettingsStore.Save(settings);
-            try { AgentComposition.LogGlobalSettingsPersistence($"PersistAgentFlag:{key}", before, settings.GlobalSettings, provider); } catch { }
+                agent[key] = value;
+                string provider = null;
+                try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch (Exception exFind) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.Agent", "Provider lookup failed: " + exFind.Message, exFind); }
+                // DESHABILITADO live update - ID: 20260122_030100 - Solo SaveButton persiste
+                // AgentSettingsStore.Save(settings);
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Agent", $"Agent.{key}={value} UI changed - NOT saved yet", null);
         }
 
         // NUEVO METODO AgentMaxStepsTextBox_Modal_TextChanged - ID: 20250304_170010
@@ -467,7 +486,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.MaxSteps", "MaxSteps change error: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.MaxSteps", "MaxSteps change error: " + ex.Message, ex);
             }
         }
 
@@ -479,7 +498,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var value = ParseMaxSteps(AgentMaxStepsTextBox_Modal.Text);
                 AgentMaxStepsTextBox_Modal.Text = value.ToString();
             }
-            catch { }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.MaxSteps", "MaxSteps LostFocus failed: " + ex.Message, ex); }
         }
 
         // NUEVO METODO PersistAgentMaxSteps - ID: 20250304_170012
@@ -490,11 +509,12 @@ namespace AgenteIALocalVSIX.ToolWindows
             var before = (settings.GlobalSettings as JObject)?.DeepClone() as JObject ?? new JObject();
             var agent = settings.GlobalSettings["agent"] as JObject ?? new JObject();
             settings.GlobalSettings["agent"] = agent;
-            agent["maxSteps"] = value;
-            string provider = null;
-            try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch { }
-            AgentSettingsStore.Save(settings);
-            try { AgentComposition.LogGlobalSettingsPersistence("PersistAgentMaxSteps", before, settings.GlobalSettings, provider); } catch { }
+                agent["maxSteps"] = value;
+                string provider = null;
+                try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch (Exception exFind) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.Agent", "Provider lookup failed: " + exFind.Message, exFind); }
+                // DESHABILITADO live update - ID: 20260122_030100 - Solo SaveButton persiste
+                // AgentSettingsStore.Save(settings);
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Agent", $"Agent.maxSteps={value} UI changed - NOT saved yet", null);
         }
 
         // MODIFICADO METODO PersistRequestDefaultsFromUi - ID: 20260121_235000
@@ -545,11 +565,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         else
                         {
                             // Parse failed - loguear Warning
-                            try
-                            {
-                                AgenteIALocal.Logging.Log.Warning("-", 9200, "ConfigModal.Parse", $"Temperature parse failed: invalid value '{TemperatureTextBox_Modal.Text}'. Keeping previous value.", null);
-                            }
-                            catch { }
+                            AgenteIALocal.Logging.Log.Warning("-", 9200, "ConfigModal.Parse", $"Temperature parse failed: invalid value '{TemperatureTextBox_Modal.Text}'. Keeping previous value.", null);
                         }
                     }
                     else
@@ -560,11 +576,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 catch (Exception exTemp)
                 {
-                    try
-                    {
-                        AgenteIALocal.Logging.Log.Warning("-", 9201, "ConfigModal.Parse", $"Temperature parse exception: {exTemp.Message}", exTemp);
-                    }
-                    catch { }
+                    AgenteIALocal.Logging.Log.Warning("-", 9201, "ConfigModal.Parse", $"Temperature parse exception: {exTemp.Message}", exTemp);
                     tempValue = 0.2; // fallback
                 }
 
@@ -591,21 +603,13 @@ namespace AgenteIALocalVSIX.ToolWindows
                             else
                             {
                                 // Negativo - loguear Warning y no guardar
-                                try
-                                {
-                                    AgenteIALocal.Logging.Log.Warning("-", 9202, "ConfigModal.Parse", $"MaxTokens negative value: {parsed}. Must be >= 0. Keeping previous value.", null);
-                                }
-                                catch { }
+                                AgenteIALocal.Logging.Log.Warning("-", 9202, "ConfigModal.Parse", $"MaxTokens negative value: {parsed}. Must be >= 0. Keeping previous value.", null);
                             }
                         }
                         else
                         {
                             // Parse failed - loguear Warning
-                            try
-                            {
-                                AgenteIALocal.Logging.Log.Warning("-", 9203, "ConfigModal.Parse", $"MaxTokens parse failed: invalid value '{MaxTokensTextBox_Modal.Text}'. Keeping previous value.", null);
-                            }
-                            catch { }
+                            AgenteIALocal.Logging.Log.Warning("-", 9203, "ConfigModal.Parse", $"MaxTokens parse failed: invalid value '{MaxTokensTextBox_Modal.Text}'. Keeping previous value.", null);
                         }
                     }
                     else
@@ -616,11 +620,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 catch (Exception exMax)
                 {
-                    try
-                    {
-                        AgenteIALocal.Logging.Log.Warning("-", 9204, "ConfigModal.Parse", $"MaxTokens parse exception: {exMax.Message}", exMax);
-                    }
-                    catch { }
+                    AgenteIALocal.Logging.Log.Warning("-", 9204, "ConfigModal.Parse", $"MaxTokens parse exception: {exMax.Message}", exMax);
                     maxTokensValue = 0; // fallback
                 }
 
@@ -631,13 +631,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
 
                 string provider = null;
-                try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch { }
-                AgentSettingsStore.Save(settings);
-                try { AgentComposition.LogGlobalSettingsPersistence("PersistRequestDefaultsFromUi", before, settings.GlobalSettings, provider); } catch { }
+                try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch (Exception exFind) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.RequestDefaults", "Provider lookup failed: " + exFind.Message, exFind); }
+                // DESHABILITADO live update - ID: 20260122_030100 - Solo SaveButton persiste
+                // AgentSettingsStore.Save(settings);
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.RequestDefaults", $"RequestDefaults UI changed (temp={requestDefaults["temperature"]}, max={requestDefaults["maxTokens"]}) - NOT saved yet", null);
             }
             catch (Exception ex)
             {
-                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Persist", "PersistRequestDefaultsFromUi error: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Persist", "PersistRequestDefaultsFromUi error: " + ex.Message, ex);
             }
         }
 
@@ -694,16 +695,10 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             _ = task.ContinueWith(t =>
             {
-                try
+                var ex = t.Exception != null ? t.Exception.GetBaseException() : null;
+                if (ex != null)
                 {
-                    var ex = t.Exception != null ? t.Exception.GetBaseException() : null;
-                    if (ex != null)
-                    {
-                        AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.FireAndForget", op + " failed: " + ex.Message, ex);
-                    }
-                }
-                catch
-                {
+                    AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.FireAndForget", op + " failed: " + ex.Message, ex);
                 }
             }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
         }
@@ -737,7 +732,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         ServerBaseUrlTextBox_Modal.LostFocus -= ServerBaseUrl_LostFocus;
                         ServerBaseUrlTextBox_Modal.LostFocus += ServerBaseUrl_LostFocus;
                     }
-                    catch { }
+                    catch (Exception exWire) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Loaded", "ServerBaseUrl LostFocus wire failed: " + exWire.Message, exWire); }
                 }
                 finally
                 {
@@ -749,12 +744,12 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var baseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
                 if (!string.IsNullOrWhiteSpace(baseUrl))
                 {
-                    try { FireAndForget(HandleBaseUrlTextChangedAsync(), "ConfigModal.BaseUrlTextChanged.OnLoaded"); } catch { }
+                    try { FireAndForget(HandleBaseUrlTextChangedAsync(), "ConfigModal.BaseUrlTextChanged.OnLoaded"); } catch (Exception exFire) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Loaded", "FireAndForget BaseUrlTextChanged failed: " + exFire.Message, exFire); }
                 }
             }
             catch (Exception exOuter)
             {
-                try { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Loaded", "ConfigWindow Loaded: unexpected error: " + exOuter.Message, exOuter); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Loaded", "ConfigWindow Loaded: unexpected error: " + exOuter.Message, exOuter);
             }
         }
 
@@ -792,10 +787,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                         ServerModelCombo_Modal.Items.Clear();
                         ServerModelCombo_Modal.SelectedItem = null;
                     }
-                    catch
+                    catch (Exception exClear)
                     {
+                        AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo clear failed (empty baseUrl): " + exClear.Message, exClear);
                     }
-                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch (Exception exEvent) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "BaseUrlHealthChanged event failed: " + exEvent.Message, exEvent); }
                     return;
                 }
 
@@ -808,10 +804,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                         ServerModelCombo_Modal.Items.Clear();
                         ServerModelCombo_Modal.SelectedItem = null;
                     }
-                    catch
+                    catch (Exception exClear)
                     {
+                        AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo clear failed (invalid URL): " + exClear.Message, exClear);
                     }
-                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch (Exception exEvent) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "BaseUrlHealthChanged event failed: " + exEvent.Message, exEvent); }
                     return;
                 }
 
@@ -820,7 +817,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (baseUri == null)
                 {
                     ShowBaseUrlError("URL inválida");
-                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch (Exception exEvent) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "BaseUrlHealthChanged event failed (null baseUri): " + exEvent.Message, exEvent); }
                     return;
                 }
 
@@ -830,7 +827,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 // If models endpoint cannot be built (baseUrl not yet complete/valid), do not perform HTTP or log error.
                 if (string.IsNullOrWhiteSpace(primary))
                 {
-                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                    try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch (Exception exEvent) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "BaseUrlHealthChanged event failed (empty primary): " + exEvent.Message, exEvent); }
                     return;
                 }
 
@@ -869,7 +866,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     // If primary failed with connection refused and a fallback host is available, retry
                     if (firstEx != null && IsConnectionRefused(firstEx) && !string.IsNullOrEmpty(fallbackHost))
                     {
-                        try { AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.ModelsFetch", "primary GET failed, retrying with fallback host", null); } catch { }
+                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.ModelsFetch", "primary GET failed, retrying with fallback host", null);
                         var altBuilder = new UriBuilder(baseUri) { Host = fallbackHost };
                         var alt = BuildModelsUri(altBuilder.Uri);
                         try
@@ -893,13 +890,13 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 firstEx = null;
 
                                 // Update textbox to effective host so user sees working host (do not persist)
-                                try { _suppressBaseUrlTextChanged_20260116 = true; ServerBaseUrlTextBox_Modal.Text = altBuilder.Uri.ToString().TrimEnd('/'); } catch { } finally { _suppressBaseUrlTextChanged_20260116 = false; }
+                                try { _suppressBaseUrlTextChanged_20260116 = true; ServerBaseUrlTextBox_Modal.Text = altBuilder.Uri.ToString().TrimEnd('/'); } catch (Exception exUpdate) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "Textbox update (fallback) failed: " + exUpdate.Message, exUpdate); } finally { _suppressBaseUrlTextChanged_20260116 = false; }
                             }
                         }
                         catch (Exception)
                         {
                             // both attempts failed -> try offline fallback using persisted model
-                            try { ShowBaseUrlError("Servidor no responde (/v1/models)"); } catch { }
+                            try { ShowBaseUrlError("Servidor no responde (/v1/models)"); } catch (Exception exShow) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ShowBaseUrlError failed: " + exShow.Message, exShow); }
                             try
                             {
                                 var offlineModels = new System.Collections.Generic.List<string>();
@@ -912,16 +909,16 @@ namespace AgenteIALocalVSIX.ToolWindows
                                         if (srv != null && !string.IsNullOrWhiteSpace(srv.Model)) offlineModels.Add(srv.Model);
                                     }
                                 }
-                                catch { }
+                                catch (Exception exLoad) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.BaseUrlChanged", "Offline models load (both failed) failed: " + exLoad.Message, exLoad); }
 
                                 if (offlineModels.Count > 0)
                                 {
-                                    try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in offlineModels) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch { }
+                                    try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in offlineModels) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch (Exception exPopulate) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo populate (both failed) failed: " + exPopulate.Message, exPopulate); }
                                 }
 
-                                try { BaseUrlHealthChanged?.Invoke(false, baseUrl, offlineModels); } catch { }
+                                try { BaseUrlHealthChanged?.Invoke(false, baseUrl, offlineModels); } catch (Exception exEvent) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "BaseUrlHealthChanged (both failed) failed: " + exEvent.Message, exEvent); }
                             }
-                            catch { try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new System.Collections.Generic.List<string>()); } catch { } }
+                            catch (Exception) { try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new System.Collections.Generic.List<string>()); } catch (Exception exEvent2) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "Fallback event (both failed) failed: " + exEvent2.Message, exEvent2); } }
                             return;
                         }
                     }
@@ -930,7 +927,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     {
                         // If cancelled, do not touch UI
                         if (ct.IsCancellationRequested) return;
-                        try { ShowBaseUrlError(firstEx.Message); } catch { }
+                        try { ShowBaseUrlError(firstEx.Message); } catch (Exception exShow) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ShowBaseUrlError (firstEx) failed: " + exShow.Message, exShow); }
                         try
                         {
                             var offlineModels = new System.Collections.Generic.List<string>();
@@ -943,15 +940,15 @@ namespace AgenteIALocalVSIX.ToolWindows
                                     if (srv != null && !string.IsNullOrWhiteSpace(srv.Model)) offlineModels.Add(srv.Model);
                                 }
                             }
-                            catch { }
+                            catch (Exception exLoad) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.BaseUrlChanged", "Offline models load (firstEx) failed: " + exLoad.Message, exLoad); }
 
                             if (offlineModels.Count > 0)
                             {
-                                try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in offlineModels) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch { }
+                                try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in offlineModels) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch (Exception exPopulate) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo populate (firstEx) failed: " + exPopulate.Message, exPopulate); }
                             }
-                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, offlineModels); } catch { }
+                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, offlineModels); } catch (Exception exEvent) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "BaseUrlHealthChanged (firstEx) failed: " + exEvent.Message, exEvent); }
                         }
-                        catch { try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new System.Collections.Generic.List<string>()); } catch { } }
+                        catch (Exception) { try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new System.Collections.Generic.List<string>()); } catch (Exception exEvent2) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "Fallback event (firstEx) failed: " + exEvent2.Message, exEvent2); } }
                         return;
                     }
 
@@ -959,7 +956,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     {
                         // stale check
                         if (myFetchVersion != _modelsFetchVersion) return; // discard
-                        try { ShowBaseUrlError("Servidor no responde (/v1/models)"); } catch { }
+                        try { ShowBaseUrlError("Servidor no responde (/v1/models)"); } catch (Exception exShow) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ShowBaseUrlError (resp==null) failed: " + exShow.Message, exShow); }
                         try
                         {
                             var offlineModels = new System.Collections.Generic.List<string>();
@@ -976,11 +973,11 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                             if (offlineModels.Count > 0)
                             {
-                                try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in offlineModels) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch { }
+                                try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in offlineModels) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch (Exception exPopulate) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo populate (resp==null) failed: " + exPopulate.Message, exPopulate); }
                             }
-                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, offlineModels); } catch { }
+                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, offlineModels); } catch (Exception exEvent) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "BaseUrlHealthChanged (resp==null) failed: " + exEvent.Message, exEvent); }
                         }
-                        catch { try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new System.Collections.Generic.List<string>()); } catch { } }
+                        catch (Exception) { try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new System.Collections.Generic.List<string>()); } catch (Exception exEvent) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "Fallback event (resp==null) failed: " + exEvent.Message, exEvent); } }
                         return;
                     }
 
@@ -997,19 +994,19 @@ namespace AgenteIALocalVSIX.ToolWindows
                         {
                             models = await FetchModelsAsync(baseUrl).ConfigureAwait(true);
                         }
-                        catch { }
+                        catch (Exception exFetch) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "FetchModelsAsync (success) failed: " + exFetch.Message, exFetch); }
 
                         // If fetch returned models, update cache and UI; if not, try using cache or persisted model
                         if (models != null && models.Count > 0)
                         {
-                            try { _modelsCacheByServerId.AddOrUpdate(ActiveServerIdTextBox_Modal.Text ?? string.Empty, (k) => new System.Collections.Generic.List<string>(models), (k, v) => new System.Collections.Generic.List<string>(models)); } catch { }
+                            try { _modelsCacheByServerId.AddOrUpdate(ActiveServerIdTextBox_Modal.Text ?? string.Empty, (k) => new System.Collections.Generic.List<string>(models), (k, v) => new System.Collections.Generic.List<string>(models)); } catch (Exception exCache) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "Models cache update failed: " + exCache.Message, exCache); }
                             try
                             {
                                 ServerModelCombo_Modal.Items.Clear();
                                 foreach (var m in models) ServerModelCombo_Modal.Items.Add(m);
                                 ServerModelCombo_Modal.SelectedIndex = 0;
                             }
-                            catch { }
+                            catch (Exception exPopulate) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo populate (success) failed: " + exPopulate.Message, exPopulate); }
                         }
                         else
                         {
@@ -1019,8 +1016,8 @@ namespace AgenteIALocalVSIX.ToolWindows
                             _modelsCacheByServerId.TryGetValue(sid, out cached);
                             if (cached != null && cached.Count > 0)
                             {
-                                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Using cached models for server " + sid); } catch { }
-                                try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in cached) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch { }
+                                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: Using cached models for server " + sid, null);
+                                try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in cached) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch (Exception exCached) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo from cache failed: " + exCached.Message, exCached); }
                             }
                             else
                             {
@@ -1042,30 +1039,30 @@ namespace AgenteIALocalVSIX.ToolWindows
                                             else
                                             {
                                                 // persisted model is not chat-capable -> do not inject, show error
-                                                try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch { }
-                                                try { ShowBaseUrlError("Modelo no compatible (embedding)"); } catch { }
+                                                try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch (Exception exClear) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo clear (embedding) failed: " + exClear.Message, exClear); }
+                                                try { ShowBaseUrlError("Modelo no compatible (embedding)"); } catch (Exception exShow) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ShowBaseUrlError (embedding) failed: " + exShow.Message, exShow); }
                                             }
                                         }
-                                        catch { }
+                                        catch (Exception exModel) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "IsChatModelId check failed: " + exModel.Message, exModel); }
                                     }
                                 }
                                 }
-                                catch { }
+                                catch (Exception exPersisted) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.BaseUrlChanged", "Persisted model load (success) failed: " + exPersisted.Message, exPersisted); }
                             }
                         }
 
-                        try { BaseUrlHealthChanged?.Invoke(true, baseUrl, models); } catch { }
+                        try { BaseUrlHealthChanged?.Invoke(true, baseUrl, models); } catch (Exception exEvent) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "BaseUrlHealthChanged (success) failed: " + exEvent.Message, exEvent); }
                     }
                     else if (resp.StatusCode == System.Net.HttpStatusCode.Unauthorized || resp.StatusCode == System.Net.HttpStatusCode.Forbidden)
                     {
                         // Auth issue: clear combo and show error
-                        try { ShowBaseUrlError("No autorizado: revisa API Key"); } catch { }
-                        try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch { }
-                        try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch { }
+                        try { ShowBaseUrlError("No autorizado: revisa API Key"); } catch (Exception exShow) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ShowBaseUrlError (auth) failed: " + exShow.Message, exShow); }
+                        try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch (Exception exClear) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo clear (auth) failed: " + exClear.Message, exClear); }
+                        try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new List<string>()); } catch (Exception exEvent) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "BaseUrlHealthChanged (auth) failed: " + exEvent.Message, exEvent); }
                     }
                     else
                     {
-                        try { ShowBaseUrlError("Servidor responde " + resp.StatusCode); } catch { }
+                        try { ShowBaseUrlError("Servidor responde " + resp.StatusCode); } catch (Exception exShow) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ShowBaseUrlError (non-success) failed: " + exShow.Message, exShow); }
                         // non-success (other than auth): try offline fallback before clearing
                         try
                         {
@@ -1079,24 +1076,25 @@ namespace AgenteIALocalVSIX.ToolWindows
                                     if (srv != null && !string.IsNullOrWhiteSpace(srv.Model)) offlineModels.Add(srv.Model);
                                 }
                             }
-                            catch { }
+                            catch (Exception exLoad) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.BaseUrlChanged", "Offline models load (non-success) failed: " + exLoad.Message, exLoad); }
 
                             if (offlineModels.Count > 0)
                             {
-                                try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in offlineModels) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch { }
+                                try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in offlineModels) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch (Exception exPopulate) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo populate (non-success) failed: " + exPopulate.Message, exPopulate); }
                             }
                             else
                             {
-                                try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch { }
+                                try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch (Exception exClear) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo clear (non-success else) failed: " + exClear.Message, exClear); }
                             }
-                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, offlineModels); } catch { }
+                            try { BaseUrlHealthChanged?.Invoke(false, baseUrl, offlineModels); } catch (Exception exEvent) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "BaseUrlHealthChanged (non-success) failed: " + exEvent.Message, exEvent); }
                         }
-                        catch { try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch { } try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new System.Collections.Generic.List<string>()); } catch { } }
+                        catch (Exception) { try { ServerModelCombo_Modal.Items.Clear(); ServerModelCombo_Modal.SelectedItem = null; } catch (Exception exClear2) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "Final clear failed: " + exClear2.Message, exClear2); } try { BaseUrlHealthChanged?.Invoke(false, baseUrl, new System.Collections.Generic.List<string>()); } catch (Exception exEvent2) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "Final event failed: " + exEvent2.Message, exEvent2); } }
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception exMain)
             {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.BaseUrlChanged", "HandleBaseUrlTextChangedAsync failed: " + exMain.Message, exMain);
             }
         }
 
@@ -1121,7 +1119,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         ServerModelCombo_Modal.SelectedItem = srv.Model;
                     }
                 }
-                catch { }
+                catch (Exception exModel) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.ApplyServer", "ModelCombo init failed: " + exModel.Message, exModel); }
             }
             finally
             {
@@ -1133,7 +1131,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 FireAndForget(HandleBaseUrlTextChangedAsync(), "ConfigModal.BaseUrlTextChanged.ApplyServerToUi");
             }
-            catch { }
+            catch (Exception exFire) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.ApplyServer", "FireAndForget failed: " + exFire.Message, exFire); }
         }
 
         private void ServerBaseUrl_LostFocus(object sender, RoutedEventArgs e)
@@ -1184,11 +1182,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                 settings.ActiveServerId = targetId;
                 AgentSettingsStore.Save(settings);
                 _lastPersistedBaseUrl = baseUrl;
-                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: BaseUrl persisted (live update) '" + baseUrl + "' for server '" + targetId + "'"); } catch { }
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: BaseUrl persisted (live update) '" + baseUrl + "' for server '" + targetId + "'", null);
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: PersistBaseUrlIfChanged error: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigWindow", "ConfigModal: PersistBaseUrlIfChanged error: " + ex.Message, ex);
             }
         }
 
@@ -1200,7 +1198,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 ServerBaseUrlPingErrorText_Modal.Visibility = Visibility.Visible;
                 if (!string.IsNullOrWhiteSpace(message)) ServerBaseUrlTextBox_Modal.ToolTip = message;
             }
-            catch { }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.ShowError", "ShowBaseUrlError failed: " + ex.Message, ex); }
         }
 
         // NUEVO METODO HideBaseUrlError - ID: 20260114_000077
@@ -1211,7 +1209,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 ServerBaseUrlPingErrorText_Modal.Visibility = Visibility.Collapsed;
                 ServerBaseUrlTextBox_Modal.ToolTip = null;
             }
-            catch { }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.HideError", "HideBaseUrlError failed: " + ex.Message, ex); }
         }
 
         // NUEVO METODO NormalizeBaseUri - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
@@ -1228,7 +1226,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 return uri;
             }
-            catch { return null; }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Normalize", "NormalizeBaseUri failed: " + ex.Message, ex); return null; }
         }
 
         // NUEVO METODO BuildModelsUri - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
@@ -1243,7 +1241,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (lower.EndsWith("/v1")) return s + "/models";
                 return s + "/v1/models";
             }
-            catch { return null; }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BuildUri", "BuildModelsUri failed: " + ex.Message, ex); return null; }
         }
 
         // NUEVO METODO TryGetFallbackHost - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
@@ -1257,7 +1255,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)) return "127.0.0.1";
                 return null;
             }
-            catch { return null; }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Fallback", "TryGetFallbackHost failed: " + ex.Message, ex); return null; }
         }
 
         // NUEVO METODO IsConnectionRefused - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
@@ -1290,7 +1288,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                 return false;
             }
-            catch { return false; }
+            catch (Exception exOuter) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.ConnRefused", "IsConnectionRefused failed: " + exOuter.Message, exOuter); return false; }
         }
 
         private async Task<List<string>> FetchModelsAsync(string baseUrl)
@@ -1309,7 +1307,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 using (var client = new HttpClient())
                 {
                     client.Timeout = TimeSpan.FromSeconds(5);
-                    try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync GET " + primary); } catch { }
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: FetchModelsAsync GET " + primary, null);
 
                     HttpResponseMessage resp = null;
                     Exception firstEx = null;
@@ -1328,7 +1326,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                                     req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
                                 }
                             }
-                            catch { }
+                            catch (Exception exAuth) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Fetch", "Authorization header (fetch primary) failed: " + exAuth.Message, exAuth); }
 
                             resp = await client.SendAsync(req).ConfigureAwait(true);
                         }
@@ -1341,12 +1339,12 @@ namespace AgenteIALocalVSIX.ToolWindows
                     // If primary attempt threw connection refused and we have a fallback host, try alternate host
                     if (firstEx != null && IsConnectionRefused(firstEx) && !string.IsNullOrEmpty(fallbackHost))
                     {
-                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: primary GET failed with connection refused, will retry with fallback host"); } catch { }
+                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: primary GET failed with connection refused, will retry with fallback host", null);
                         var altBuilder = new UriBuilder(baseUri) { Host = fallbackHost };
                         var alt = BuildModelsUri(altBuilder.Uri);
                         try
                         {
-                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync fallback GET " + alt); } catch { }
+                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: FetchModelsAsync fallback GET " + alt, null);
                         try
                         {
                             using (var req = new HttpRequestMessage(HttpMethod.Get, alt))
@@ -1362,7 +1360,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                                         req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
                                     }
                                 }
-                                catch { }
+                                catch (Exception exAuth) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Fetch", "Authorization header (fallback) failed: " + exAuth.Message, exAuth); }
 
                                 resp = await client.SendAsync(req).ConfigureAwait(true);
                                 firstEx = null; // mark fallback attempted
@@ -1371,23 +1369,23 @@ namespace AgenteIALocalVSIX.ToolWindows
                         catch (Exception exAlt)
                         {
                             // fallback also failed
-                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync both primary and fallback failed: " + exAlt.Message, exAlt); } catch { }
-                            try { AgenteIALocalControl.FilterChatModelsInPlace(result); } catch { }
+                            AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigWindow", "ConfigModal: FetchModelsAsync both primary and fallback failed: " + exAlt.Message, exAlt);
+                            try { AgenteIALocalControl.FilterChatModelsInPlace(result); } catch (Exception exFilter) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Fetch", "FilterChatModels failed: " + exFilter.Message, exFilter); }
                             return result;
                         }
                         }
                         catch (Exception exAlt)
                         {
                             // fallback also failed
-                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync both primary and fallback failed: " + exAlt.Message, exAlt); } catch { }
-                            try { AgenteIALocalControl.FilterChatModelsInPlace(result); } catch { }
+                            AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigWindow", "ConfigModal: FetchModelsAsync both primary and fallback failed (outer): " + exAlt.Message, exAlt);
+                            try { AgenteIALocalControl.FilterChatModelsInPlace(result); } catch (Exception exFilter) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Fetch", "FilterChatModels (both failed outer) failed: " + exFilter.Message, exFilter); }
                             return result;
                         }
                     }
 
                     if (firstEx != null)
                     {
-                        try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync error: " + firstEx.Message, firstEx); } catch { }
+                        AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigWindow", "ConfigModal: FetchModelsAsync error: " + firstEx.Message, firstEx);
                         return result;
                     }
 
@@ -1398,7 +1396,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                     if (!resp.IsSuccessStatusCode)
                     {
-                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync non-success status: " + resp.StatusCode); } catch { }
+                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: FetchModelsAsync non-success status: " + resp.StatusCode, null);
                         return result;
                     }
 
@@ -1418,9 +1416,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                                     var id = item.Value<string>("id");
                                     if (!string.IsNullOrEmpty(id)) result.Add(id);
                                 }
-                                catch { }
+                                catch (Exception exItem) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.Fetch", "Parse data item failed: " + exItem.Message, exItem); }
                             }
-                            try { AgenteIALocalControl.FilterChatModelsInPlace(result); } catch { }
+                            try { AgenteIALocalControl.FilterChatModelsInPlace(result); } catch (Exception exFilter) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Fetch", "FilterChatModels (data) failed: " + exFilter.Message, exFilter); }
                             return result;
                         }
 
@@ -1434,7 +1432,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                                     var id = item.Value<string>("id") ?? item.ToString();
                                     if (!string.IsNullOrEmpty(id)) result.Add(id);
                                 }
-                                catch { }
+                                catch (Exception exItem) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.Fetch", "Parse models item failed: " + exItem.Message, exItem); }
                             }
                             return result;
                         }
@@ -1451,13 +1449,13 @@ namespace AgenteIALocalVSIX.ToolWindows
                     }
                     catch (Exception ex)
                     {
-                        try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync parse error: " + ex.Message, ex); } catch { }
+                        AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigWindow", "ConfigModal: FetchModelsAsync parse error: " + ex.Message, ex);
                     }
                 }
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: FetchModelsAsync error: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigWindow", "ConfigModal: FetchModelsAsync error: " + ex.Message, ex);
             }
 
             return result;
@@ -1465,7 +1463,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Save start"); } catch { }
+            AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: Save start", null);
             try
             {
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
@@ -1498,10 +1496,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                                     ?? (ServerModelCombo_Modal != null ? ServerModelCombo_Modal.SelectedValue as string : null)
                                     ?? (ServerModelCombo_Modal != null ? ServerModelCombo_Modal.Text : null);
                 }
-                catch { }
+                catch (Exception exModel) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Save", "Model selection read failed: " + exModel.Message, exModel); }
                 selectedModel = (selectedModel ?? string.Empty).Trim();
 
-                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Save activeId='" + targetId + "', baseUrlPresent=" + (!string.IsNullOrWhiteSpace(srv.BaseUrl)).ToString() + ", modelPresent=" + (string.IsNullOrEmpty(selectedModel) ? "false" : "true")); } catch { }
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: Save activeId='" + targetId + "', baseUrlPresent=" + (!string.IsNullOrWhiteSpace(srv.BaseUrl)).ToString() + ", modelPresent=" + (string.IsNullOrEmpty(selectedModel) ? "false" : "true"), null);
 
                 if (!string.IsNullOrEmpty(selectedModel))
                 {
@@ -1515,14 +1513,168 @@ namespace AgenteIALocalVSIX.ToolWindows
                     {
                         // do not persist; clear selection and inform user via UI error
                         srv.Model = string.Empty;
-                        try { ShowBaseUrlError("Modelo no compatible (embedding) - no guardado"); } catch { }
+                        try { ShowBaseUrlError("Modelo no compatible (embedding) - no guardado"); } catch (Exception exShow) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Save", "ShowBaseUrlError failed: " + exShow.Message, exShow); }
                     }
                 }
 
                 settings.ActiveServerId = targetId;
+                
+                // MODIFICADO SaveButton_Click - ID: 20260122_020100
+                // Persiste TODOS los GlobalSettings desde controles UI (DTO completo)
+                // Esto garantiza que todos los valores del modal se guarden juntos
+                try
+                {
+                    if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
+                    
+                    // LOG INFORMACIÓN - Antes de aplicar cambios
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "BEFORE GlobalSettings: " + (settings.GlobalSettings?.ToString(Newtonsoft.Json.Formatting.None) ?? "null"), null);
+                    
+                    // LOG VALORES RAW DE CONTROLES UI
+                    try
+                    {
+                        var tempUi = TemperatureTextBox_Modal?.Text ?? "null";
+                        var maxUi = MaxTokensTextBox_Modal?.Text ?? "null";
+                        var runModeUi = RunModeCombo_Modal?.SelectedItem?.ToString() ?? "null";
+                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"UI RAW VALUES: temp='{tempUi}', max='{maxUi}', runMode='{runModeUi}'", null);
+                    }
+                    catch (Exception exUi)
+                    {
+                        AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Save", "Failed to read UI raw values: " + exUi.Message, exUi);
+                    }
+                    
+                    // runMode desde RunModeCombo_Modal
+                    try
+                    {
+                        var runModeText = GetSelectedComboContent(RunModeCombo_Modal);
+                        var runMode = string.Equals(runModeText, "Agente", StringComparison.OrdinalIgnoreCase) ? "agente" : "preguntar";
+                        settings.GlobalSettings["runMode"] = runMode;
+                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET runMode = {runMode} (from UI: {runModeText})", null);
+                    }
+                    catch (Exception exRunMode)
+                    {
+                        AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Save", "Failed to set runMode: " + exRunMode.Message, exRunMode);
+                    }
+                    
+                    // requestDefaults desde controles de temperatura/maxTokens/includeUsage
+                    try
+                    {
+                        var requestDefaults = settings.GlobalSettings["requestDefaults"] as JObject ?? new JObject();
+                        settings.GlobalSettings["requestDefaults"] = requestDefaults;
+                        
+                        requestDefaults["stream"] = true; // siempre true
+                        
+                        // temperature
+                        try
+                        {
+                            var tempText = TemperatureTextBox_Modal?.Text ?? string.Empty;
+                            if (!string.IsNullOrWhiteSpace(tempText))
+                            {
+                                var normalized = tempText.Replace(',', '.');
+                                double tempVal;
+                                if (double.TryParse(normalized, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out tempVal))
+                                {
+                                    requestDefaults["temperature"] = tempVal;
+                                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET temperature = {tempVal} (from UI: {tempText})", null);
+                                }
+                            }
+                        }
+                        catch (Exception exTemp)
+                        {
+                            AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Save", "Failed to set temperature: " + exTemp.Message, exTemp);
+                        }
+                        
+                        // maxTokens
+                        try
+                        {
+                            var maxText = MaxTokensTextBox_Modal?.Text ?? string.Empty;
+                            if (!string.IsNullOrWhiteSpace(maxText))
+                            {
+                                int maxVal;
+                                if (int.TryParse(maxText, out maxVal) && maxVal >= 0)
+                                {
+                                    requestDefaults["maxTokens"] = maxVal;
+                                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET maxTokens = {maxVal} (from UI: {maxText})", null);
+                                }
+                            }
+                        }
+                        catch (Exception exMax)
+                        {
+                            AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Save", "Failed to set maxTokens: " + exMax.Message, exMax);
+                        }
+                        
+                        // includeUsage (solo LM Studio)
+                        try
+                        {
+                            var streamOptions = requestDefaults["streamOptions"] as JObject ?? new JObject();
+                            requestDefaults["streamOptions"] = streamOptions;
+                            
+                            var providerText = GetSelectedComboContent(ProviderCombo_Modal);
+                            var isLmStudio = string.Equals(providerText, "LM Studio", StringComparison.OrdinalIgnoreCase);
+                            
+                            if (isLmStudio && IncludeUsageToggle_Modal != null)
+                            {
+                                streamOptions["includeUsage"] = IncludeUsageToggle_Modal.IsChecked == true;
+                                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET includeUsage = {IncludeUsageToggle_Modal.IsChecked} (LM Studio)", null);
+                            }
+                            else
+                            {
+                                streamOptions["includeUsage"] = false;
+                                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET includeUsage = false (provider: {providerText})", null);
+                            }
+                        }
+                        catch (Exception exUsage)
+                        {
+                            AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Save", "Failed to set includeUsage: " + exUsage.Message, exUsage);
+                        }
+                    }
+                    catch (Exception exReqDef)
+                    {
+                        AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Save", "Failed to set requestDefaults: " + exReqDef.Message, exReqDef);
+                    }
+                    
+                    // agent desde controles ideIntegration/applyChanges/maxSteps
+                    try
+                    {
+                        var agent = settings.GlobalSettings["agent"] as JObject ?? new JObject();
+                        settings.GlobalSettings["agent"] = agent;
+                        
+                        agent["ideIntegration"] = AgentIdeIntegrationToggle_Modal?.IsChecked == true;
+                        agent["applyChanges"] = AgentApplyChangesToggle_Modal?.IsChecked == true;
+                        
+                        try
+                        {
+                            var maxStepsText = AgentMaxStepsTextBox_Modal?.Text ?? "5";
+                            var maxStepsVal = ParseMaxSteps(maxStepsText);
+                            agent["maxSteps"] = maxStepsVal;
+                            AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET agent.ideIntegration={agent["ideIntegration"]}, applyChanges={agent["applyChanges"]}, maxSteps={maxStepsVal}", null);
+                        }
+                        catch
+                        {
+                            agent["maxSteps"] = 5;
+                        }
+                    }
+                    catch (Exception exAgent)
+                    {
+                        AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Save", "Failed to set agent: " + exAgent.Message, exAgent);
+                    }
+                    
+                    // LOG INFORMACIÓN - Después de aplicar cambios
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "AFTER GlobalSettings: " + (settings.GlobalSettings?.ToString(Newtonsoft.Json.Formatting.None) ?? "null"), null);
+                }
+                catch (Exception exGlobals)
+                {
+                    AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Save", "Failed to persist GlobalSettings from UI: " + exGlobals.Message, exGlobals);
+                }
+                
+                // LOG CRÍTICO - Antes de Save
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"CALLING AgentSettingsStore.Save() - ActiveServerId={settings.ActiveServerId}, GlobalSettings keys={settings.GlobalSettings?.Properties()?.Count() ?? 0}", null);
+                
                 AgentSettingsStore.Save(settings);
+                
+                // LOG CRÍTICO - Después de Save
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "AgentSettingsStore.Save() COMPLETED", null);
 
-                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Save persisted ActiveServerId=" + settings.ActiveServerId + ", BaseUrl=" + (srv.BaseUrl ?? "(empty)") + ", ModelLength=" + (srv.Model != null ? srv.Model.Length : 0)); } catch { }
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: Save persisted ActiveServerId=" + settings.ActiveServerId + ", BaseUrl=" + (srv.BaseUrl ?? "(empty)") + ", ModelLength=" + (srv.Model != null ? srv.Model.Length : 0), null);
 
                 try
                 {
@@ -1530,7 +1682,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 catch (Exception ex)
                 {
-                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: RecomposeFromSettings error: " + ex.Message, ex); } catch { }
+                    AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigWindow", "ConfigModal: RecomposeFromSettings error: " + ex.Message, ex);
                 }
 
                 try
@@ -1569,33 +1721,33 @@ namespace AgenteIALocalVSIX.ToolWindows
                         try
                         {
                             found.RefreshFromSettings();
-                            try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: RefreshFromSettings called on owner control."); } catch { }
+                            AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: RefreshFromSettings called on owner control.", null);
                         }
                         catch (Exception ex)
                         {
-                            try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Error calling RefreshFromSettings: " + ex.Message, ex); } catch { }
+                            AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigWindow", "ConfigModal: Error calling RefreshFromSettings: " + ex.Message, ex);
                         }
                     }
                     else
                     {
-                        try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Owner AgenteIALocalControl not found to refresh UI after save."); } catch { }
+                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: Owner AgenteIALocalControl not found to refresh UI after save.", null);
                     }
                 }
                 catch (Exception ex)
                 {
-                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Error refreshing owner UI: " + ex.Message, ex); } catch { }
+                    AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigWindow", "ConfigModal: Error refreshing owner UI: " + ex.Message, ex);
                 }
 
-                try { AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Save end"); } catch { }
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: Save end", null);
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Save error: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigWindow", "ConfigModal: Save error: " + ex.Message, ex);
             }
             finally
             {
-                try { DialogResult = true; } catch { }
-                try { Close(); } catch { }
+                try { DialogResult = true; } catch (Exception exDialog) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Save", "DialogResult set failed: " + exDialog.Message, exDialog); }
+                try { Close(); } catch (Exception exClose) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Save", "Close failed: " + exClose.Message, exClose); }
             }
         }
 
@@ -1607,7 +1759,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigModal: Close error: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigWindow", "ConfigModal: Close error: " + ex.Message, ex);
             }
         }
 
@@ -1627,7 +1779,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     var runMode = string.Equals(selected, "Agente", StringComparison.OrdinalIgnoreCase) ? "agente" : "preguntar";
                     settings.GlobalSettings["runMode"] = runMode;
                 }
-                catch { }
+                catch (Exception exRunMode) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.ApplyGlobals", "RunMode failed: " + exRunMode.Message, exRunMode); }
 
                 // agent settings
                 try
@@ -1639,21 +1791,21 @@ namespace AgenteIALocalVSIX.ToolWindows
                     int ms = ParseMaxSteps(AgentMaxStepsTextBox_Modal.Text);
                     agent["maxSteps"] = ms;
                 }
-                catch { }
+                catch (Exception exAgent) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.ApplyGlobals", "Agent settings failed: " + exAgent.Message, exAgent); }
 
                 // requestDefaults via unified persister
                 PersistRequestDefaultsFromUi();
             }
-            catch { }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.ApplyGlobals", "ApplyModalGlobalsToSettings failed: " + ex.Message, ex); }
         }
 
         protected override void OnClosed(EventArgs e)
         {
             try
             {
-                try { AgentSettingsStore.SettingsSaved -= OnSettingsSaved; } catch { }
+                try { AgentSettingsStore.SettingsSaved -= OnSettingsSaved; } catch (Exception exUnsub) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.OnClosed", "SettingsSaved unsubscribe failed: " + exUnsub.Message, exUnsub); }
             }
-            catch { }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.OnClosed", "OnClosed failed: " + ex.Message, ex); }
             base.OnClosed(e);
         }
 

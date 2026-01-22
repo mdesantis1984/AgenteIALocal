@@ -38,8 +38,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                 System.IO.Directory.CreateDirectory(dir);
                 return System.IO.Path.Combine(dir, "ui_state.json");
             }
-            catch
+            catch (Exception ex)
             {
+                AgenteIALocal.Logging.Log.Warning("-", 9130, "Control.Chat", "UiStateFilePath failed: " + ex.Message, ex);
                 return System.IO.Path.Combine(System.IO.Path.GetTempPath(), "AgenteIALocal.ui_state.json");
             }
         }
@@ -65,8 +66,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                         _uiState.MessageTokens = new System.Collections.Generic.Dictionary<string, int>(StringComparer.Ordinal);
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    AgenteIALocal.Logging.Log.Warning("-", 9131, "Control.LoadUiStateSafe", "LoadUiStateSafe failed: " + ex.Message, ex);
                     _uiState = new UiState();
                 }
             }
@@ -82,9 +84,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                     var json = Newtonsoft.Json.JsonConvert.SerializeObject(_uiState, Newtonsoft.Json.Formatting.Indented);
                     System.IO.File.WriteAllText(path, json);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // ignore persistence errors
+                    AgenteIALocal.Logging.Log.Warning("-", 9132, "Control.SaveUiStateSafe", "SaveUiStateSafe failed: " + ex.Message, ex);
                 }
             }
         }
@@ -133,7 +135,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Debug("-", 9136, "Control.Chat.TryGetTokensForMessage", "TryGetTokensForMessage failed: " + ex.Message, ex);
+            }
             return null;
         }
 
@@ -150,7 +155,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 SaveUiStateSafe();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Warning("-", 9137, "Control.Chat.TrySetTokensForMessage", "TrySetTokensForMessage failed: " + ex.Message, ex);
+            }
         }
 
         private void TryPersistChat(ChatSession chat)
@@ -168,9 +176,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (mi == null) return;
                 mi.Invoke(null, new object[] { chat });
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore persistence failures
+                AgenteIALocal.Logging.Log.Warning("-", 9138, "Control.Chat.TryPersistChat", "TryPersistChat failed: " + ex.Message, ex);
             }
         }
 
@@ -184,9 +192,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                 _uiState.LastChatId = activeChat.Id;
                 SaveUiStateSafe();
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore
+                AgenteIALocal.Logging.Log.Warning("-", 9133, "Control.RenderActiveChatToUi", "RenderActiveChatToUi failed: " + ex.Message, ex);
             }
         }
 
@@ -494,9 +502,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                     fd.Blocks.Add(CreateBubbleBlock(isUser, content ?? string.Empty, ts, tokens, isStreamingAi));
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore
+                AgenteIALocal.Logging.Log.Warning("-", 9135, "Control.RenderChatSessionToDocument", "RenderChatSessionToDocument failed: " + ex.Message, ex);
+                // ignore display failure but log for diagnostics
             }
             return fd;
         }
@@ -715,9 +724,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                     ChatComboBox.SelectedIndex = 0;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore
+                AgenteIALocal.Logging.Log.Warning("-", 9139, "Control.EnsureActiveChatExists", "EnsureActiveChatExists failed: " + ex.Message, ex);
             }
             finally
             {

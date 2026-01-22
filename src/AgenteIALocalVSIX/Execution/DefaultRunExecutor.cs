@@ -243,7 +243,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                         try
                         {
-                            AgentComposition.Error(o.activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] Execution failed: " + ex.Message, ex);
+                            AgenteIALocal.Logging.Log.Error(o.activeCorrelationId ?? "-", 9100, "Executor", "Execution failed: " + ex.Message, ex);
                         }
                         catch { }
 
@@ -399,7 +399,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                             if (!string.Equals(o._lastLoggedProviderInfo, info, StringComparison.Ordinal))
                             {
                                 o._lastLoggedProviderInfo = info;
-                                try { AgentComposition.Info(o.activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "OpenAI-compatible provider used: " + prov + " host=" + host + " model=" + model); } catch { }
+                                try { AgenteIALocal.Logging.Log.Information(o.activeCorrelationId ?? "-", 9100, "Executor", "OpenAI-compatible provider used: " + prov + " host=" + host + " model=" + model, null); } catch { }
                             }
                         }
                         catch { }
@@ -441,7 +441,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         var corr = !string.IsNullOrEmpty(req?.CorrelationId) ? req.CorrelationId : !string.IsNullOrEmpty(req?.RequestId) ? req.RequestId : "-";
                         try
                         {
-                            AgentComposition.Error(corr, AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] Execution exception in background task: " + ex.Message, ex);
+                            AgenteIALocal.Logging.Log.Error(corr, 9100, "Executor", "Execution exception in background task: " + ex.Message, ex);
                         }
                         catch { }
 

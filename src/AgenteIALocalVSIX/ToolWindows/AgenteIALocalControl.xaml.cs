@@ -88,8 +88,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         private int _streamingFlushedLength = 0; // NUEVO CAMPO - ID: 20260114_000031
         private Paragraph _streamingAiParagraph = null; // NUEVO CAMPO - ID: 20260114_000032
         private Run _streamingAiLastRun = null; // NUEVO CAMPO - ID: 20260114_000033
-        // NUEVO CAMPO UiLogBuffer - ID: 20260118_190200
-        private AgenteIALocal.Infrastructure.LoggingV2.UiLogBuffer _uiLogBuffer;
+        // ELIMINADO CAMPO _uiLogBuffer - ID: 20260122_223000 - Ya no se usa, RefreshLogPanel lee directo desde Serilog
         // NUEVO CAMPO _isRefreshingUiProvider - ID: 20260115_123000
         private bool _isRefreshingUiProvider = false;
         // NUEVO CAMPO guard para evitar reentrancia en RefreshFromSettings via SettingsSaved - ID: 20260116_173500
@@ -136,7 +135,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (s.EndsWith("-embed")) return false;
                 return true;
             }
-            catch { return false; }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.IsChatModel", "IsChatModelId failed: " + ex.Message, ex); return false; }
         }
 
         // NUEVO METODO FilterChatModelsInPlace - ID: 20260117_133310
@@ -152,10 +151,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                         var id = models[i];
                         if (!IsChatModelId(id)) models.RemoveAt(i);
                     }
-                    catch { }
+                    catch (Exception exItem) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.FilterChat", "Filter item failed: " + exItem.Message, exItem); }
                 }
             }
-            catch { }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.FilterChat", "FilterChatModelsInPlace failed: " + ex.Message, ex); }
         }
 
         // MODIFICADO METODO TypeActivitie_SelectionChanged - ID: 20260116_173000
@@ -169,10 +168,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var cb = sender as ComboBox;
                 var selected = cb?.SelectedItem as ComboBoxItem;
                 string text = null;
-                try { text = selected?.Content?.ToString(); } catch { text = null; }
+                try { text = selected?.Content?.ToString(); } catch (Exception exContent) { text = null; AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.TypeActivitie", "Content parse failed: " + exContent.Message, exContent); }
                 if (string.IsNullOrWhiteSpace(text))
                 {
-                    try { text = cb?.SelectedItem?.ToString(); } catch { text = null; }
+                    try { text = cb?.SelectedItem?.ToString(); } catch (Exception exToString) { text = null; AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.TypeActivitie", "ToString parse failed: " + exToString.Message, exToString); }
                 }
 
                 if (string.IsNullOrWhiteSpace(text)) return;
@@ -194,12 +193,12 @@ namespace AgenteIALocalVSIX.ToolWindows
                             settings.GlobalSettings["runMode"] = normalized;
                             AgentSettingsStore.Save(settings);
                         }
-                        catch { }
+                        catch (Exception exSave) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.TypeActivitie", "Save runMode failed: " + exSave.Message, exSave); }
                     }
                 }
-                catch { }
+                catch (Exception exOuter) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.TypeActivitie", "Load settings failed: " + exOuter.Message, exOuter); }
             }
-            catch { }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.TypeActivitie", "TypeActivitie_SelectionChanged failed: " + ex.Message, ex); }
         }
 
         // MODIFICADO METODO GetRunModeNormalized - ID: 20260116_173000
@@ -219,7 +218,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                             if (cbi != null) txt = cbi.Content?.ToString();
                             if (string.IsNullOrWhiteSpace(txt)) txt = TypeActivitie.SelectedItem?.ToString();
                         }
-                        catch { txt = null; }
+                        catch (Exception exParse) { txt = null; AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.GetRunMode", "UI parse failed: " + exParse.Message, exParse); }
 
                         if (!string.IsNullOrWhiteSpace(txt))
                         {
@@ -228,7 +227,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         }
                     }
                 }
-                catch { }
+                catch (Exception exUi) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.GetRunMode", "UI access failed: " + exUi.Message, exUi); }
 
                 // 2) Fallback to persisted settings
                 try
@@ -238,9 +237,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                     if (string.IsNullOrWhiteSpace(runMode)) return "preguntar";
                     return runMode;
                 }
-                catch { return "preguntar"; }
+                catch (Exception exSettings) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.GetRunMode", "Settings load failed: " + exSettings.Message, exSettings); return "preguntar"; }
             }
-            catch { return "preguntar"; }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.GetRunMode", "GetRunModeNormalized failed: " + ex.Message, ex); return "preguntar"; }
         }
 
 
@@ -259,11 +258,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                         var cbi = item as ComboBoxItem;
                         if (cbi != null)
                         {
-                            try { s = cbi.Content?.ToString(); } catch { s = null; }
+                            try { s = cbi.Content?.ToString(); } catch (Exception exContent) { s = null; AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.TrySelect", "Content failed: " + exContent.Message, exContent); }
                         }
                         if (string.IsNullOrEmpty(s))
                         {
-                            try { s = item?.ToString(); } catch { s = null; }
+                            try { s = item?.ToString(); } catch (Exception exToString) { s = null; AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.TrySelect", "ToString failed: " + exToString.Message, exToString); }
                         }
                         if (string.IsNullOrEmpty(s)) continue;
                         if (string.Equals(s, text, StringComparison.OrdinalIgnoreCase))
@@ -272,10 +271,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                             return true;
                         }
                     }
-                    catch { }
+                    catch (Exception exItem) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.TrySelect", "Item processing failed: " + exItem.Message, exItem); }
                 }
             }
-            catch { }
+            catch (Exception exLoop) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.TrySelect", "TrySelectComboByText failed: " + exLoop.Message, exLoop); }
             return false;
         }
 
@@ -287,10 +286,10 @@ namespace AgenteIALocalVSIX.ToolWindows
             {
                 if (this.VisualParent == null)
                 {
-                    try { AgentSettingsStore.SettingsSaved -= OnSettingsSaved; } catch { }
+                    try { AgentSettingsStore.SettingsSaved -= OnSettingsSaved; } catch (Exception exUnsub) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.OnVisualParent", "Unsubscribe failed: " + exUnsub.Message, exUnsub); }
                 }
             }
-            catch { }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.OnVisualParent", "OnVisualParentChanged failed: " + ex.Message, ex); }
         }
 
         // Handler for settings saved notifications; refresh UI from canonical settings
@@ -326,21 +325,21 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 _lastActiveServerIdUi = activeId;
                                 RefreshFromSettings(refreshModels: true);
                             }
-                            try { AgenteIALocal.Logging.Log.Verbose("-", 9100, "Control.SettingsSaved", "SettingsSaved handler executed: " + reason, null); } catch { }
+                            AgenteIALocal.Logging.Log.Verbose("-", 9100, "Control.SettingsSaved", "SettingsSaved handler executed: " + reason, null);
                         }
-                        catch { }
+                        catch (Exception exRefresh) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.SettingsSaved", "RefreshFromSettings failed: " + exRefresh.Message, exRefresh); }
                     });
 
                     // Observe faults to avoid unobserved task exceptions (VSTHRD110)
                     _ = jt.Task.ContinueWith(t => { var _e = t.Exception; }, System.Threading.CancellationToken.None, System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted, System.Threading.Tasks.TaskScheduler.Default);
                 }
-                catch { }
+                catch (Exception exJt) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.SettingsSaved", "JoinableTask failed: " + exJt.Message, exJt); }
                 finally
                 {
                     _isRefreshingFromSettings = false;
                 }
             }
-            catch { }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.SettingsSaved", "OnSettingsSaved failed: " + ex.Message, ex); }
         }
 
         // NUEVO METODO NormalizeBaseUri - ID: 20260116_103000
@@ -358,7 +357,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 return uri;
             }
-            catch { return null; }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Normalize", "NormalizeBaseUri failed: " + ex.Message, ex); return null; }
         }
 
         // NUEVO METODO BuildModelsUri - ID: 20260116_103000
@@ -402,7 +401,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)) return "127.0.0.1";
                 return null;
             }
-            catch { return null; }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Fallback", "TryGetFallbackHost failed: " + ex.Message, ex); return null; }
         }
 
         // NUEVO METODO IsConnectionRefused - ID: 20260116_103000
@@ -438,7 +437,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                 return false;
             }
-            catch { return false; }
+            catch (Exception exOuter) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.ConnRefused", "IsConnectionRefused check failed: " + exOuter.Message, exOuter); return false; }
 
 
         } // <-- Cierre de la propiedad CurrentExecutionState faltante
@@ -456,7 +455,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var selected = cb?.SelectedItem as string ?? cb?.SelectedItem?.ToString() ?? string.Empty;
 
                 // Preserve verbose log previously implemented in Helpers
-                try { AppendLog($"[VERBOSE] ServerLLM selection changed -> {selected}"); } catch { }
+                AgenteIALocal.Logging.Log.Verbose("-", 9100, "Control.ServerLLMChanged", $"ServerLLM selection changed -> {selected}", null);
 
                 if (string.IsNullOrWhiteSpace(selected)) return;
 
@@ -480,17 +479,17 @@ namespace AgenteIALocalVSIX.ToolWindows
                     AgentSettingsStore.Save(settings);
 
                     // Refresh UI and trigger recompose (explicit tag for toolwindow)
-                    try { RefreshFromSettings(refreshModels: true); } catch { }
-                    try { AgentComposition.RecomposeFromSettings("ui:provider-changed-toolwindow"); } catch { }
+                    try { RefreshFromSettings(refreshModels: true); } catch (Exception exRefresh) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.ServerChanged", "RefreshFromSettings failed: " + exRefresh.Message, exRefresh); }
+                    try { AgentComposition.RecomposeFromSettings("ui:provider-changed-toolwindow"); } catch (Exception exRecomp) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.ServerChanged", "RecomposeFromSettings failed: " + exRecomp.Message, exRecomp); }
 
-                    try { AgenteIALocal.Logging.Log.Information("-", 9100, "Control.ServerChanged", $"Server provider changed: {prev} -> {newActiveId}", null); } catch { }
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "Control.ServerChanged", $"Server provider changed: {prev} -> {newActiveId}", null);
                 }
                 catch (Exception ex)
                 {
-                    try { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.ServerChanged", "ServerLLM selection handler failed: " + ex.Message, ex); } catch { }
+                    AgenteIALocal.Logging.Log.Error("-", 9100, "Control.ServerChanged", "ServerLLM selection handler failed: " + ex.Message, ex);
                 }
             }
-            catch { }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.ServerLLM", "ServerLLM_SelectionChanged failed: " + ex.Message, ex); }
         }
 
 
@@ -510,38 +509,39 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (deltaLen <= 0) return;
 
                 string delta = null;
-                try { delta = sb.ToString(prev, deltaLen); } catch { delta = sb.ToString(); }
+                try { delta = sb.ToString(prev, deltaLen); } catch (Exception exDelta) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.Streaming", "Delta extraction failed: " + exDelta.Message, exDelta); delta = sb.ToString(); }
 
                 if (para == null)
                 {
-                    try { _streamingAiRun.Text = sb.ToString(); } catch { }
+                    try { _streamingAiRun.Text = sb.ToString(); } catch (Exception exText) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Streaming", "Run.Text set failed: " + exText.Message, exText); }
                     _streamingFlushedLength = curr;
-                    try { AutoScrollIfSticky(deltaLen); } catch { }
+                    try { AutoScrollIfSticky(deltaLen); } catch (Exception exScroll) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.Streaming", "AutoScroll (simple) failed: " + exScroll.Message, exScroll); }
                     return;
                 }
 
                 if (lastRun.Text != null && lastRun.Text.Length < 4096)
                 {
                     try { lastRun.Text += delta; }
-                    catch
+                    catch (Exception exAppend)
                     {
+                        AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.Streaming", "Run.Text append failed: " + exAppend.Message, exAppend);
                         var nr = new Run(delta);
-                        try { para.Inlines.Add(nr); } catch { }
+                        try { para.Inlines.Add(nr); } catch (Exception exAdd) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Streaming", "Inlines.Add (fallback) failed: " + exAdd.Message, exAdd); }
                         lastRun = nr;
                     }
                 }
                 else
                 {
                     var nr = new Run(delta);
-                    try { para.Inlines.Add(nr); } catch { }
+                    try { para.Inlines.Add(nr); } catch (Exception exAdd2) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Streaming", "Inlines.Add (new Run) failed: " + exAdd2.Message, exAdd2); }
                     lastRun = nr;
                 }
 
                 _streamingAiLastRun = lastRun;
                 _streamingFlushedLength = curr;
-                try { AutoScrollIfSticky(deltaLen); } catch { }
+                try { AutoScrollIfSticky(deltaLen); } catch (Exception exScroll2) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.Streaming", "AutoScroll (final) failed: " + exScroll2.Message, exScroll2); }
             }
-            catch { }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Streaming", "ApplyStreamingDeltaFrom failed: " + ex.Message, ex); }
         }
 
 
@@ -564,7 +564,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         totalText = range.Text ?? string.Empty;
                     }
                 }
-                catch { }
+                catch (Exception exDoc) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.AutoScroll", "Doc range extraction failed: " + exDoc.Message, exDoc); }
 
                 int totalChars = totalText.Length;
 
@@ -597,11 +597,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                             ResponseJsonText.ScrollToEnd();
                             _lastAutoScrollTotalChars = totalChars;
                         }
-                        catch { }
+                        catch (Exception exScroll) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.AutoScroll", "ScrollToEnd failed: " + exScroll.Message, exScroll); }
                     }), "AutoScroll");
                 }
             }
-            catch { }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.AutoScroll", "AutoScrollIfSticky failed: " + ex.Message, ex); }
         }
 
         // NUEVO METODO EnsureResponseScrollViewer - ID: 20260114_000020
@@ -627,11 +627,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                             var distanceFromBottom = extentHeight - (verticalOffset + viewportHeight);
                             _userScrolledAway = distanceFromBottom > _stickyThresholdPx;
                         }
-                        catch { }
+                        catch (Exception exScrollChanged) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.ScrollViewer", "ScrollChanged handler failed: " + exScrollChanged.Message, exScrollChanged); }
                     };
                     ResponseJsonText.PreviewMouseWheel += (s, e) =>
                     {
-                        try { EnsureResponseScrollViewer(); } catch { }
+                        try { EnsureResponseScrollViewer(); } catch (Exception exWheel) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.ScrollViewer", "PreviewMouseWheel failed: " + exWheel.Message, exWheel); }
                     };
                 }
             }
@@ -688,15 +688,17 @@ namespace AgenteIALocalVSIX.ToolWindows
                             var candidate = Path.Combine(dir, name);
                             return File.Exists(candidate) ? Assembly.LoadFrom(candidate) : null;
                         }
-                        catch
+                        catch (Exception exResolve)
                         {
+                            AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.MahApps", "AssemblyResolve failed: " + exResolve.Message, exResolve);
                             return null;
                         }
                     };
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.MahApps", "EnsureMahAppsIconPacksLoaded failed: " + ex.Message, ex);
                 // Must never break the toolwindow; avoid throwing here.
             }
         }
@@ -724,7 +726,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     TypeActivitie.SelectionChanged += TypeActivitie_SelectionChanged;
                 }
             }
-            catch { }
+            catch (Exception exWire) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Constructor", "TypeActivitie wire failed: " + exWire.Message, exWire); }
 
             _chatService = new DefaultChatService(this);
             _runExecutor = new DefaultRunExecutor(this);
@@ -740,41 +742,41 @@ namespace AgenteIALocalVSIX.ToolWindows
                 AgentComposition.EnsureComposition();
                 if (AgentComposition.AgentService != null)
                 {
-                    AppendLog("AgentService available at control construction.");
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "Control.Constructor", "AgentService available at control construction.", null);
                 }
                 else
                 {
-                    AppendLog("AgentService is null at control construction.");
+                    AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Constructor", "AgentService is null at control construction.", null);
                 }
             }
             catch (Exception ex)
             {
                 // Replace Trace with V2 logger
-                try { AgentComposition.Error(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] Error ensuring composition: " + ex.Message, ex); } catch { }
+                try { AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9100, "Control.xaml", "Error ensuring composition: " + ex.Message, ex); } catch { }
             }
 
             // Load current log file content into the Log tab asynchronously
             StartLogRefreshLoop();
 
             // Ensure initial size label is correct even before first refresh tick
-            try { UpdateLogFileSizeLabelFromBytes(TryGetLogFileSizeBytes()); } catch { }
+            try { UpdateLogFileSizeLabelFromBytes(TryGetLogFileSizeBytes()); } catch (Exception exInit) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Constructor", "UpdateLogFileSizeLabelFromBytes failed: " + exInit.Message, exInit); }
 
             // Wire up response scroll viewer detection after control is loaded
             try
             {
                 this.Loaded += (s, e) =>
                 {
-                    try { EnsureResponseScrollViewer(); } catch { }
+                    try { EnsureResponseScrollViewer(); } catch (Exception exLoadEvt) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.Constructor", "EnsureResponseScrollViewer (Loaded) failed: " + exLoadEvt.Message, exLoadEvt); }
                 };
             }
-            catch { }
+            catch (Exception exLoadWire) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Constructor", "Loaded event wire failed: " + exLoadWire.Message, exLoadWire); }
 
             // Load current settings into settings panel (but keep panel hidden)
             try
             {
                 var settings = AgentSettingsStore.Load();
                 // Subscribe to settings saved notifications to refresh UI across windows
-                try { AgentSettingsStore.SettingsSaved += OnSettingsSaved; } catch { }
+                try { AgentSettingsStore.SettingsSaved += OnSettingsSaved; } catch (Exception exSub) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Constructor", "SettingsSaved subscribe failed: " + exSub.Message, exSub); }
                 // MODIFICADO METODO PopulateSettingsPanel call to ensure ServerLLM refleja activeServerId sin activar el controlador de seleccion - ID: 20260115_123000
                 PopulateSettingsPanel(settings);
                 try
@@ -800,7 +802,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception exHydrate) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Constructor", "Hydrate ServerLLM selection failed: " + exHydrate.Message, exHydrate); }
                 }
                 finally
                 {
@@ -848,15 +850,12 @@ namespace AgenteIALocalVSIX.ToolWindows
                     }
                     SaveUiStateSafe();
                 }
-                catch { }
+                catch (Exception exUiState) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Constructor", "SaveUiStateSafe failed: " + exUiState.Message, exUiState); }
 
                 RefreshChatCombo();
                 LoadActiveChatToUi();
             }
-            catch
-            {
-                // ignore chat errors
-            }
+            catch (Exception exChat) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.Constructor", "Load chats failed: " + exChat.Message, exChat); }
             // Ensure mock modified files are available for binding
             RaisePropertyChanged(nameof(ModifiedFiles));
             RaisePropertyChanged(nameof(ModifiedFilesCount));
@@ -926,14 +925,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var path = GetLogFilePath();
                 if (string.IsNullOrWhiteSpace(path))
                 {
-                    AppendLog("Open log file: path not available.");
+                    AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.OpenLogFile", "Open log file: path not available.", null);
                     return;
                 }
 
                 // Ensure the file exists so Explorer can select it.
                 if (!File.Exists(path))
                 {
-                    try { AppendLogFileLine("(log file created)"); } catch { }
+                    try { AgenteIALocal.Logging.Log.Information("-", 9100, "Control.OpenLogFile", "(log file created)", null); } catch { }
                 }
 
                 Process.Start(new ProcessStartInfo
@@ -945,7 +944,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                AppendLog("Open log file failed: " + ex.Message);
+                AgenteIALocal.Logging.Log.Error("-", 9100, "Control.OpenLogFile", "Open log file failed: " + ex.Message, ex);
             }
         }
 
@@ -954,48 +953,151 @@ namespace AgenteIALocalVSIX.ToolWindows
             try
             {
                 var path = GetLogFilePath();
+                AgenteIALocal.Logging.Log.Information("-", 9100, "Control.DeleteLogFile", $"DELETE LOG: path={path}", null);
+                
                 if (string.IsNullOrWhiteSpace(path))
                 {
-                    AppendLog("Delete log file: path not available.");
+                    AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.DeleteLogFile", "Delete log file: path not available.", null);
                     return;
                 }
 
                 if (!File.Exists(path))
                 {
                     UpdateLogFileSizeLabelFromBytes(0);
-                    AppendLog("Delete log file: file does not exist.");
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "Control.DeleteLogFile", $"Delete log file: file does not exist. Path checked: {path}", null);
                     return;
                 }
 
+                AgenteIALocal.Logging.Log.Information("-", 9100, "Control.DeleteLogFile", $"File exists, showing confirmation dialog. Size: {new FileInfo(path).Length} bytes", null);
+                
                 var res = MessageBox.Show(
                     "This will permanently delete the log file from disk. Are you sure?",
                     "Delete log file",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
 
-                if (res != MessageBoxResult.Yes) return;
+                if (res != MessageBoxResult.Yes)
+                {
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "Control.DeleteLogFile", "User cancelled delete operation", null);
+                    return;
+                }
 
+                AgenteIALocal.Logging.Log.Information("-", 9100, "Control.DeleteLogFile", $"User confirmed - CLOSING SERILOG to release file lock", null);
+                
+                // CRÍTICO: Cerrar Serilog para liberar el FileStream antes de borrar
+                try
+                {
+                    AgenteIALocal.Logging.Log.CloseAndFlush();
+                    System.Threading.Thread.Sleep(100); // Pequeña pausa para asegurar que el archivo se cierra
+                }
+                catch (Exception exClose)
+                {
+                    // Log legacy como fallback porque Serilog está cerrado
+                    try { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.xaml", "CloseAndFlush failed: " + exClose.Message, exClose); } catch { }
+                }
+                
+                // Ahora borrar el archivo (ya no está bloqueado)
                 File.Delete(path);
+                
+                // Verificar que se borró
+                var stillExists = File.Exists(path);
+                
+                // Reconfigurar Serilog con nuevo archivo
+                try
+                {
+                    var settings = new AgenteIALocal.Logging.LogSettings
+                    {
+                        Enabled = true,
+                        Information = true,
+                        Warning = true,
+                        Error = true,
+                        Critical = true
+                    };
+                    AgenteIALocal.Logging.Log.Configure(settings);
+                    
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "Control.DeleteLogFile", $"File deleted successfully. File.Exists after delete: {stillExists}", null);
+                }
+                catch (Exception exReconfig)
+                {
+                    try { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.xaml", "Serilog reconfigure failed: " + exReconfig.Message, exReconfig); } catch { }
+                }
+
+                // Limpiar buffer Serilog UI
+                try
+                {
+                    AgenteIALocal.Logging.Log.ClearUiBuffer();
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "Control.DeleteLogFile", "ClearUiBuffer() completed", null);
+                }
+                catch (Exception exClear)
+                {
+                    AgenteIALocal.Logging.Log.Error("-", 9100, "Control.DeleteLogFile", "ClearUiBuffer failed: " + exClear.Message, exClear);
+                }
 
                 Ui(() =>
                 {
                     try
                     {
                         UpdateLogFileSizeLabelFromBytes(0);
-                        if (LogText != null)
-                        {
-                            LogText.Text = "(no logs)";
-                            ScrollLogToEnd(force: true);
-                        }
+                        RefreshLogPanel(); // Actualizar desde Serilog
+                        ScrollLogToEnd(force: true);
+                        AgenteIALocal.Logging.Log.Information("-", 9100, "Control.DeleteLogFile", "UI updated - RefreshLogPanel called", null);
                     }
-                    catch { }
+                    catch (Exception exUi)
+                    {
+                        AgenteIALocal.Logging.Log.Error("-", 9100, "Control.DeleteLogFile", "UI update failed: " + exUi.Message, exUi);
+                    }
                 });
 
-                AppendLog("Log file deleted from disk.");
+                AgenteIALocal.Logging.Log.Information("-", 9100, "Control.DeleteLogFile", "Log file deletion completed successfully.", null);
             }
             catch (Exception ex)
             {
-                AppendLog("Delete log file failed: " + ex.Message);
+                try
+                {
+                    // Intentar loguear con Serilog
+                    AgenteIALocal.Logging.Log.Error("-", 9100, "Control.DeleteLogFile", "Delete log file failed: " + ex.Message, ex);
+                }
+                catch
+                {
+                    // Si Serilog falla, usar legacy
+                    try { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.xaml", "Delete log failed: " + ex.Message, ex); } catch { }
+                }
+            }
+        }
+
+        // NUEVO METODO RefreshLogPanel - ID: 20260122_020000
+        // Lee últimas 250 líneas desde Serilog.Log.GetRecentLogs() y actualiza LogText
+        private void RefreshLogPanel()
+        {
+            try
+            {
+                var logs = AgenteIALocal.Logging.Log.GetRecentLogs(250);
+                if (logs == null || logs.Count == 0)
+                {
+                    if (LogText != null)
+                    {
+                        LogText.Text = "(no logs)";
+                    }
+                    return;
+                }
+
+                var text = string.Join(Environment.NewLine, logs);
+                if (LogText != null)
+                {
+                    LogText.Text = text;
+                }
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    AgenteIALocal.Logging.Log.Error("-", 9100, "Control.RefreshLogPanel", "RefreshLogPanel failed: " + ex.Message, ex);
+                    if (LogText != null)
+                    {
+                        LogText.Text = "(error loading logs)";
+                    }
+                }
+                catch { }
             }
         }
 
@@ -1012,12 +1114,10 @@ namespace AgenteIALocalVSIX.ToolWindows
             FireAndForget(RunLogRefreshLoopAsync(ct), "AgenteIALocalControl.LogRefreshLoop");
         }
 
-        // NUEVO METODO RunLogRefreshLoopAsync - ID: 20250310_000005
+        // MODIFICADO RunLogRefreshLoopAsync - ID: 20260122_020001
+        // Ahora usa RefreshLogPanel() que lee desde Serilog.Log.GetRecentLogs()
         private async Task RunLogRefreshLoopAsync(CancellationToken ct)
         {
-            // Ensure UI buffer and subscription to hub
-            try { EnsureUiLogBuffer(); } catch { }
-
             while (!ct.IsCancellationRequested)
             {
                 try
@@ -1027,15 +1127,12 @@ namespace AgenteIALocalVSIX.ToolWindows
                     var bytes = TryGetLogFileSizeBytes();
                     UpdateLogFileSizeLabelFromBytes(bytes);
 
-                    // LogText is updated via collection changed handler from the UiLogBuffer
+                    // Actualizar LogText desde Serilog
                     try
                     {
-                        if (_uiLogBuffer == null || _uiLogBuffer.Items.Count == 0)
-                        {
-                            LogText.Text = "(no logs)";
-                        }
+                        RefreshLogPanel();
                     }
-                    catch { }
+                    catch (Exception exRefresh) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.LogRefresh", "RefreshLogPanel failed: " + exRefresh.Message, exRefresh); }
 
                     ScrollLogToEnd(force: false);
                 }
@@ -1046,46 +1143,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                     try { LogText.Text = "(unable to read logs)"; } catch { }
                     ScrollLogToEnd(force: false);
                 }
-
-                try { await Task.Delay(2000, ct); } catch { }
+                
+                try { await Task.Delay(2000, ct); } catch (Exception exDelay) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.LogRefresh", "Delay interrupted: " + exDelay.Message, exDelay); }
             }
         }
 
-        // NUEVO METODO EnsureUiLogBuffer - ID: 20260118_190200
-        private void EnsureUiLogBuffer()
-        {
-            try
-            {
-                if (_uiLogBuffer != null) return;
-                _uiLogBuffer = new AgenteIALocal.Infrastructure.LoggingV2.UiLogBuffer((a) => { try { this.Dispatcher.BeginInvoke(a); } catch { try { this.Dispatcher.Invoke(a); } catch { } } }, 250);
-
-                // Bind Items to LogText by listening changes and re-joining lines
-                _uiLogBuffer.Items.CollectionChanged += (s, e) =>
-                {
-                    try
-                    {
-                        this.Dispatcher.BeginInvoke(new Action(() =>
-                        {
-                            try
-                            {
-                                // join lines into the single LogText.Text for backward compatibility
-                                LogText.Text = string.Join(Environment.NewLine, _uiLogBuffer.Items);
-                                ScrollLogToEnd(force: false);
-                            }
-                            catch { }
-                        }));
-                    }
-                    catch { }
-                };
-
-                // subscribe hub
-                AgenteIALocal.Infrastructure.LoggingV2.LogEventHub.OnLog += (line, entry) =>
-                {
-                    try { _uiLogBuffer.Publish(line, entry); } catch { }
-                };
-            }
-            catch { }
-        }
+        // ELIMINADO METODO EnsureUiLogBuffer - ID: 20260122_223001
+        // Ya NO se necesita - RefreshLogPanel() lee directamente desde AgenteIALocal.Logging.Log.GetRecentLogs()
+        // LogEventHub.OnLog tampoco se usa - todo migrado a Serilog
 
         public void SetSolutionInfo(string solutionName, int projectCount)
         {
@@ -1107,7 +1172,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         {
             try
             {
-                AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] RefreshFromSettings invoked.");
+                AgenteIALocal.Logging.Log.Information("-", 9100, "Control.xaml", "RefreshFromSettings invoked.", null);
                 var settings = AgentSettingsStore.Load();
                 PopulateSettingsPanel(settings);
                 ComputeIsLlmConfigured(settings);
@@ -1155,11 +1220,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                             // avoid triggering persistence handlers
                             var prev = _isRefreshingFromSettings;
                             _isRefreshingFromSettings = true;
-                            try { TrySelectComboByText(TypeActivitie, runModeUi); } catch { }
+                            try { TrySelectComboByText(TypeActivitie, runModeUi); } catch (Exception exSelect) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.RefreshSettings", "TrySelectComboByText(TypeActivitie) failed: " + exSelect.Message, exSelect); }
                             _isRefreshingFromSettings = prev;
                         }
                     }
-                    catch { }
+                    catch (Exception exRunMode) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.RefreshSettings", "RunMode mapping failed: " + exRunMode.Message, exRunMode); }
 
                     // Model -> try select saved model if present in list
                     try
@@ -1174,12 +1239,12 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 var selOk = TrySelectComboByText(ModelOfLLM, savedModel);
                                 if (!selOk)
                                 {
-                                    try { ModelOfLLM.SelectedItem = null; } catch { }
+                                    try { ModelOfLLM.SelectedItem = null; } catch (Exception exClearSel) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.RefreshSettings", "ModelOfLLM.SelectedItem clear failed: " + exClearSel.Message, exClearSel); }
                                 }
                             }
                             else
                             {
-                                try { ModelOfLLM.SelectedItem = null; } catch { }
+                                try { ModelOfLLM.SelectedItem = null; } catch (Exception exClear) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.RefreshSettings", "ModelOfLLM.SelectedItem clear failed (empty savedModel): " + exClear.Message, exClear); }
                             }
                         }
                     }
@@ -1190,7 +1255,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                 // Refresh models for active server asynchronously (fire-and-forget) only when requested
                 if (refreshModels)
                 {
-                    try { FireAndForget(RefreshModelsForActiveServerAsync("RefreshFromSettings"), "RefreshFromSettings.RefreshModels"); } catch { }
+                    try
+                    {
+                        FireAndForget(RefreshModelsForActiveServerAsync("RefreshFromSettings"), "RefreshFromSettings.RefreshModels");
+                    }
+                    catch (Exception exFire) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.RefreshSettings", "Could not start RefreshModelsForActiveServerAsync: " + exFire.Message, exFire); }
                 }
             }
             catch (Exception ex)
@@ -1725,18 +1794,18 @@ namespace AgenteIALocalVSIX.ToolWindows
                 httpReq.Timeout = 300000; // 5 min timeout
                 httpReq.ReadWriteTimeout = 300000;
 
-                using (var reqStream = httpReq.GetRequestStream())
+                using (var reqStream = await httpReq.GetRequestStreamAsync().ConfigureAwait(false))
                 {
-                    reqStream.Write(payloadBytes, 0, payloadBytes.Length);
+                    await reqStream.WriteAsync(payloadBytes, 0, payloadBytes.Length).ConfigureAwait(false);
                 }
 
-                using (var httpResp = (System.Net.HttpWebResponse)httpReq.GetResponse())
+                using (var httpResp = (System.Net.HttpWebResponse)await httpReq.GetResponseAsync().ConfigureAwait(false))
                 using (var respStream = httpResp.GetResponseStream())
                 using (var reader = new StreamReader(respStream, Encoding.UTF8))
                 {
                     if (httpResp.StatusCode != System.Net.HttpStatusCode.OK)
                     {
-                        var errorBody = reader.ReadToEnd();
+                        var errorBody = await reader.ReadToEndAsync().ConfigureAwait(false);
                         return new AgentHostResponse
                         {
                             Success = false,
@@ -1829,7 +1898,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                             {
                                 using (var errReader = new StreamReader(errStream))
                                 {
-                                    errorBody = errReader.ReadToEnd();
+                                    errorBody = await errReader.ReadToEndAsync().ConfigureAwait(false);
                                 }
                             }
                         }

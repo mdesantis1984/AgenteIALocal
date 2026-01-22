@@ -70,13 +70,13 @@ namespace AgenteIALocalVSIX.ToolWindows
                 IsLlmConfigured = configured;
                 ConfigLabel = configured ? "OK Config" : "Not Config";
 
-                try { AgentComposition.Info(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, $"ConfigStatus: computed configured={configured} activeServerId={activeId ?? "(none)"} baseUrlPresent={baseUrlPresent} modelPresent={modelPresent}"); } catch { }
+                try { AgenteIALocal.Logging.Log.Information(activeCorrelationId ?? "-", 9100, "Control.Settings", $"ConfigStatus: computed configured={configured} activeServerId={activeId ?? "(none)"} baseUrlPresent={baseUrlPresent} modelPresent={modelPresent}", null); } catch { }
             }
             catch
             {
                 IsLlmConfigured = false;
                 ConfigLabel = "Not Config";
-                try { AgentComposition.Info(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "ConfigStatus: compute error, defaulted to Not Config"); } catch { }
+                try { AgenteIALocal.Logging.Log.Information(activeCorrelationId ?? "-", 9100, "Control.Settings", "ConfigStatus: compute error, defaulted to Not Config", null); } catch { }
             }
         }
     }

@@ -29,7 +29,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     var ex = t.Exception != null ? t.Exception.GetBaseException() : null;
                     if (ex != null)
                     {
-                        AgentComposition.Error(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, op + " failed: " + ex.Message, ex);
+                        AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9100, "Control.Helpers", op + " failed: " + ex.Message, ex);
                     }
                 }
                 catch
@@ -125,7 +125,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception ex)
             {
-                try { AgentComposition.Error(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "UiAsync error: " + ex.Message, ex); } catch { }
+                try { AgenteIALocal.Logging.Log.Error(activeCorrelationId ?? "-", 9100, "Control.Helpers", "UiAsync error: " + ex.Message, ex); } catch { }
             }
         }
 
@@ -237,18 +237,36 @@ namespace AgenteIALocalVSIX.ToolWindows
         }
 
         // Logging file helpers
+        // MODIFICADO GetLogFilePath - ID: 20260122_030000
+        // Ahora usa el path de Serilog con formato rolling diario: AgenteIALocal_yyyyMMdd.log
         private static string GetLogFilePath()
         {
             try
             {
+                // Intentar obtener path desde Serilog (incluye template _.log)
+                var serilogPath = AgenteIALocal.Logging.Log.CurrentLogFilePath;
+                if (!string.IsNullOrWhiteSpace(serilogPath))
+                {
+                    // serilogPath = "%LOCALAPPDATA%\AgenteIALocal\logs\AgenteIALocal_.log"
+                    // Serilog genera: AgenteIALocal_20260122.log (yyyyMMdd)
+                    // Necesitamos construir el path del archivo actual con fecha de hoy
+                    var dir = System.IO.Path.GetDirectoryName(serilogPath);
+                    var today = DateTime.Now.ToString("yyyyMMdd");
+                    var currentFile = System.IO.Path.Combine(dir, $"AgenteIALocal_{today}.log");
+                    return currentFile;
+                }
+                
+                // Fallback: construir manualmente
                 var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
                 var logDir = Path.Combine(local ?? string.Empty, "AgenteIALocal", "logs");
-                var logPath = Path.Combine(logDir, "AgenteIALocal.log");
+                var today2 = DateTime.Now.ToString("yyyyMMdd");
+                var logPath = Path.Combine(logDir, $"AgenteIALocal_{today2}.log");
                 return logPath;
             }
             catch
             {
-                return Path.Combine(".", "logs", "AgenteIALocal.log");
+                var today3 = DateTime.Now.ToString("yyyyMMdd");
+                return Path.Combine(".", "logs", $"AgenteIALocal_{today3}.log");
             }
         }
 
@@ -302,7 +320,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             try
             {
-                try { AgentComposition.Info(activeCorrelationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[AgenteIALocalControl] " + (message ?? string.Empty)); } catch { }
+                try { AgenteIALocal.Logging.Log.Information(activeCorrelationId ?? "-", 9100, "Control.Helpers", "[AgenteIALocalControl] " + (message ?? string.Empty), null); } catch { }
                 AppendLogFileLine("[AgenteIALocalControl] " + (message ?? string.Empty));
             }
             catch { }
@@ -612,7 +630,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (!_settingsOpenErrorLogged)
                 {
                     _settingsOpenErrorLogged = true;
-                    try { AgentComposition.Error("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "Failed to open config window", ex); } catch { }
+                    try { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.Helpers", "Failed to open config window", ex); } catch { }
                 }
             }
         }

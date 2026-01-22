@@ -2,7 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using AgenteIALocal.Core.Settings;
-using AgenteIALocal.Core.Logging;
+// MODIFICADO - ID: 20260122_030200 - Cambiado de AgenteIALocal.Core.Logging a AgenteIALocal.Logging (Serilog)
 
 namespace AgenteIALocalVSIX.Options
 {
@@ -28,7 +28,7 @@ namespace AgenteIALocalVSIX.Options
 
                 try
                 {
-                    AgentComposition.Info("-", AgenteIALocal.Core.Logging.LogEvents.Vsix_Composition, "Options: Provider changed " + old + " -> " + provider);
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "Options.ViewModel", "Options: Provider changed " + old + " -> " + provider, null);
                 }
                 catch { }
             }

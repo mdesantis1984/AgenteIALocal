@@ -96,8 +96,9 @@ namespace AgenteIALocal.Logging
                     _logger = cfg.CreateLogger();
                     Serilog.Log.Logger = _logger;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    System.Diagnostics.Trace.TraceWarning("Log.Configure failed: " + ex.Message);
                     // Last resort: keep previous logger.
                 }
             }
@@ -105,7 +106,14 @@ namespace AgenteIALocal.Logging
 
         public static void CloseAndFlush()
         {
-            try { Serilog.Log.CloseAndFlush(); } catch { }
+            try
+            {
+                Serilog.Log.CloseAndFlush();
+            }
+            catch (Exception closeEx)
+            {
+                try { System.Diagnostics.Trace.TraceWarning("Log.CloseAndFlush failed: " + closeEx.Message); } catch { }
+            }
         }
 
         public static void Verbose(string correlationId, int eventId, string source, string message, Exception ex = null)
@@ -164,8 +172,9 @@ namespace AgenteIALocal.Logging
                      .Write(level, message ?? string.Empty);
                 }
             }
-            catch
+            catch (Exception logEx)
             {
+                try { System.Diagnostics.Trace.TraceWarning("Log.WriteIfEnabled failed: " + logEx.Message); } catch { }
                 // never throw
             }
         }
@@ -181,8 +190,9 @@ namespace AgenteIALocal.Logging
             {
                 return _uiSink?.GetRecentLogs(count) ?? new List<string>();
             }
-            catch
+            catch (Exception ex)
             {
+                try { System.Diagnostics.Trace.TraceWarning("Log.GetRecentLogs failed: " + ex.Message); } catch { }
                 return new List<string>();
             }
         }
@@ -197,8 +207,9 @@ namespace AgenteIALocal.Logging
             {
                 _uiSink?.Clear();
             }
-            catch
+            catch (Exception ex)
             {
+                try { System.Diagnostics.Trace.TraceWarning("Log.ClearUiBuffer failed: " + ex.Message); } catch { }
                 // Never throw
             }
         }

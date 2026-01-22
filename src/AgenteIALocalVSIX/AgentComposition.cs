@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using AgenteIALocal.Core.Settings;
 using AgenteIALocal.Infrastructure.Agents;
 using AgenteIALocal.Core.Models.Agent;
-using AgenteIALocal.Core.Logging;
+// MODIFICADO - ID: 20260122_030204 - Eliminado using AgenteIALocal.Core.Logging (legacy, no usado)
 
 namespace AgenteIALocalVSIX
 {
@@ -14,30 +14,8 @@ namespace AgenteIALocalVSIX
 
         public static IAgentService AgentService { get; private set; }
 
-        // V2 logger instance exposed as the single logging entry point for all code.
-        private static IAgentLoggerV2 loggerV2;
-        public static IAgentLoggerV2 LoggerV2
-        {
-            get
-            {
-                if (loggerV2 == null)
-                {
-                    lock (sync)
-                    {
-                        if (loggerV2 == null)
-                        {
-                            loggerV2 = new AgenteIALocal.Infrastructure.LoggingV2.AgentLoggerV2(new AgenteIALocal.Infrastructure.LoggingV2.NullLogSink());
-                        }
-                    }
-                }
-                return loggerV2;
-            }
-            set
-            {
-                if (value == null) throw new ArgumentNullException(nameof(value));
-                loggerV2 = value;
-            }
-        }
+        // ELIMINADO LoggerV2 property - ID: 20260122_195502
+        // Reemplazado completamente por AgenteIALocal.Logging.Log (Serilog)
 
         public static void EnsureComposition()
         {
@@ -66,8 +44,9 @@ namespace AgenteIALocalVSIX
                 return provider.Equals("lmstudio", StringComparison.OrdinalIgnoreCase)
                     || provider.Equals("jan", StringComparison.OrdinalIgnoreCase);
             }
-            catch
+            catch (Exception ex)
             {
+                AgenteIALocal.Logging.Log.Warning("-", 9001, "Composition.IsOpenAi", "IsOpenAiCompatibleProvider failed: " + ex.Message, ex);
                 return false;
             }
         }
@@ -79,14 +58,14 @@ namespace AgenteIALocalVSIX
                 var vsixSettings = AgentSettingsStore.Load();
                 if (vsixSettings == null)
                 {
-                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "No VSIX settings found; keeping mock.");
+                    AgenteIALocal.Logging.Log.Information("-", 9001, "VSIX.Composition", "No VSIX settings found; keeping mock.", null);
                     return;
                 }
 
                 var activeId = vsixSettings.ActiveServerId;
                 if (string.IsNullOrEmpty(activeId) || vsixSettings.Servers == null)
                 {
-                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "No active server configured; keeping mock.");
+                    AgenteIALocal.Logging.Log.Information("-", 9001, "VSIX.Composition", "No active server configured; keeping mock.", null);
                     return;
                 }
 
@@ -94,19 +73,19 @@ namespace AgenteIALocalVSIX
 
                 if (srv == null)
                 {
-                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Active server entry not found; keeping mock.");
+                    AgenteIALocal.Logging.Log.Information("-", 9001, "VSIX.Composition", "Active server entry not found; keeping mock.", null);
                     return;
                 }
 
                 if (!IsOpenAiCompatibleProvider(srv.Provider))
                 {
-                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Active provider is not OpenAI-compatible (lmstudio|jan); keeping mock.");
+                    AgenteIALocal.Logging.Log.Information("-", 9001, "VSIX.Composition", "Active provider is not OpenAI-compatible (lmstudio|jan); keeping mock.", null);
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(srv.BaseUrl))
                 {
-                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "LM Studio BaseUrl empty; keeping mock.");
+                    AgenteIALocal.Logging.Log.Information("-", 9001, "VSIX.Composition", "LM Studio BaseUrl empty; keeping mock.", null);
                     return;
                 }
 
@@ -125,11 +104,11 @@ namespace AgenteIALocalVSIX
 
                 AgentService = adapter;
 
-                LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Real OpenAI-compatible backend composed and active.");
+                AgenteIALocal.Logging.Log.Information("-", 9001, "VSIX.Composition", "Real OpenAI-compatible backend composed and active.", null);
             }
             catch (Exception ex)
             {
-                try { LoggerV2.Error("-", new LogEventId(9001, "VSIX.Composition"), "Real backend composition failed: " + ex.Message, ex); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9001, "VSIX.Composition", "Real backend composition failed: " + ex.Message, ex);
                 // keep existing mock
             }
         }
@@ -138,12 +117,12 @@ namespace AgenteIALocalVSIX
         {
             try
             {
-                LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), $"RecomposeFromSettings invoked. Reason: {reason}");
+                AgenteIALocal.Logging.Log.Information("-", 9001, "VSIX.Composition", $"RecomposeFromSettings invoked. Reason: {reason}", null);
 
                 var vsixSettings = AgentSettingsStore.Load();
                 if (vsixSettings == null)
                 {
-                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "No settings found during recompose; assigning mock.");
+                    AgenteIALocal.Logging.Log.Information("-", 9001, "VSIX.Composition", "No settings found during recompose; assigning mock.", null);
                     AgentService = new MockAgentService();
                     return;
                 }
@@ -164,20 +143,20 @@ namespace AgenteIALocalVSIX
                 var baseUrl = srv?.BaseUrl ?? string.Empty;
                 var model = srv?.Model ?? string.Empty;
 
-                LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), $"Recompose settings: ActiveServerId={srv?.Id}, Provider={provider}, BaseUrl={baseUrl}, Model={model}");
+                AgenteIALocal.Logging.Log.Information("-", 9001, "VSIX.Composition", $"Recompose settings: ActiveServerId={srv?.Id}, Provider={provider}, BaseUrl={baseUrl}, Model={model}", null);
 
                 try
                 {
                     if (!IsOpenAiCompatibleProvider(srv?.Provider))
                     {
-                        LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Provider not OpenAI-compatible (lmstudio|jan); assigning mock AgentService.");
+                        AgenteIALocal.Logging.Log.Information("-", 9001, "VSIX.Composition", "Provider not OpenAI-compatible (lmstudio|jan); assigning mock AgentService.", null);
                         AgentService = new MockAgentService();
                         return;
                     }
 
                     if (string.IsNullOrWhiteSpace(srv.BaseUrl))
                     {
-                        LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "Active server BaseUrl empty; assigning mock AgentService.");
+                        AgenteIALocal.Logging.Log.Information("-", 9001, "VSIX.Composition", "Active server BaseUrl empty; assigning mock AgentService.", null);
                         AgentService = new MockAgentService();
                         return;
                     }
@@ -197,50 +176,26 @@ namespace AgenteIALocalVSIX
 
                     AgentService = adapter;
 
-                    LoggerV2.Info("-", new LogEventId(9001, "VSIX.Composition"), "RecomposeFromSettings: Real OpenAI-compatible backend composed and active.");
+                    AgenteIALocal.Logging.Log.Information("-", 9001, "VSIX.Composition", "RecomposeFromSettings: Real OpenAI-compatible backend composed and active.", null);
                     return;
                 }
                 catch (Exception ex)
                 {
-                    LoggerV2.Error("-", new LogEventId(9001, "VSIX.Composition"), $"RecomposeFromSettings failed to compose real backend: {ex.Message}", ex);
+                    AgenteIALocal.Logging.Log.Error("-", 9001, "VSIX.Composition", $"RecomposeFromSettings failed to compose real backend: {ex.Message}", ex);
                     AgentService = new MockAgentService();
                     return;
                 }
             }
             catch (Exception ex)
             {
-                try { LoggerV2.Error("-", new LogEventId(9001, "VSIX.Composition"), $"RecomposeFromSettings general failure: {ex.Message}", ex); } catch { }
-                try { AgentService = new MockAgentService(); } catch { }
+                AgenteIALocal.Logging.Log.Error("-", 9001, "VSIX.Composition", $"RecomposeFromSettings general failure: {ex.Message}", ex);
+                try { AgentService = new MockAgentService(); } catch (Exception exMock) { AgenteIALocal.Logging.Log.Warning("-", 9001, "Composition.Recompose", "Mock assignment failed: " + exMock.Message, exMock); }
             }
         }
 
-        // Minimal V2 helpers that capture caller info via CallerInfo helpers
-        public static void Info(string correlationId, LogEventId eventId, string message, Exception ex = null, System.Collections.Generic.IReadOnlyDictionary<string, string> ctx = null, string ns = null, string type = null, string assembly = null, [System.Runtime.CompilerServices.CallerMemberName] string member = "", [System.Runtime.CompilerServices.CallerFilePath] string file = "", [System.Runtime.CompilerServices.CallerLineNumber] int? line = null)
-        {
-            try
-            {
-                LoggerV2.Info(string.IsNullOrEmpty(correlationId) ? "-" : correlationId, eventId, message, ex, ctx, member, file, line, ns, type, assembly);
-            }
-            catch { }
-        }
-
-        public static void Verbose(string correlationId, LogEventId eventId, string message, Exception ex = null, System.Collections.Generic.IReadOnlyDictionary<string, string> ctx = null, string ns = null, string type = null, string assembly = null, [System.Runtime.CompilerServices.CallerMemberName] string member = "", [System.Runtime.CompilerServices.CallerFilePath] string file = "", [System.Runtime.CompilerServices.CallerLineNumber] int? line = null)
-        {
-            try
-            {
-                LoggerV2.Verbose(string.IsNullOrEmpty(correlationId) ? "-" : correlationId, eventId, message, ex, ctx, member, file, line, ns, type, assembly);
-            }
-            catch { }
-        }
-
-        public static void Error(string correlationId, LogEventId eventId, string message, Exception ex = null, System.Collections.Generic.IReadOnlyDictionary<string, string> ctx = null, string ns = null, string type = null, string assembly = null, [System.Runtime.CompilerServices.CallerMemberName] string member = "", [System.Runtime.CompilerServices.CallerFilePath] string file = "", [System.Runtime.CompilerServices.CallerLineNumber] int? line = null)
-        {
-            try
-            {
-                LoggerV2.Error(string.IsNullOrEmpty(correlationId) ? "-" : correlationId, eventId, message, ex, ctx, member, file, line, ns, type, assembly);
-            }
-            catch { }
-        }
+        // ELIMINADOS METODOS helpers LoggingV2 - ID: 20260122_195506
+        // Info(), Verbose(), Error() eliminados completamente (líneas 196-222 originales)
+        // Usar AgenteIALocal.Logging.Log.* directamente en TODO el código
 
         // NUEVO METODO LogGlobalSettingsPersistence - ID: 20260118_182300
         // Emits a single-line trace when globalSettings relevant fields change between snapshots.
@@ -259,7 +214,7 @@ namespace AgenteIALocalVSIX
                         var gs = before["globalSettings"] as Newtonsoft.Json.Linq.JObject;
                         runModeBefore = gs != null ? gs.Value<string>("runMode") : null;
                     }
-                    catch { runModeBefore = null; }
+                    catch (Exception exBefore) { runModeBefore = null; AgenteIALocal.Logging.Log.Debug("-", 9002, "Composition.LogPersist", "runModeBefore parse failed: " + exBefore.Message, exBefore); }
                 }
                 string runModeAfter = after.Value<string>("runMode");
                 if (string.IsNullOrEmpty(runModeAfter))
@@ -269,7 +224,7 @@ namespace AgenteIALocalVSIX
                         var gs = after["globalSettings"] as Newtonsoft.Json.Linq.JObject;
                         runModeAfter = gs != null ? gs.Value<string>("runMode") : null;
                     }
-                    catch { runModeAfter = null; }
+                    catch (Exception exAfter) { runModeAfter = null; AgenteIALocal.Logging.Log.Debug("-", 9002, "Composition.LogPersist", "runModeAfter parse failed: " + exAfter.Message, exAfter); }
                 }
 
                 var reqBefore = before["requestDefaults"] as Newtonsoft.Json.Linq.JObject ?? new Newtonsoft.Json.Linq.JObject();
@@ -319,22 +274,14 @@ namespace AgenteIALocalVSIX
 
                 var msg = $"ConfigPersist source={source} provider={prov} runMode={runStr} stream={streamAfter} temp={tempStr} maxTokens={maxStr} includeUsage={includeStr} ideIntegration={ideStr} applyChanges={applyStr} maxSteps={stepsStr} changed=[{string.Join(",", changed)}]";
 
-                try { LoggerV2.Info("-", new LogEventId(9002, "VSIX.ConfigPersist"), msg); } catch { }
+                AgenteIALocal.Logging.Log.Information("-", 9002, "VSIX.ConfigPersist", msg, null);
             }
-            catch { }
+            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9002, "Composition.LogPersist", "LogGlobalSettingsPersistence failed: " + ex.Message, ex); }
         }
 
-        // NUEVO METODO Warning - ID: 20260121_233000
-        public static void Warning(string correlationId, LogEventId eventId, string message, Exception ex = null, System.Collections.Generic.IReadOnlyDictionary<string, string> ctx = null, string ns = null, string type = null, string assembly = null, [System.Runtime.CompilerServices.CallerMemberName] string member = "", [System.Runtime.CompilerServices.CallerFilePath] string file = "", [System.Runtime.CompilerServices.CallerLineNumber] int? line = null)
-        {
-            try
-            {
-                LoggerV2.Warning(string.IsNullOrEmpty(correlationId) ? "-" : correlationId, eventId, message, ex, ctx, member, file, line, ns, type, assembly);
-            }
-            catch { }
-        }
-
-        // ... other levels as needed (Debug, Critical)
+        // ELIMINADOS METODOS helpers LoggingV2 - ID: 20260122_195505
+        // Info(), Verbose(), Error(), Warning() eliminados completamente
+        // TODO el código debe usar AgenteIALocal.Logging.Log.* directamente
     }
 
     // Minimal agent service interface local to VSIX project.
@@ -385,7 +332,10 @@ namespace AgenteIALocalVSIX
                         maxSteps = agentObj.Value<int?>("maxSteps") ?? maxSteps;
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    AgenteIALocal.Logging.Log.Warning("-", 9001, "Composition.Execute", "Failed to parse agent config defaults: " + ex.Message, ex);
+                }
 
                 // Build a short AgentConfig block to prepend to the prompt when runMode=agente
                 var agentConfigBlock = "";
@@ -393,7 +343,11 @@ namespace AgenteIALocalVSIX
                 {
                     agentConfigBlock = "[AgentConfig] " + "ideIntegration=" + (ideIntegration ? "true" : "false") + "; applyChanges=" + (applyChanges ? "true" : "false") + "; maxSteps=" + maxSteps + "\n";
                 }
-                catch { agentConfigBlock = string.Empty; }
+                catch (Exception ex)
+                {
+                    AgenteIALocal.Logging.Log.Warning("-", 9001, "Composition.Execute", "Failed to build agent config block: " + ex.Message, ex);
+                    agentConfigBlock = string.Empty;
+                }
 
                 // Compose prompt
                 string promptBody = (req?.Action ?? string.Empty) ?? string.Empty;
@@ -407,7 +361,10 @@ namespace AgenteIALocalVSIX
                         var pc = req?.ProjectCount ?? 0;
                         if (pc > 0) promptBody = promptBody + " (ProjectCount=" + pc + ")";
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        AgenteIALocal.Logging.Log.Verbose("-", 9001, "Composition.Execute", "Failed to append ProjectCount to prompt: " + ex.Message, ex);
+                    }
                 }
 
                 var fullPrompt = string.IsNullOrWhiteSpace(agentConfigBlock) ? promptBody : (agentConfigBlock + promptBody);
@@ -433,7 +390,10 @@ namespace AgenteIALocalVSIX
                         if (mt.HasValue && mt.Value > 0) agentReq.MaxTokens = mt.Value;
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    AgenteIALocal.Logging.Log.Warning("-", 9001, "Composition.Execute", "Failed to read requestDefaults: " + ex.Message, ex);
+                }
                 var agentResp = Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.Run(
                     () => appService.RunAsync(agentReq, System.Threading.CancellationToken.None)
                     );
@@ -479,7 +439,10 @@ namespace AgenteIALocalVSIX
                 if (v is int i) return i;
                 if (v != null && int.TryParse(v.ToString(), out var pi)) return pi;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Warning("-", 9001, "Composition.Helpers", "TryGetPropInt failed: " + ex.Message, ex);
+            }
             return null;
         }
 
@@ -493,7 +456,10 @@ namespace AgenteIALocalVSIX
                 var v = p.GetValue(obj, null);
                 return v?.ToString();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Warning("-", 9001, "Composition.Helpers", "TryGetPropString failed: " + ex.Message, ex);
+            }
             return null;
         }
     }

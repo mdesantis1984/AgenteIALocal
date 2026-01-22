@@ -5,10 +5,10 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AgenteIALocal.Core.Logging;
 using AgenteIALocal.Core.Networking;
 using AgenteIALocal.Core.Settings;
 using AgenteIALocal.Core.StreamingV2;
+using AgenteIALocal.Logging;
 
 namespace AgenteIALocal.Infrastructure.Agents.StreamingV2
 {
@@ -29,7 +29,7 @@ namespace AgenteIALocal.Infrastructure.Agents.StreamingV2
         private async Task<LlmChatResultV2> ExecuteAsync(LlmChatRequestV2 req, LlmRunContextV2 ctx, Action<LlmStreamEventV2> onEvent, CancellationToken ct)
         {
             var safeOnEvent = onEvent ?? (_ => { });
-            var logger = ctx == null ? null : ctx.Logger;
+            // MODIFICADO - ID: 20260122_030011 - Eliminado ctx.Logger (ahora usa Log estático)
             var correlationId = ctx == null ? null : ctx.CorrelationId;
             var ctxMap = ctx == null ? null : ctx.Ctx;
             var sb = new StringBuilder();
@@ -47,10 +47,8 @@ namespace AgenteIALocal.Infrastructure.Agents.StreamingV2
                 if (endpoint == null)
                 {
                     SafeOnEvent(safeOnEvent, new LlmStreamEventV2 { Type = LlmStreamEventTypeV2.Error, ErrorMessage = "EndpointNotResolved" });
-                    if (logger != null)
-                    {
-                        logger.Error(correlationId, StreamingV2LogEventIds.StreamingV2_Error, "StreamingV2 LMStudio endpoint not resolved.", null, ctxMap);
-                    }
+                    // MODIFICADO - ID: 20260122_030012 - Migrado a Serilog
+                    Log.Error(correlationId ?? "-", StreamingV2LogEventIds.StreamingV2_Error, "LmStudio.Execute", "StreamingV2 LMStudio endpoint not resolved.", null);
                     return new LlmChatResultV2 { FullText = string.Empty, FinishReason = "error" };
                 }
 
@@ -78,10 +76,8 @@ namespace AgenteIALocal.Infrastructure.Agents.StreamingV2
                 var responseStream = httpResponse.GetResponseStream() ?? Stream.Null;
                 reader = new StreamReader(responseStream, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: false);
 
-                if (logger != null)
-                {
-                    logger.Info(correlationId, StreamingV2LogEventIds.StreamingV2_Start, "StreamingV2 LMStudio start: model=" + effectiveModel + " endpoint=" + endpoint, null, ctxMap);
-                }
+                // MODIFICADO - ID: 20260122_030013 - Migrado a Serilog
+                Log.Information(correlationId ?? "-", StreamingV2LogEventIds.StreamingV2_Start, "LmStudio.Execute", "StreamingV2 LMStudio start: model=" + effectiveModel + " endpoint=" + endpoint, null);
 
                 while (true)
                 {
@@ -102,10 +98,8 @@ namespace AgenteIALocal.Infrastructure.Agents.StreamingV2
                     if (OpenAiChatStreamParserV2.TryExtractErrorMessage(data, out errorMessage) && !string.IsNullOrEmpty(errorMessage))
                     {
                         SafeOnEvent(safeOnEvent, new LlmStreamEventV2 { Type = LlmStreamEventTypeV2.Error, ErrorMessage = errorMessage, RawJson = data });
-                        if (logger != null)
-                        {
-                            logger.Error(correlationId, StreamingV2LogEventIds.StreamingV2_Error, "StreamingV2 LMStudio error: " + errorMessage, null, ctxMap);
-                        }
+                        // MODIFICADO - ID: 20260122_030014 - Migrado a Serilog
+                        Log.Error(correlationId ?? "-", StreamingV2LogEventIds.StreamingV2_Error, "LmStudio.Execute", "StreamingV2 LMStudio error: " + errorMessage, null);
                         return new LlmChatResultV2 { FullText = sb.ToString(), FinishReason = "error" };
                     }
 
@@ -124,10 +118,8 @@ namespace AgenteIALocal.Infrastructure.Agents.StreamingV2
                 }
 
                 SafeOnEvent(safeOnEvent, new LlmStreamEventV2 { Type = LlmStreamEventTypeV2.Done });
-                if (logger != null)
-                {
-                    logger.Info(correlationId, StreamingV2LogEventIds.StreamingV2_Done, "StreamingV2 LMStudio done", null, ctxMap);
-                }
+                // MODIFICADO - ID: 20260122_030015 - Migrado a Serilog
+                Log.Information(correlationId ?? "-", StreamingV2LogEventIds.StreamingV2_Done, "LmStudio.Execute", "StreamingV2 LMStudio done", null);
 
                 return new LlmChatResultV2 { FullText = sb.ToString(), FinishReason = finishReason };
             }
@@ -135,10 +127,8 @@ namespace AgenteIALocal.Infrastructure.Agents.StreamingV2
             {
                 try { httpRequest?.Abort(); } catch { }
                 SafeOnEvent(safeOnEvent, new LlmStreamEventV2 { Type = LlmStreamEventTypeV2.Error, ErrorMessage = "Canceled" });
-                if (logger != null)
-                {
-                    logger.Warning(correlationId, StreamingV2LogEventIds.StreamingV2_Canceled, "StreamingV2 LMStudio canceled", null, ctxMap);
-                }
+                // MODIFICADO - ID: 20260122_030016 - Migrado a Serilog
+                Log.Warning(correlationId ?? "-", StreamingV2LogEventIds.StreamingV2_Canceled, "LmStudio.Execute", "StreamingV2 LMStudio canceled", null);
                 return new LlmChatResultV2 { FullText = sb.ToString(), FinishReason = "canceled" };
             }
             catch (WebException wex)
@@ -147,20 +137,16 @@ namespace AgenteIALocal.Infrastructure.Agents.StreamingV2
                 var body = ReadBodySafe(wex);
                 var errMsg = string.IsNullOrEmpty(body) ? wex.Message : wex.Message + " - " + body;
                 SafeOnEvent(safeOnEvent, new LlmStreamEventV2 { Type = LlmStreamEventTypeV2.Error, ErrorMessage = errMsg, RawJson = body });
-                if (logger != null)
-                {
-                    logger.Error(correlationId, StreamingV2LogEventIds.StreamingV2_Error, "StreamingV2 LMStudio exception: " + errMsg, wex, ctxMap);
-                }
+                // MODIFICADO - ID: 20260122_030017 - Migrado a Serilog
+                Log.Error(correlationId ?? "-", StreamingV2LogEventIds.StreamingV2_Error, "LmStudio.Execute", "StreamingV2 LMStudio exception: " + errMsg, wex);
                 return new LlmChatResultV2 { FullText = sb.ToString(), FinishReason = "error" };
             }
             catch (Exception ex)
             {
                 try { httpRequest?.Abort(); } catch { }
                 SafeOnEvent(safeOnEvent, new LlmStreamEventV2 { Type = LlmStreamEventTypeV2.Error, ErrorMessage = ex.Message });
-                if (logger != null)
-                {
-                    logger.Error(correlationId, StreamingV2LogEventIds.StreamingV2_Error, "StreamingV2 LMStudio exception: " + ex.Message, ex, ctxMap);
-                }
+                // MODIFICADO - ID: 20260122_030018 - Migrado a Serilog
+                Log.Error(correlationId ?? "-", StreamingV2LogEventIds.StreamingV2_Error, "LmStudio.Execute", "StreamingV2 LMStudio exception: " + ex.Message, ex);
                 return new LlmChatResultV2 { FullText = sb.ToString(), FinishReason = "error" };
             }
             finally

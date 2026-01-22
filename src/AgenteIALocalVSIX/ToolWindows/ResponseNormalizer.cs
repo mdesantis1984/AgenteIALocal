@@ -277,9 +277,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                     var corr = string.IsNullOrEmpty(correlationId) ? "-" : correlationId;
                     AgenteIALocal.Logging.Log.Verbose(corr, 9200, "ResponseNormalizer.Normalize", sb.ToString(), null);
                 }
-                catch
+                catch (Exception)
                 {
-                    // Swallow any logging failures - must not throw
+                    // Swallow any logging failures - must not throw - silent fallback
                 }
             }
             catch
@@ -310,16 +310,18 @@ namespace AgenteIALocalVSIX.ToolWindows
                         var un = Regex.Unescape(s);
                         return un ?? s;
                     }
-                    catch
+                    catch (Exception exUnescape)
                     {
+                        AgenteIALocal.Logging.Log.Debug(correlationId ?? "-", 9200, "ResponseNormalizer.Unescape", "Regex.Unescape failed: " + exUnescape.Message, exUnescape);
                         return s;
                     }
                 }
 
                 return s;
             }
-            catch
+            catch (Exception ex)
             {
+                AgenteIALocal.Logging.Log.Warning(correlationId ?? "-", 9200, "ResponseNormalizer.Unescape", "UnescapeIfDoubleEscaped failed: " + ex.Message, ex);
                 return s;
             }
         }
@@ -356,15 +358,17 @@ namespace AgenteIALocalVSIX.ToolWindows
                         return unescaped;
                     }
                 }
-                catch
+                catch (Exception exUnescape2)
                 {
+                    AgenteIALocal.Logging.Log.Debug(correlationId ?? "-", 9200, "ResponseNormalizer.Convert", "Regex.Unescape (inner) failed: " + exUnescape2.Message, exUnescape2);
                     // ignore
                 }
 
                 return replaced;
             }
-            catch
+            catch (Exception ex)
             {
+                AgenteIALocal.Logging.Log.Warning(correlationId ?? "-", 9200, "ResponseNormalizer.Convert", "ConvertEscapedWhitespace failed: " + ex.Message, ex);
                 return s;
             }
         }

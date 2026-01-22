@@ -66,7 +66,6 @@
     <Compile Include="Execution\DefaultRunExecutor.cs" />
     <Compile Include="Execution\IRunExecutor.cs" />
     <Compile Include="Execution\MockAgentExecutor.cs" />
-    <Compile Include="LoggingV2\VsActivityLogSink.cs" />
     <Compile Include="Options\AgentOptionsViewModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AgenteIALocalVSIXPackage.cs" />
@@ -83,7 +82,6 @@
     </Compile>
     <Compile Include="ToolWindows\AgenteIALocalToolWindow.cs" />
     <Compile Include="ToolWindows\ResponseNormalizer.cs" />
-    <Compile Include="VsixSafeLog.cs" />
   </ItemGroup>
   <!-- XAML -->
   <ItemGroup>

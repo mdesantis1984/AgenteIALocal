@@ -114,7 +114,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     fd.Blocks.Clear();
                     fd.Blocks.Add(p);
 
-                    try { AgentComposition.Verbose(correlationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] JsonResponseRenderer: rendered json"); } catch { }
+                    try { AgenteIALocal.Logging.Log.Verbose(correlationId ?? "-", 9200, "Control.Renderers", "JsonResponseRenderer: rendered json", null); } catch { }
 
                     return fd;
                 }
@@ -164,7 +164,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 p.Inlines.Add(new Run(codeFenceBuilder.ToString()));
                                 ApplyCodeBlockStyle(p);
                                 fd.Blocks.Add(p);
-                                try { AgentComposition.Verbose(correlationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: code fence styled"); } catch { }
+                                try { AgenteIALocal.Logging.Log.Verbose(correlationId ?? "-", 9200, "Control.Renderers", "MarkdownResponseRenderer: code fence styled", null); } catch { }
                                 inCodeFence = false;
                                 codeFenceLang = null;
                                 continue;
@@ -193,7 +193,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                             ApplyHeaderStyle(p, level);
                             fd.Blocks.Add(p);
 
-                            try { AgentComposition.Verbose(correlationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: header styled level=" + level); } catch { }
+                            try { AgenteIALocal.Logging.Log.Verbose(correlationId ?? "-", 9200, "Control.Renderers", "MarkdownResponseRenderer: header styled level=" + level, null); } catch { }
 
                             if (currentList != null) { fd.Blocks.Add(currentList); currentList = null; }
                             continue;
@@ -209,7 +209,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                             AddInlinesToParagraph(p, text);
                             ApplyBlockQuoteStyle(p);
                             fd.Blocks.Add(p);
-                            try { AgentComposition.Verbose(correlationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: blockquote styled"); } catch { }
+                            try { AgenteIALocal.Logging.Log.Verbose(correlationId ?? "-", 9200, "Control.Renderers", "MarkdownResponseRenderer: blockquote styled", null); } catch { }
                             if (currentList != null) { fd.Blocks.Add(currentList); currentList = null; }
                             continue;
                         }
@@ -275,7 +275,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         return CreatePlainDocument(content);
                     }
 
-                    try { AgentComposition.Verbose(correlationId ?? "-", AgenteIALocal.Core.Logging.LogEvents.Vsix_UI, "[VERBOSE] MarkdownResponseRenderer: render complete"); } catch { }
+                    try { AgenteIALocal.Logging.Log.Verbose(correlationId ?? "-", 9200, "Control.Renderers", "MarkdownResponseRenderer: render complete", null); } catch { }
 
                     return fd;
                 }

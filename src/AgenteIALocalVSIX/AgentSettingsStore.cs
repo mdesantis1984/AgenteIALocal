@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using AgenteIALocal.Core.Logging;
-using AgenteIALocal.Infrastructure.LoggingV2;
+// MODIFICADO - ID: 20260122_030203 - Eliminado using AgenteIALocal.Core.Logging (legacy, no usado)
 using Microsoft.VisualStudio.Shell;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -32,8 +31,9 @@ namespace AgenteIALocalVSIX
                 var dir = Path.Combine(local, FolderName);
                 return Path.Combine(dir, FileName);
             }
-            catch
+            catch (Exception ex)
             {
+                AgenteIALocal.Logging.Log.Warning("-", 9101, "SettingsStore.GetPath", "GetSettingsFilePath failed: " + ex.Message, ex);
                 return Path.Combine(".", FolderName, FileName);
             }
         }
@@ -77,8 +77,9 @@ namespace AgenteIALocalVSIX
                     if (root["taskProfiles"] == null && (t = root["TaskProfiles"]) != null) { root["taskProfiles"] = t; changed = true; }
                     if (root["activeServerId"] == null && (t = root["ActiveServerId"]) != null) { root["activeServerId"] = t; changed = true; }
                 }
-                catch
+                catch (Exception exCanon)
                 {
+                    AgenteIALocal.Logging.Log.Debug("-", 9102, "SettingsStore.Load", "Canonicalization failed: " + exCanon.Message, exCanon);
                     // ignore canonicalization failures
                 }
 
@@ -110,7 +111,7 @@ namespace AgenteIALocalVSIX
                         catch (Exception ex)
                         {
                             // keep loading other entries
-                            VsixSafeLog.Error("Settings.Load.ServerParse", "Failed to parse server entry", ex, 9102);
+                            AgenteIALocal.Logging.Log.Error("-", 9102, "Settings.Load.ServerParse", "Failed to parse server entry", ex);
                         }
                     }
                 }
@@ -140,7 +141,7 @@ namespace AgenteIALocalVSIX
                     }
                     catch (Exception ex)
                     {
-                        VsixSafeLog.Error("Settings.Load.AutoSave", "Auto-save during Load failed", ex, 9103);
+                        AgenteIALocal.Logging.Log.Error("-", 9103, "Settings.Load.AutoSave", "Auto-save during Load failed", ex);
                     }
                 }
 
@@ -148,15 +149,16 @@ namespace AgenteIALocalVSIX
             }
             catch (Exception ex)
             {
-                VsixSafeLog.Error("Settings.Load", "Load failed; falling back to defaults", ex, 9101);
+                AgenteIALocal.Logging.Log.Error("-", 9101, "Settings.Load", "Load failed; falling back to defaults", ex);
                 try
                 {
                     var defaults = CreateDefaultSettings();
                     Save(defaults);
                     return defaults;
                 }
-                catch
+                catch (Exception exSave)
                 {
+                    AgenteIALocal.Logging.Log.Warning("-", 9103, "SettingsStore.Load", "Save defaults failed: " + exSave.Message, exSave);
                     // final fallback
                     return CreateDefaultSettings();
                 }
@@ -188,7 +190,7 @@ namespace AgenteIALocalVSIX
                 }
                 else if (File.Exists(path))
                 {
-                    try { root = JObject.Parse(File.ReadAllText(path)); } catch { root = new JObject(); }
+                    try { root = JObject.Parse(File.ReadAllText(path)); } catch (Exception exParse) { AgenteIALocal.Logging.Log.Warning("-", 9104, "SettingsStore.Save", "Parse existing file failed: " + exParse.Message, exParse); root = new JObject(); }
                 }
 
                 if (root == null) root = new JObject();
@@ -212,11 +214,11 @@ namespace AgenteIALocalVSIX
                     if (!string.IsNullOrEmpty(settings.ActiveServerId)) root["activeServerId"] = settings.ActiveServerId;
 
                     // Remove legacy PascalCase duplicate keys if present
-                    try { root.Remove("Version"); } catch { }
-                    try { root.Remove("Servers"); } catch { }
-                    try { root.Remove("GlobalSettings"); } catch { }
-                    try { root.Remove("TaskProfiles"); } catch { }
-                    try { root.Remove("ActiveServerId"); } catch { }
+                    try { root.Remove("Version"); } catch (Exception exVer) { AgenteIALocal.Logging.Log.Debug("-", 9105, "SettingsStore.Save", "Remove Version failed: " + exVer.Message, exVer); }
+                    try { root.Remove("Servers"); } catch (Exception exSrv) { AgenteIALocal.Logging.Log.Debug("-", 9105, "SettingsStore.Save", "Remove Servers failed: " + exSrv.Message, exSrv); }
+                    try { root.Remove("GlobalSettings"); } catch (Exception exGlobal) { AgenteIALocal.Logging.Log.Debug("-", 9105, "SettingsStore.Save", "Remove GlobalSettings failed: " + exGlobal.Message, exGlobal); }
+                    try { root.Remove("TaskProfiles"); } catch (Exception exTask) { AgenteIALocal.Logging.Log.Debug("-", 9105, "SettingsStore.Save", "Remove TaskProfiles failed: " + exTask.Message, exTask); }
+                    try { root.Remove("ActiveServerId"); } catch (Exception exActive) { AgenteIALocal.Logging.Log.Debug("-", 9105, "SettingsStore.Save", "Remove ActiveServerId failed: " + exActive.Message, exActive); }
                 }
                 catch
                 {
@@ -245,17 +247,17 @@ namespace AgenteIALocalVSIX
                     File.WriteAllText(path, newText);
                     if (raiseEvent)
                     {
-                        try { SettingsSaved?.Invoke("save"); } catch { }
+                        try { SettingsSaved?.Invoke("save"); } catch (Exception exEvent) { AgenteIALocal.Logging.Log.Debug("-", 9107, "SettingsStore.Save", "SettingsSaved event failed: " + exEvent.Message, exEvent); }
                     }
                 }
                 catch (Exception ex)
                 {
-                    VsixSafeLog.Error("Settings.Save.IO", "Save failed while writing settings.json", ex, 9111);
+                    AgenteIALocal.Logging.Log.Error("-", 9111, "Settings.Save.IO", "Save failed while writing settings.json", ex);
                 }
             }
             catch (Exception ex)
             {
-                VsixSafeLog.Error("Settings.Save", "Save failed", ex, 9110);
+                AgenteIALocal.Logging.Log.Error("-", 9110, "Settings.Save", "Save failed", ex);
             }
         }
 
@@ -510,7 +512,7 @@ namespace AgenteIALocalVSIX
             }
             catch (Exception ex)
             {
-                VsixSafeLog.Warning("Settings.Load.LoggingDefaults", "Failed to ensure globalSettings.logging defaults", ex, 9104);
+                AgenteIALocal.Logging.Log.Warning("-", 9104, "Settings.Load.LoggingDefaults", "Failed to ensure globalSettings.logging defaults", ex);
             }
 
             return changed;

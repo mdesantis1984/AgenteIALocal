@@ -22,5 +22,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AgenteIALocal.Core\AgenteIALocal.Core.csproj" />
+    <ProjectReference Include="..\AgenteIALocal.Logging\AgenteIALocal.Logging.csproj" />
   </ItemGroup>
 </Project>
