@@ -1,10 +1,11 @@
 using AgenteIALocalVSIX.Commands;
 using Microsoft.VisualStudio.Shell;
 using System;
-using System.Linq; // NUEVO - ID: 20260122_010301 - Para Select() en diagnóstico
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+//using AgenteIALocal.Localization; // COMENTADO - Requiere restart VS para ProjectReference
 using Task = System.Threading.Tasks.Task;
 
 namespace AgenteIALocalVSIX
@@ -17,7 +18,8 @@ namespace AgenteIALocalVSIX
     {
         public const string PackageGuidString = "12e93cca-8723-4160-ac43-96fe08854111";
 
-        private static int _serilogConfigured; // NUEVO CAMPO - ID: 20260122_000300
+        private static int _serilogConfigured;
+        //private static LocalizationService _localizationService;
 
         // NUEVO METODO ConfigureSerilogOnce - ID: 20260122_000301
         // MODIFICADO - ID: 20260122_010300 - Diagnóstico mejorado para troubleshooting
@@ -189,6 +191,33 @@ namespace AgenteIALocalVSIX
             // PASO 6: Resto de inicialización
             try
             {
+                /* COMENTADO - ProjectReference no reconocido hasta restart VS
+                try
+                {
+                    var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                    var appDataRoot = System.IO.Path.Combine(localAppData, "AgenteIALocal");
+                    var languagesRoot = System.IO.Path.Combine(appDataRoot, "languages");
+                    var languageSettingsPath = System.IO.Path.Combine(appDataRoot, "language.json");
+
+                    System.Diagnostics.Trace.TraceInformation($"[VSIX.i18n.Init] Paths: languages={languagesRoot}, settings={languageSettingsPath}");
+                    AgenteIALocal.Logging.Log.Debug("-", 1001, "VSIX.i18n.Init", $"Paths: languages={languagesRoot}, settings={languageSettingsPath}", null);
+
+                    _localizationService = new LocalizationService(languagesRoot, languageSettingsPath);
+
+                    System.Diagnostics.Trace.TraceInformation($"[VSIX.i18n.Init] LocalizationService OK. Idioma: {_localizationService.CurrentLanguageCode}");
+                    AgenteIALocal.Logging.Log.Information("-", 1002, "VSIX.i18n.Init", $"LocalizationService OK. Idioma: {_localizationService.CurrentLanguageCode}", null);
+                    
+                    var available = _localizationService.GetAvailableLanguages();
+                    var count = System.Linq.Enumerable.Count(available);
+                    AgenteIALocal.Logging.Log.Debug("-", 1003, "VSIX.i18n.Init", $"Idiomas disponibles: {count}", null);
+                }
+                catch (Exception exLoc)
+                {
+                    AgenteIALocal.Logging.Log.Error("-", 1099, "VSIX.i18n.Init", "Error inicializar LocalizationService (fallback embedded activo)", exLoc);
+                    System.Diagnostics.Trace.TraceError($"[VSIX.i18n] Init failed: {exLoc.Message}");
+                }
+                */
+
                 AgentComposition.EnsureComposition();
                 AgenteIALocal.Logging.Log.Information("-", 9000, "VSIX.Startup", "VSIX initialized", null);
             }

@@ -1,4 +1,5 @@
 using Serilog;
+using Serilog.Core; // NUEVO - ID: 20260123_015000 - LoggingLevelSwitch
 using Serilog.Events;
 using System;
 using System.Collections.Generic; // NUEVO - ID: 20260122_010901 - Para GetRecentLogs
@@ -17,6 +18,7 @@ namespace AgenteIALocal.Logging
         private static ILogger _logger = Serilog.Log.Logger;
         private static string _currentPath;
         private static UiLogSink _uiSink; // NUEVO - ID: 20260122_010901 - UI buffer sink
+        private static LoggingLevelSwitch _levelSwitch; // NUEVO - ID: 20260123_015000 - Para reconfiguration dinámica
 
         public static LogSettings CurrentSettings
         {
@@ -51,30 +53,36 @@ namespace AgenteIALocal.Logging
                     // B4: MinimumLevel según settings + Async wrapper restaurado
                     _uiSink = new UiLogSink(250);
 
+                    // NUEVO - ID: 20260123_015000 - Crear LoggingLevelSwitch para reconfiguration dinámica
+                    _levelSwitch = new LoggingLevelSwitch();
+
                     var cfg = new LoggerConfiguration();
 
-                    // B4: Configurar MinimumLevel según settings
+                    // MODIFICADO - ID: 20260123_015000 - Usar LoggingLevelSwitch en lugar de MinimumLevel directo
+                    // Esto permite reconfiguración dinámica sin recrear el logger
                     if (settings.All)
                     {
-                        cfg.MinimumLevel.Verbose();
+                        _levelSwitch.MinimumLevel = LogEventLevel.Verbose;
                     }
                     else
                     {
-                        // Default: Information como base
-                        cfg.MinimumLevel.Information();
-
-                        // Override por nivel específico
-                        if (settings.Verbose) cfg.MinimumLevel.Verbose();
-                        else if (settings.Debug) cfg.MinimumLevel.Debug();
-                        else if (settings.Information) cfg.MinimumLevel.Information();
-                        else if (settings.Warning) cfg.MinimumLevel.Warning();
-                        else if (settings.Error) cfg.MinimumLevel.Error();
-                        else if (settings.Critical) cfg.MinimumLevel.Fatal();
+                        // Calcular nivel mínimo según settings
+                        if (settings.Verbose) _levelSwitch.MinimumLevel = LogEventLevel.Verbose;
+                        else if (settings.Debug) _levelSwitch.MinimumLevel = LogEventLevel.Debug;
+                        else if (settings.Information) _levelSwitch.MinimumLevel = LogEventLevel.Information;
+                        else if (settings.Warning) _levelSwitch.MinimumLevel = LogEventLevel.Warning;
+                        else if (settings.Error) _levelSwitch.MinimumLevel = LogEventLevel.Error;
+                        else if (settings.Critical) _levelSwitch.MinimumLevel = LogEventLevel.Fatal;
+                        else _levelSwitch.MinimumLevel = LogEventLevel.Information; // default fallback
                     }
+
+                    // Configurar logger con LevelSwitch
+                    cfg.MinimumLevel.ControlledBy(_levelSwitch);
 
                     cfg.Enrich.WithProperty("app", settings.AppName ?? "AgenteIALocal")
                         .Enrich.WithProperty("pid", System.Diagnostics.Process.GetCurrentProcess().Id)
                         .Enrich.WithProperty("proc", System.Diagnostics.Process.GetCurrentProcess().ProcessName);
+
 
                     // B4: Restaurar Async wrapper con configuración adecuada
                     cfg.WriteTo.Async(a =>
@@ -100,6 +108,69 @@ namespace AgenteIALocal.Logging
                 {
                     System.Diagnostics.Trace.TraceWarning("Log.Configure failed: " + ex.Message);
                     // Last resort: keep previous logger.
+                }
+            }
+        }
+
+        // MODIFICADO METODO Reconfigure - ID: 20260123_020100
+        // FIX 3: Fallback correcto cuando todos los niveles están desmarcados
+        // Si ningún nivel habilitado → usar nivel imposible para bloquear todo
+        /// <summary>
+        /// Reconfigura los niveles de logging en runtime sin recrear el pipeline.
+        /// Usa LoggingLevelSwitch para cambios dinámicos inmediatos.
+        /// </summary>
+        /// <param name="settings">Nueva configuración de logging. Si null, usa defaults.</param>
+        public static void Reconfigure(LogSettings settings)
+        {
+            if (settings == null) settings = new LogSettings();
+
+            lock (_gate)
+            {
+                try
+                {
+                    // Actualizar settings en memoria
+                    _settings = settings;
+
+                    // CRÍTICO: NO recrear logger - solo cambiar el LoggingLevelSwitch
+                    if (_levelSwitch == null)
+                    {
+                        System.Diagnostics.Trace.TraceWarning("Log.Reconfigure: _levelSwitch is null - cannot reconfigure. Call Configure first.");
+                        return;
+                    }
+
+                    // Calcular nuevo nivel mínimo según settings
+                    LogEventLevel newLevel;
+                    if (settings.All)
+                    {
+                        newLevel = LogEventLevel.Verbose;
+                    }
+                    else
+                    {
+                        // Calcular nivel mínimo más bajo habilitado
+                        if (settings.Verbose) newLevel = LogEventLevel.Verbose;
+                        else if (settings.Debug) newLevel = LogEventLevel.Debug;
+                        else if (settings.Information) newLevel = LogEventLevel.Information;
+                        else if (settings.Warning) newLevel = LogEventLevel.Warning;
+                        else if (settings.Error) newLevel = LogEventLevel.Error;
+                        else if (settings.Critical) newLevel = LogEventLevel.Fatal;
+                        else
+                        {
+                            // FIX 3: Si ningún nivel habilitado, usar nivel imposible para bloquear todo
+                            // Serilog no tiene "OFF", pero Fatal+1 efectivamente deshabilita logging
+                            newLevel = (LogEventLevel)((int)LogEventLevel.Fatal + 1);
+                        }
+                    }
+
+                    // Cambiar nivel dinámicamente (SIN recrear logger)
+                    _levelSwitch.MinimumLevel = newLevel;
+
+                    // Log la reconfiguración inmediatamente (se verá con el nuevo nivel)
+                    Information("-", 9300, "Log.Reconfigure", $"Logging reconfigured: enabled={settings.Enabled}, newLevel={newLevel}, v={settings.Verbose}, d={settings.Debug}, i={settings.Information}, w={settings.Warning}, e={settings.Error}, c={settings.Critical}", null);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.TraceWarning("Log.Reconfigure failed: " + ex.Message);
+                    // Mantener nivel anterior si falla reconfiguración
                 }
             }
         }
@@ -134,22 +205,15 @@ namespace AgenteIALocal.Logging
         public static void Critical(string correlationId, int eventId, string source, string message, Exception ex = null)
             => WriteIfEnabled(LogEventLevel.Fatal, correlationId, eventId, source, message, ex);
 
+        // MODIFICADO METODO WriteIfEnabled - ID: 20260123_020000
+        // FIX CRÍTICO: Eliminar gates manuales - LoggingLevelSwitch ya filtra automáticamente
+        // El filtrado por nivel lo hace Serilog con _levelSwitch.MinimumLevel
         private static void WriteIfEnabled(LogEventLevel level, string correlationId, int eventId, string source, string message, Exception ex)
         {
             try
             {
-                if (_settings == null) _settings = new LogSettings();
-                if (!_settings.Enabled) return;
-
-                if (!_settings.All)
-                {
-                    if (level == LogEventLevel.Verbose && !_settings.Verbose) return;
-                    if (level == LogEventLevel.Debug && !_settings.Debug) return;
-                    if (level == LogEventLevel.Information && !_settings.Information) return;
-                    if (level == LogEventLevel.Warning && !_settings.Warning) return;
-                    if (level == LogEventLevel.Error && !_settings.Error) return;
-                    if (level == LogEventLevel.Fatal && !_settings.Critical) return;
-                }
+                // ELIMINADO: gate manual por _settings.Enabled - causaba que enabled=false bloqueara TODO
+                // ELIMINADO: gates manuales por nivel (_settings.Verbose, etc.) - LoggingLevelSwitch ya filtra
 
                 var corr = string.IsNullOrEmpty(correlationId) ? "-" : correlationId;
                 var src = string.IsNullOrEmpty(source) ? "-" : source;

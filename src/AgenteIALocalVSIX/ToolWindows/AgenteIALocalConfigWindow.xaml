@@ -378,10 +378,18 @@
                             </StackPanel>
                         </ToggleButton>
 
-                        <ToggleButton x:Name="NavLlmToggle" IsChecked="True" Margin="0,0,0,0" Height="56" Style="{StaticResource SidebarNavToggleStyle}" Checked="NavToggle_Checked">
+                        <ToggleButton x:Name="NavLlmToggle" IsChecked="True" Margin="0,0,0,12" Height="56" Style="{StaticResource SidebarNavToggleStyle}" Checked="NavToggle_Checked">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <md:PackIcon Kind="Brain" Width="20" Height="20" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
                                 <TextBlock Text="LLM's Local" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </ToggleButton>
+
+                        <!-- NUEVO - ID: 20260122_013100 - D1: Navigation entry for Logging page -->
+                        <ToggleButton x:Name="NavLoggingToggle" IsChecked="False" Margin="0,0,0,0" Height="56" Style="{StaticResource SidebarNavToggleStyle}" Checked="NavToggle_Checked">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <md:PackIcon Kind="FileDocumentEdit" Width="20" Height="20" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+                                <TextBlock Text="Logging" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
                         </ToggleButton>
                     </StackPanel>
@@ -389,7 +397,7 @@
 
                 <!-- Main content host -->
                 <Grid Grid.Column="1" Margin="24,0,0,0">
-                    <!-- Idioma Page -->
+                    <!-- Idioma Page - MODIFICADO ID: 20260123_130000 - B1-B3: UniformGrid 5 cols + 15 idiomas -->
                     <Grid x:Name="IdiomaPageGrid" Visibility="Collapsed">
                         <Grid.Style>
                             <Style TargetType="Grid">
@@ -402,16 +410,48 @@
                             </Style>
                         </Grid.Style>
 
-                        <TextBlock Text="Seleccione el idioma" Style="{StaticResource Text.Headline}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" HorizontalAlignment="Left" />
-                        <StackPanel Orientation="Vertical" Margin="0,8,0,0">
-                            <StackPanel Orientation="Horizontal" Height="56" VerticalAlignment="Center">
-                                <CheckBox IsChecked="True" IsEnabled="False" Width="24" Height="24" VerticalAlignment="Center" />
-                                <TextBlock Text="Spanish" Foreground="{StaticResource HeaderHighEmphasisBrush}" VerticalAlignment="Center" Margin="12,0,0,0" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Height="56" VerticalAlignment="Center">
-                                <CheckBox IsChecked="False" IsEnabled="False" Width="24" Height="24" VerticalAlignment="Center" />
-                                <TextBlock Text="English" Foreground="{StaticResource HeaderHighEmphasisBrush}" VerticalAlignment="Center" Margin="12,0,0,0" />
-                            </StackPanel>
+                        <StackPanel Orientation="Vertical" Margin="16">
+                            <TextBlock Text="Configuración de Idioma" Style="{StaticResource Text.Headline}" Margin="0,0,0,8" />
+                            <TextBlock Text="Seleccione el idioma de la interfaz" Style="{StaticResource Text.Body}" Opacity="0.7" Margin="0,0,0,24" />
+
+                            <UniformGrid x:Name="LanguageGrid" Columns="5" HorizontalAlignment="Left">
+                                <!-- Fila 1 -->
+                                <Border x:Name="Lang_esAR" Margin="0,0,8,8" Padding="12" Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Width="120" Height="140">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                                        <TextBlock Text="AR" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,8,0,8" Foreground="{StaticResource AccentBrush}" />
+                                        <TextBlock Text="Español" Style="{StaticResource Text.Body}" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                                        <RadioButton x:Name="Radio_esAR" GroupName="Language" IsChecked="True" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                                <Border x:Name="Lang_enUS" Margin="0,0,8,8" Padding="12" Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Width="120" Height="140">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                                        <TextBlock Text="US" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,8,0,8" />
+                                        <TextBlock Text="English" Style="{StaticResource Text.Body}" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                                        <RadioButton x:Name="Radio_enUS" GroupName="Language" IsEnabled="False" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Margin="0,0,8,8" Padding="12" Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Width="120" Height="140" Opacity="0.5">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                                        <TextBlock Text="BR" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,8,0,8" />
+                                        <TextBlock Text="Português" Style="{StaticResource Text.Body}" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                                        <RadioButton GroupName="Language" IsEnabled="False" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Margin="0,0,8,8" Padding="12" Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Width="120" Height="140" Opacity="0.5">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                                        <TextBlock Text="FR" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,8,0,8" />
+                                        <TextBlock Text="Français" Style="{StaticResource Text.Body}" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                                        <RadioButton GroupName="Language" IsEnabled="False" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Margin="0,0,0,8" Padding="12" Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Width="120" Height="140" Opacity="0.5">
+                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                                        <TextBlock Text="DE" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,8,0,8" />
+                                        <TextBlock Text="Deutsch" Style="{StaticResource Text.Body}" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                                        <RadioButton GroupName="Language" IsEnabled="False" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
                         </StackPanel>
                     </Grid>
 
@@ -509,6 +549,48 @@
                             </StackPanel>
                         </StackPanel>
 
+                    </Grid>
+
+                    <!-- NUEVO - ID: 20260122_013200 - D2-D5: Logging configuration page with grouped levels -->
+                    <Grid x:Name="LoggingPageGrid">
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsChecked, ElementName=NavLoggingToggle}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+
+                        <StackPanel Orientation="Vertical" Margin="0">
+                            <!-- Page title -->
+                            <TextBlock Text="Configuración de Logging" Style="{StaticResource Text.Headline}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,24" />
+
+                            <!-- D3: Master checkbox "Logging enabled" (global override) -->
+                            <CheckBox x:Name="LoggingEnabledToggle_Modal" Content="Logging enabled (activa todos los niveles)" Foreground="{StaticResource HeaderHighEmphasisBrush}" FontWeight="SemiBold" Margin="0,0,0,24" />
+
+                            <!-- D4: Basic levels group -->
+                            <TextBlock Text="Basic Levels" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" FontWeight="SemiBold" Margin="0,0,0,12" />
+                            <Border Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Padding="16" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" BorderThickness="1" Margin="0,0,0,24">
+                                <StackPanel Orientation="Vertical">
+                                    <CheckBox x:Name="LoggingInformationToggle_Modal" Content="Information" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" />
+                                    <CheckBox x:Name="LoggingWarningToggle_Modal" Content="Warning" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" />
+                                    <CheckBox x:Name="LoggingErrorToggle_Modal" Content="Error" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" />
+                                    <CheckBox x:Name="LoggingCriticalToggle_Modal" Content="Critical" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- D5: Advanced levels group -->
+                            <TextBlock Text="Advanced Levels" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" FontWeight="SemiBold" Margin="0,0,0,12" />
+                            <Border Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Padding="16" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" BorderThickness="1" Margin="0,0,0,0">
+                                <StackPanel Orientation="Vertical">
+                                    <CheckBox x:Name="LoggingVerboseToggle_Modal" Content="Verbose" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" />
+                                    <CheckBox x:Name="LoggingDebugToggle_Modal" Content="Debug" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </Grid>
                 </Grid>
             </Grid>

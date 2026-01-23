@@ -183,12 +183,10 @@ namespace AgenteIALocalVSIX
 
                 JObject root = null;
 
-                // If we have preserved raw JSON from Load, start from it to preserve unknown fields
-                if (settings._raw != null)
-                {
-                    root = (JObject)settings._raw.DeepClone();
-                }
-                else if (File.Exists(path))
+                // MODIFICADO - ID: 20260123_000003
+                // FIX: No usar settings._raw porque puede tener valores viejos que sobrescriben cambios en memoria
+                // Siempre construir root desde el estado actual de settings para garantizar persistencia correcta
+                if (File.Exists(path))
                 {
                     try { root = JObject.Parse(File.ReadAllText(path)); } catch (Exception exParse) { AgenteIALocal.Logging.Log.Warning("-", 9104, "SettingsStore.Save", "Parse existing file failed: " + exParse.Message, exParse); root = new JObject(); }
                 }
@@ -201,11 +199,24 @@ namespace AgenteIALocalVSIX
                     // set canonical keys
                     root["version"] = settings.Version ?? SchemaVersion;
 
-                    // servers
+                    // servers - SINGLETON: Model persists ONLY here (servers[].model)
                     root["servers"] = BuildServersArrayPreservingUnknown(root, settings);
 
-                    // globalSettings
-                    root["globalSettings"] = settings.GlobalSettings ?? new JObject();
+                    // globalSettings - DEFENSIVO: Ensure selectedModel never exists here
+                    var globalToSave = settings.GlobalSettings ?? new JObject();
+                    // NUEVO - ID: 20260123_000002 - Remove selectedModel if present (defensive)
+                    try { globalToSave.Remove("selectedModel"); } catch { }
+                    
+                    // NUEVO - ID: 20260123_000004 - DEBUG logging para diagnosticar pérdida de valores
+                    try
+                    {
+                        var maxTokensInMemory = (globalToSave["requestDefaults"] as JObject)?["maxTokens"];
+                        var maxStepsInMemory = (globalToSave["agent"] as JObject)?["maxSteps"];
+                        AgenteIALocal.Logging.Log.Information("-", 9106, "SettingsStore.Save", $"BEFORE write: maxTokens={maxTokensInMemory}, maxSteps={maxStepsInMemory}", null);
+                    }
+                    catch (Exception exDebug) { AgenteIALocal.Logging.Log.Debug("-", 9106, "SettingsStore.Save", "Debug logging failed: " + exDebug.Message, exDebug); }
+                    
+                    root["globalSettings"] = globalToSave;
 
                     // taskProfiles
                     root["taskProfiles"] = settings.TaskProfiles ?? new JArray();
@@ -364,7 +375,8 @@ namespace AgenteIALocalVSIX
         }
 
         // NUEVO METODO EnsureGlobalSettings - ID: 20250304_120000
-        // MODIFICADO METODO EnsureGlobalSettings - ID: GENERAR_1_ID_YYYYMMDD_HHMMSS_Y_REUTILIZAR
+        // MODIFICADO METODO EnsureGlobalSettings - ID: 20260123_000001
+        // DTO SINGLETON: Model se persiste ÚNICAMENTE en servers[].model, NUNCA en globalSettings
         private static bool EnsureGlobalSettings(AgentSettings settings)
         {
             if (settings == null) throw new ArgumentNullException(nameof(settings));
@@ -377,6 +389,23 @@ namespace AgenteIALocalVSIX
                 global = new JObject();
                 settings.GlobalSettings = global;
                 changed = true;
+            }
+
+            // DEFENSIVO - ID: 20260123_000001
+            // Eliminar selectedModel de globalSettings si existe (legacy cleanup)
+            // El modelo se persiste SOLO en servers[].model (DTO singleton pattern)
+            if (global["selectedModel"] != null)
+            {
+                try
+                {
+                    global.Remove("selectedModel");
+                    changed = true;
+                    AgenteIALocal.Logging.Log.Information("-", 9105, "SettingsStore.EnsureGlobals", "Removed legacy selectedModel from globalSettings (use servers[].model instead)", null);
+                }
+                catch (Exception exRemove)
+                {
+                    AgenteIALocal.Logging.Log.Warning("-", 9105, "SettingsStore.EnsureGlobals", "Failed to remove legacy selectedModel: " + exRemove.Message, exRemove);
+                }
             }
 
             if (string.IsNullOrWhiteSpace(global.Value<string>("runMode")))
@@ -471,7 +500,9 @@ namespace AgenteIALocalVSIX
                 changed = true;
             }
 
-            // Logging defaults (Serilog wrapper). This enables end-to-end diagnostics without requiring UI work.
+            // MODIFICADO - ID: 20260123_020400
+            // Logging defaults: enabled=false (solo Critical + Error habilitados por defecto)
+            // ESTRUCTURA NUEVA: sin "all" ni "levels" - solo campos directos
             try
             {
                 var logging = global["logging"] as JObject;
@@ -482,33 +513,37 @@ namespace AgenteIALocalVSIX
                     changed = true;
                 }
 
+                // MODIFICADO - ID: 20260123_020400 - Default enabled=false (solo Critical+Error)
+                // Si enabled=true activaría TODOS los niveles (master override)
                 if (logging["enabled"] == null || logging["enabled"].Type == JTokenType.Null || logging["enabled"].Type == JTokenType.Undefined)
                 {
-                    logging["enabled"] = true;
+                    logging["enabled"] = false;
                     changed = true;
                 }
 
-                // Optional: "on" | "off" (string). If omitted, wrapper uses per-level flags.
-                if (logging["all"] == null || logging["all"].Type == JTokenType.Null || logging["all"].Type == JTokenType.Undefined)
+                // ELIMINADO: logging["all"] - campo obsoleto del código viejo
+                // ELIMINADO: logging["levels"] - estructura obsoleta del código viejo
+                
+                // Defaults para niveles individuales: solo Critical + Error habilitados
+                if (logging["verbose"] == null) { logging["verbose"] = false; changed = true; }
+                if (logging["debug"] == null) { logging["debug"] = false; changed = true; }
+                if (logging["information"] == null) { logging["information"] = false; changed = true; }
+                if (logging["warning"] == null) { logging["warning"] = false; changed = true; }
+                if (logging["error"] == null) { logging["error"] = true; changed = true; }
+                if (logging["critical"] == null) { logging["critical"] = true; changed = true; }
+
+                // CLEANUP: Eliminar campos obsoletos si existen (migración desde código viejo)
+                if (logging["all"] != null)
                 {
-                    logging["all"] = "off";
-                    changed = true;
+                    try { logging.Remove("all"); changed = true; AgenteIALocal.Logging.Log.Information("-", 9105, "SettingsStore.EnsureGlobals", "Removed obsolete 'all' field from logging", null); }
+                    catch (Exception exAll) { AgenteIALocal.Logging.Log.Debug("-", 9105, "SettingsStore.EnsureGlobals", "Failed to remove 'all': " + exAll.Message, exAll); }
                 }
-
-                var levels = logging["levels"] as JObject;
-                if (levels == null)
+                
+                if (logging["levels"] != null)
                 {
-                    levels = new JObject();
-                    logging["levels"] = levels;
-                    changed = true;
+                    try { logging.Remove("levels"); changed = true; AgenteIALocal.Logging.Log.Information("-", 9105, "SettingsStore.EnsureGlobals", "Removed obsolete 'levels' structure from logging", null); }
+                    catch (Exception exLevels) { AgenteIALocal.Logging.Log.Debug("-", 9105, "SettingsStore.EnsureGlobals", "Failed to remove 'levels': " + exLevels.Message, exLevels); }
                 }
-
-                if (levels["verbose"] == null) { levels["verbose"] = false; changed = true; }
-                if (levels["debug"] == null) { levels["debug"] = false; changed = true; }
-                if (levels["info"] == null) { levels["info"] = true; changed = true; }
-                if (levels["warning"] == null) { levels["warning"] = true; changed = true; }
-                if (levels["error"] == null) { levels["error"] = true; changed = true; }
-                if (levels["critical"] == null) { levels["critical"] = true; changed = true; }
             }
             catch (Exception ex)
             {
@@ -658,6 +693,8 @@ namespace AgenteIALocalVSIX
             return true;
         }
 
+        // MODIFICADO METODO CreateDefaultSettings - ID: 20260123_020500
+        // ESTRUCTURA NUEVA: enabled=false, solo Critical+Error, sin "all" ni "levels"
         private static AgentSettings CreateDefaultSettings()
         {
             var s = new AgentSettings();
@@ -705,19 +742,16 @@ namespace AgenteIALocalVSIX
                     ["applyChanges"] = false,
                     ["maxSteps"] = 5
                 },
+                // MODIFICADO - ID: 20260123_020500 - ESTRUCTURA NUEVA (sin "all", sin "levels")
                 ["logging"] = new JObject
                 {
-                    ["enabled"] = true,
-                    ["all"] = "off",
-                    ["levels"] = new JObject
-                    {
-                        ["verbose"] = false,
-                        ["debug"] = false,
-                        ["info"] = true,
-                        ["warning"] = true,
-                        ["error"] = true,
-                        ["critical"] = true
-                    }
+                    ["enabled"] = false,       // Solo Critical + Error (no master)
+                    ["verbose"] = false,
+                    ["debug"] = false,
+                    ["information"] = false,   // ✅ Deshabilitar Information
+                    ["warning"] = false,
+                    ["error"] = true,          // ✅ Solo estos 2 habilitados
+                    ["critical"] = true
                 }
             };
 
@@ -763,7 +797,10 @@ namespace AgenteIALocalVSIX
         public string Provider { get; set; }
         public string BaseUrl { get; set; }
         public string ApiKey { get; set; }
-        // optional model identifier per-server
+        
+        // SINGLETON DTO: Model identifier per-server (única ubicación de persistencia)
+        // NUNCA usar globalSettings.selectedModel (deprecated/legacy)
+        // Persistencia: SaveButton_Click en ConfigWindow.xaml.cs línea ~1510
         public string Model { get; set; }
         public bool IsDefault { get; set; }
         public DateTime CreatedAt { get; set; }

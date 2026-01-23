@@ -124,8 +124,9 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch (Exception exOuter) { AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.SettingsSaved", "OnSettingsSaved failed: " + exOuter.Message, exOuter); }
         }
 
-        // NUEVO METODO NavToggle_Checked - ID: 20260116_112500
-        // Make sidebar ToggleButtons act mutually exclusive without changing their x:Name
+        // MODIFICADO METODO NavToggle_Checked - ID: 20260122_013400
+        // Make sidebar ToggleButtons act mutually exclusive (Idioma, LLM, Logging)
+        // FIX: null-checks para evitar NullReferenceException durante inicialización
         private void NavToggle_Checked(object sender, RoutedEventArgs e)
         {
             if (_suppressNavToggleChecked_20260116) return;
@@ -135,14 +136,28 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var tb = sender as ToggleButton;
                 if (tb == null) return;
 
-                // If Idioma was checked, uncheck LLM
+                // CRÍTICO: Null-checks - los controles pueden ser null durante inicialización XAML
+                if (NavIdiomaToggle == null || NavLlmToggle == null || NavLoggingToggle == null)
+                {
+                    // Controles no inicializados todavía - skip mutual exclusion
+                    return;
+                }
+
+                // Uncheck all OTHER toggles (mutual exclusion)
                 if (tb == NavIdiomaToggle)
                 {
                     try { NavLlmToggle.IsChecked = false; } catch (Exception exLlm) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.NavToggle", "NavLlmToggle uncheck failed: " + exLlm.Message, exLlm); }
+                    try { NavLoggingToggle.IsChecked = false; } catch (Exception exLog) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.NavToggle", "NavLoggingToggle uncheck failed: " + exLog.Message, exLog); }
                 }
                 else if (tb == NavLlmToggle)
                 {
                     try { NavIdiomaToggle.IsChecked = false; } catch (Exception exIdioma) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.NavToggle", "NavIdiomaToggle uncheck failed: " + exIdioma.Message, exIdioma); }
+                    try { NavLoggingToggle.IsChecked = false; } catch (Exception exLog) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.NavToggle", "NavLoggingToggle uncheck failed: " + exLog.Message, exLog); }
+                }
+                else if (tb == NavLoggingToggle)
+                {
+                    try { NavIdiomaToggle.IsChecked = false; } catch (Exception exIdioma) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.NavToggle", "NavIdiomaToggle uncheck failed: " + exIdioma.Message, exIdioma); }
+                    try { NavLlmToggle.IsChecked = false; } catch (Exception exLlm) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.NavToggle", "NavLlmToggle uncheck failed: " + exLlm.Message, exLlm); }
                 }
             }
             catch (Exception ex)
@@ -198,6 +213,83 @@ namespace AgenteIALocalVSIX.ToolWindows
             AgentApplyChangesToggle_Modal.IsChecked = agent.Value<bool?>("applyChanges") ?? false;
             var maxSteps = agent.Value<int?>("maxSteps") ?? 5;
             AgentMaxStepsTextBox_Modal.Text = maxSteps.ToString();
+
+            // NUEVO - ID: 20260122_013500 - E1: Cargar controles de logging
+            LoadLoggingControls(settings);
+        }
+
+        // MODIFICADO METODO LoadLoggingControls - ID: 20260123_020400
+        // E1: Cargar estado de logging desde settings.json
+        // DEFAULTS: enabled=false, critical=true, error=true, resto=false
+        private void LoadLoggingControls(AgentSettings settings)
+        {
+            try
+            {
+                if (settings == null || settings.GlobalSettings == null)
+                {
+                    // Defaults: enabled=false (solo Critical + Error habilitados)
+                    try { LoggingEnabledToggle_Modal.IsChecked = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "LoggingEnabled default failed: " + ex.Message, ex); }
+                    try { LoggingVerboseToggle_Modal.IsChecked = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Verbose default failed: " + ex.Message, ex); }
+                    try { LoggingDebugToggle_Modal.IsChecked = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Debug default failed: " + ex.Message, ex); }
+                    try { LoggingInformationToggle_Modal.IsChecked = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Information default failed: " + ex.Message, ex); }
+                    try { LoggingWarningToggle_Modal.IsChecked = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Warning default failed: " + ex.Message, ex); }
+                    try { LoggingErrorToggle_Modal.IsChecked = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Error default failed: " + ex.Message, ex); }
+                    try { LoggingCriticalToggle_Modal.IsChecked = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Critical default failed: " + ex.Message, ex); }
+                    return;
+                }
+
+                var logging = settings.GlobalSettings["logging"] as JObject;
+                if (logging == null)
+                {
+                    // Defaults si no existe sección logging: enabled=false, solo Critical + Error
+                    try { LoggingEnabledToggle_Modal.IsChecked = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "LoggingEnabled default (null logging) failed: " + ex.Message, ex); }
+                    try { LoggingVerboseToggle_Modal.IsChecked = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Verbose default (null logging) failed: " + ex.Message, ex); }
+                    try { LoggingDebugToggle_Modal.IsChecked = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Debug default (null logging) failed: " + ex.Message, ex); }
+                    try { LoggingInformationToggle_Modal.IsChecked = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Information default (null logging) failed: " + ex.Message, ex); }
+                    try { LoggingWarningToggle_Modal.IsChecked = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Warning default (null logging) failed: " + ex.Message, ex); }
+                    try { LoggingErrorToggle_Modal.IsChecked = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Error default (null logging) failed: " + ex.Message, ex); }
+                    try { LoggingCriticalToggle_Modal.IsChecked = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Critical default (null logging) failed: " + ex.Message, ex); }
+                    return;
+                }
+
+                // Cargar valores desde settings.json (defaults: enabled=false si null)
+                var enabled = logging.Value<bool?>("enabled") ?? false;
+                var verbose = logging.Value<bool?>("verbose") ?? false;
+                var debug = logging.Value<bool?>("debug") ?? false;
+                var information = logging.Value<bool?>("information") ?? false;
+                var warning = logging.Value<bool?>("warning") ?? false;
+                var error = logging.Value<bool?>("error") ?? true;
+                var critical = logging.Value<bool?>("critical") ?? true;
+
+                // E5: Master override - si enabled=true, forzar todos los niveles a true
+                if (enabled)
+                {
+                    try { LoggingEnabledToggle_Modal.IsChecked = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "LoggingEnabled set failed: " + ex.Message, ex); }
+                    try { LoggingVerboseToggle_Modal.IsChecked = true; LoggingVerboseToggle_Modal.IsEnabled = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Verbose override failed: " + ex.Message, ex); }
+                    try { LoggingDebugToggle_Modal.IsChecked = true; LoggingDebugToggle_Modal.IsEnabled = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Debug override failed: " + ex.Message, ex); }
+                    try { LoggingInformationToggle_Modal.IsChecked = true; LoggingInformationToggle_Modal.IsEnabled = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Information override failed: " + ex.Message, ex); }
+                    try { LoggingWarningToggle_Modal.IsChecked = true; LoggingWarningToggle_Modal.IsEnabled = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Warning override failed: " + ex.Message, ex); }
+                    try { LoggingErrorToggle_Modal.IsChecked = true; LoggingErrorToggle_Modal.IsEnabled = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Error override failed: " + ex.Message, ex); }
+                    try { LoggingCriticalToggle_Modal.IsChecked = true; LoggingCriticalToggle_Modal.IsEnabled = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Critical override failed: " + ex.Message, ex); }
+                }
+                else
+                {
+                    // Cargar valores individuales
+                    try { LoggingEnabledToggle_Modal.IsChecked = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "LoggingEnabled set false failed: " + ex.Message, ex); }
+                    try { LoggingVerboseToggle_Modal.IsChecked = verbose; LoggingVerboseToggle_Modal.IsEnabled = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Verbose set failed: " + ex.Message, ex); }
+                    try { LoggingDebugToggle_Modal.IsChecked = debug; LoggingDebugToggle_Modal.IsEnabled = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Debug set failed: " + ex.Message, ex); }
+                    try { LoggingInformationToggle_Modal.IsChecked = information; LoggingInformationToggle_Modal.IsEnabled = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Information set failed: " + ex.Message, ex); }
+                    try { LoggingWarningToggle_Modal.IsChecked = warning; LoggingWarningToggle_Modal.IsEnabled = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Warning set failed: " + ex.Message, ex); }
+                    try { LoggingErrorToggle_Modal.IsChecked = error; LoggingErrorToggle_Modal.IsEnabled = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Error set failed: " + ex.Message, ex); }
+                    try { LoggingCriticalToggle_Modal.IsChecked = critical; LoggingCriticalToggle_Modal.IsEnabled = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadLogging", "Critical set failed: " + ex.Message, ex); }
+                }
+
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LoadLogging", $"Logging controls loaded: enabled={enabled}, v={verbose}, d={debug}, i={information}, w={warning}, e={error}, c={critical}", null);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LoadLogging", "LoadLoggingControls failed: " + ex.Message, ex);
+            }
         }
 
         // NUEVO METODO WireAdvancedHandlersOnce - ID: 20250304_170002
@@ -247,6 +339,42 @@ namespace AgenteIALocalVSIX.ToolWindows
                 AgentMaxStepsTextBox_Modal.LostFocus -= AgentMaxStepsTextBox_Modal_LostFocus;
                 AgentMaxStepsTextBox_Modal.TextChanged += AgentMaxStepsTextBox_Modal_TextChanged;
                 AgentMaxStepsTextBox_Modal.LostFocus += AgentMaxStepsTextBox_Modal_LostFocus;
+
+                // NUEVO - ID: 20260122_013900 - Wire logging handlers
+                LoggingEnabledToggle_Modal.Checked -= LoggingEnabledToggle_Modal_Checked;
+                LoggingEnabledToggle_Modal.Unchecked -= LoggingEnabledToggle_Modal_Checked;
+                LoggingEnabledToggle_Modal.Checked += LoggingEnabledToggle_Modal_Checked;
+                LoggingEnabledToggle_Modal.Unchecked += LoggingEnabledToggle_Modal_Checked;
+
+                LoggingVerboseToggle_Modal.Checked -= LoggingVerboseToggle_Modal_Checked;
+                LoggingVerboseToggle_Modal.Unchecked -= LoggingVerboseToggle_Modal_Checked;
+                LoggingVerboseToggle_Modal.Checked += LoggingVerboseToggle_Modal_Checked;
+                LoggingVerboseToggle_Modal.Unchecked += LoggingVerboseToggle_Modal_Checked;
+
+                LoggingDebugToggle_Modal.Checked -= LoggingDebugToggle_Modal_Checked;
+                LoggingDebugToggle_Modal.Unchecked -= LoggingDebugToggle_Modal_Checked;
+                LoggingDebugToggle_Modal.Checked += LoggingDebugToggle_Modal_Checked;
+                LoggingDebugToggle_Modal.Unchecked += LoggingDebugToggle_Modal_Checked;
+
+                LoggingInformationToggle_Modal.Checked -= LoggingInformationToggle_Modal_Checked;
+                LoggingInformationToggle_Modal.Unchecked -= LoggingInformationToggle_Modal_Checked;
+                LoggingInformationToggle_Modal.Checked += LoggingInformationToggle_Modal_Checked;
+                LoggingInformationToggle_Modal.Unchecked += LoggingInformationToggle_Modal_Checked;
+
+                LoggingWarningToggle_Modal.Checked -= LoggingWarningToggle_Modal_Checked;
+                LoggingWarningToggle_Modal.Unchecked -= LoggingWarningToggle_Modal_Checked;
+                LoggingWarningToggle_Modal.Checked += LoggingWarningToggle_Modal_Checked;
+                LoggingWarningToggle_Modal.Unchecked += LoggingWarningToggle_Modal_Checked;
+
+                LoggingErrorToggle_Modal.Checked -= LoggingErrorToggle_Modal_Checked;
+                LoggingErrorToggle_Modal.Unchecked -= LoggingErrorToggle_Modal_Checked;
+                LoggingErrorToggle_Modal.Checked += LoggingErrorToggle_Modal_Checked;
+                LoggingErrorToggle_Modal.Unchecked += LoggingErrorToggle_Modal_Checked;
+
+                LoggingCriticalToggle_Modal.Checked -= LoggingCriticalToggle_Modal_Checked;
+                LoggingCriticalToggle_Modal.Unchecked -= LoggingCriticalToggle_Modal_Checked;
+                LoggingCriticalToggle_Modal.Checked += LoggingCriticalToggle_Modal_Checked;
+                LoggingCriticalToggle_Modal.Unchecked += LoggingCriticalToggle_Modal_Checked;
             }
             catch (Exception ex)
             {
@@ -517,6 +645,200 @@ namespace AgenteIALocalVSIX.ToolWindows
                 AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Agent", $"Agent.maxSteps={value} UI changed - NOT saved yet", null);
         }
 
+        // NUEVO METODO PersistLoggingFlag - ID: 20260122_013600
+        // E2: Guardar estado global logging.enabled (live update NO - solo al Save)
+        // Master override: si enabled=true, habilitar todos los niveles UI
+        private void PersistLoggingFlag(bool enabled)
+        {
+            try
+            {
+                // E5: Master override en UI - si enabled=true, forzar todos los niveles a true y deshabilitar checkboxes individuales
+                if (enabled)
+                {
+                    try { LoggingVerboseToggle_Modal.IsChecked = true; LoggingVerboseToggle_Modal.IsEnabled = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.PersistLogging", "Verbose override failed: " + ex.Message, ex); }
+                    try { LoggingDebugToggle_Modal.IsChecked = true; LoggingDebugToggle_Modal.IsEnabled = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.PersistLogging", "Debug override failed: " + ex.Message, ex); }
+                    try { LoggingInformationToggle_Modal.IsChecked = true; LoggingInformationToggle_Modal.IsEnabled = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.PersistLogging", "Information override failed: " + ex.Message, ex); }
+                    try { LoggingWarningToggle_Modal.IsChecked = true; LoggingWarningToggle_Modal.IsEnabled = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.PersistLogging", "Warning override failed: " + ex.Message, ex); }
+                    try { LoggingErrorToggle_Modal.IsChecked = true; LoggingErrorToggle_Modal.IsEnabled = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.PersistLogging", "Error override failed: " + ex.Message, ex); }
+                    try { LoggingCriticalToggle_Modal.IsChecked = true; LoggingCriticalToggle_Modal.IsEnabled = false; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.PersistLogging", "Critical override failed: " + ex.Message, ex); }
+                }
+                else
+                {
+                    // Habilitar checkboxes individuales
+                    try { LoggingVerboseToggle_Modal.IsEnabled = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.PersistLogging", "Verbose enable failed: " + ex.Message, ex); }
+                    try { LoggingDebugToggle_Modal.IsEnabled = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.PersistLogging", "Debug enable failed: " + ex.Message, ex); }
+                    try { LoggingInformationToggle_Modal.IsEnabled = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.PersistLogging", "Information enable failed: " + ex.Message, ex); }
+                    try { LoggingWarningToggle_Modal.IsEnabled = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.PersistLogging", "Warning enable failed: " + ex.Message, ex); }
+                    try { LoggingErrorToggle_Modal.IsEnabled = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.PersistLogging", "Error enable failed: " + ex.Message, ex); }
+                    try { LoggingCriticalToggle_Modal.IsEnabled = true; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.PersistLogging", "Critical enable failed: " + ex.Message, ex); }
+                }
+
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.PersistLogging", $"Logging.enabled={enabled} UI changed - NOT saved yet", null);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.PersistLogging", "PersistLoggingFlag failed: " + ex.Message, ex);
+            }
+        }
+
+        // NUEVO METODO PersistLoggingLevel - ID: 20260122_013700
+        // E3: Guardar estado de nivel individual (live update NO - solo al Save)
+        private void PersistLoggingLevel(string level, bool enabled)
+        {
+            try
+            {
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.PersistLogging", $"Logging.{level}={enabled} UI changed - NOT saved yet", null);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.PersistLogging", "PersistLoggingLevel failed: " + ex.Message, ex);
+            }
+        }
+
+        // NUEVO METODO LoggingEnabledToggle_Modal_Checked - ID: 20260122_013800
+        private void LoggingEnabledToggle_Modal_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializingAdvancedUi) return;
+            try
+            {
+                PersistLoggingFlag(LoggingEnabledToggle_Modal.IsChecked == true);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LoggingEnabled", "LoggingEnabled toggle error: " + ex.Message, ex);
+            }
+        }
+
+        // NUEVO METODO LoggingVerboseToggle_Modal_Checked - ID: 20260122_013800
+        private void LoggingVerboseToggle_Modal_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializingAdvancedUi) return;
+            try
+            {
+                PersistLoggingLevel("verbose", LoggingVerboseToggle_Modal.IsChecked == true);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LoggingVerbose", "Verbose toggle error: " + ex.Message, ex);
+            }
+        }
+
+        // NUEVO METODO LoggingDebugToggle_Modal_Checked - ID: 20260122_013800
+        private void LoggingDebugToggle_Modal_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializingAdvancedUi) return;
+            try
+            {
+                PersistLoggingLevel("debug", LoggingDebugToggle_Modal.IsChecked == true);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LoggingDebug", "Debug toggle error: " + ex.Message, ex);
+            }
+        }
+
+        // NUEVO METODO LoggingInformationToggle_Modal_Checked - ID: 20260122_013800
+        private void LoggingInformationToggle_Modal_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializingAdvancedUi) return;
+            try
+            {
+                PersistLoggingLevel("information", LoggingInformationToggle_Modal.IsChecked == true);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LoggingInformation", "Information toggle error: " + ex.Message, ex);
+            }
+        }
+
+        // NUEVO METODO LoggingWarningToggle_Modal_Checked - ID: 20260122_013800
+        private void LoggingWarningToggle_Modal_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializingAdvancedUi) return;
+            try
+            {
+                PersistLoggingLevel("warning", LoggingWarningToggle_Modal.IsChecked == true);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LoggingWarning", "Warning toggle error: " + ex.Message, ex);
+            }
+        }
+
+        // NUEVO METODO LoggingErrorToggle_Modal_Checked - ID: 20260122_013800
+        private void LoggingErrorToggle_Modal_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializingAdvancedUi) return;
+            try
+            {
+                PersistLoggingLevel("error", LoggingErrorToggle_Modal.IsChecked == true);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LoggingError", "Error toggle error: " + ex.Message, ex);
+            }
+        }
+
+        // NUEVO METODO LoggingCriticalToggle_Modal_Checked - ID: 20260122_013800
+        private void LoggingCriticalToggle_Modal_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializingAdvancedUi) return;
+            try
+            {
+                PersistLoggingLevel("critical", LoggingCriticalToggle_Modal.IsChecked == true);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LoggingCritical", "Critical toggle error: " + ex.Message, ex);
+            }
+        }
+
+        // NUEVO METODO ApplyModalLoggingToSettings - ID: 20260122_014000
+        // E4: Aplicar TODOS los cambios de logging al presionar "Guardar"
+        private void ApplyModalLoggingToSettings(JObject newGlobalSettings)
+        {
+            if (newGlobalSettings == null) return;
+            try
+            {
+                var logging = new JObject();
+                newGlobalSettings["logging"] = logging;
+
+                // Master checkbox
+                var enabled = LoggingEnabledToggle_Modal?.IsChecked == true;
+                logging["enabled"] = enabled;
+
+                // Si master enabled=true, todos los niveles son true (override)
+                if (enabled)
+                {
+                    logging["verbose"] = true;
+                    logging["debug"] = true;
+                    logging["information"] = true;
+                    logging["warning"] = true;
+                    logging["error"] = true;
+                    logging["critical"] = true;
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "SET logging.enabled=true (all levels forced to true)", null);
+                }
+                else
+                {
+                    // Leer valores individuales de cada checkbox
+                    logging["verbose"] = LoggingVerboseToggle_Modal?.IsChecked == true;
+                    logging["debug"] = LoggingDebugToggle_Modal?.IsChecked == true;
+                    logging["information"] = LoggingInformationToggle_Modal?.IsChecked == true;
+                    logging["warning"] = LoggingWarningToggle_Modal?.IsChecked == true;
+                    logging["error"] = LoggingErrorToggle_Modal?.IsChecked == true;
+                    logging["critical"] = LoggingCriticalToggle_Modal?.IsChecked == true;
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET logging.enabled=false, individual levels: v={logging["verbose"]}, d={logging["debug"]}, i={logging["information"]}, w={logging["warning"]}, e={logging["error"]}, c={logging["critical"]}", null);
+                }
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.ApplyLogging", "ApplyModalLoggingToSettings failed: " + ex.Message, ex);
+            }
+        }
+
+
+
+
         // MODIFICADO METODO PersistRequestDefaultsFromUi - ID: 20260121_235000
         // Parse robusto: temperature (coma/punto + InvariantCulture), maxTokens (int>=0 o null si vacío), includeUsage (bool)
         private void PersistRequestDefaultsFromUi()
@@ -760,8 +1082,9 @@ namespace AgenteIALocalVSIX.ToolWindows
         }
 
         // NUEVO METODO HandleBaseUrlTextChangedAsync - ID: 20250310_000004
-        // MODIFICADO METODO HandleBaseUrlTextChangedAsync - ID: 20260117_120000
-        private async Task HandleBaseUrlTextChangedAsync()
+        // MODIFICADO METODO HandleBaseUrlTextChangedAsync - ID: 20260123_000006
+        // Acepta modelo persistido para preservar selección después de fetch
+        private async Task HandleBaseUrlTextChangedAsync(string persistedModel = null)
         {
             try
             {
@@ -1004,7 +1327,23 @@ namespace AgenteIALocalVSIX.ToolWindows
                             {
                                 ServerModelCombo_Modal.Items.Clear();
                                 foreach (var m in models) ServerModelCombo_Modal.Items.Add(m);
-                                ServerModelCombo_Modal.SelectedIndex = 0;
+                                
+                                // MODIFICADO - ID: 20260123_000006 - Preservar modelo persistido
+                                // Si hay un modelo persistido y está en la lista, seleccionarlo
+                                // Si no, seleccionar el primero
+                                if (!string.IsNullOrWhiteSpace(persistedModel) && models.Contains(persistedModel))
+                                {
+                                    ServerModelCombo_Modal.SelectedItem = persistedModel;
+                                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.BaseUrlChanged", $"Reselected persisted model: {persistedModel}", null);
+                                }
+                                else
+                                {
+                                    ServerModelCombo_Modal.SelectedIndex = 0;
+                                    if (!string.IsNullOrWhiteSpace(persistedModel))
+                                    {
+                                        AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", $"Persisted model '{persistedModel}' not found in server models - selected first available", null);
+                                    }
+                                }
                             }
                             catch (Exception exPopulate) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo populate (success) failed: " + exPopulate.Message, exPopulate); }
                         }
@@ -1017,7 +1356,22 @@ namespace AgenteIALocalVSIX.ToolWindows
                             if (cached != null && cached.Count > 0)
                             {
                                 AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: Using cached models for server " + sid, null);
-                                try { ServerModelCombo_Modal.Items.Clear(); foreach (var m in cached) ServerModelCombo_Modal.Items.Add(m); ServerModelCombo_Modal.SelectedIndex = 0; } catch (Exception exCached) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo from cache failed: " + exCached.Message, exCached); }
+                                try
+                                {
+                                    ServerModelCombo_Modal.Items.Clear();
+                                    foreach (var m in cached) ServerModelCombo_Modal.Items.Add(m);
+                                    
+                                    // MODIFICADO - ID: 20260123_000006 - Preservar modelo persistido desde cache
+                                    if (!string.IsNullOrWhiteSpace(persistedModel) && cached.Contains(persistedModel))
+                                    {
+                                        ServerModelCombo_Modal.SelectedItem = persistedModel;
+                                    }
+                                    else
+                                    {
+                                        ServerModelCombo_Modal.SelectedIndex = 0;
+                                    }
+                                }
+                                catch (Exception exCached) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.BaseUrlChanged", "ModelCombo from cache failed: " + exCached.Message, exCached); }
                             }
                             else
                             {
@@ -1099,6 +1453,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         }
 
         // NUEVO METODO ApplyServerToUi - ID: 20250304_170015
+        // MODIFICADO - ID: 20260123_000006 - Preservar modelo guardado después de fetch
         private void ApplyServerToUi(string serverId, ServerConfig srv)
         {
             // NUEVO - suppress BaseUrl change handler while hydrating UI - ID: 20260115_223100
@@ -1109,6 +1464,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                 ServerBaseUrlTextBox_Modal.Text = srv != null ? srv.BaseUrl : string.Empty;
                 _lastPersistedBaseUrl = ServerBaseUrlTextBox_Modal.Text ?? string.Empty;
                 ServerApiKeyTextBox_Modal.Text = srv != null ? srv.ApiKey : string.Empty;
+
+                // CRÍTICO - ID: 20260123_000006
+                // Guardar el modelo persistido ANTES del fetch asíncrono
+                var persistedModel = srv != null ? srv.Model : string.Empty;
 
                 try
                 {
@@ -1127,9 +1486,11 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
 
             // Fire a single evaluation of the base URL after hydration
+            // MODIFICADO - ID: 20260123_000006 - Pasar modelo persistido para preservar selección
             try
             {
-                FireAndForget(HandleBaseUrlTextChangedAsync(), "ConfigModal.BaseUrlTextChanged.ApplyServerToUi");
+                var persistedModel = srv != null ? srv.Model : string.Empty;
+                FireAndForget(HandleBaseUrlTextChangedAsync(persistedModel), "ConfigModal.BaseUrlTextChanged.ApplyServerToUi");
             }
             catch (Exception exFire) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.ApplyServer", "FireAndForget failed: " + exFire.Message, exFire); }
         }
@@ -1464,6 +1825,7 @@ namespace AgenteIALocalVSIX.ToolWindows
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: Save start", null);
+            
             try
             {
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
@@ -1519,12 +1881,23 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                 settings.ActiveServerId = targetId;
                 
-                // MODIFICADO SaveButton_Click - ID: 20260122_020100
-                // Persiste TODOS los GlobalSettings desde controles UI (DTO completo)
-                // Esto garantiza que todos los valores del modal se guarden juntos
+                // MODIFICADO SaveButton_Click - ID: 20260123_020100
+                // FIX 1: NO copiar logging del oldGlobal (evita duplicación + estructura redundante)
+                // ApplyModalLoggingToSettings() creará una sección logging limpia desde cero
                 try
                 {
-                    if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
+                    // CREAR NUEVO JObject - NO modificar el existente
+                    var newGlobalSettings = new JObject();
+                    
+                    // Copiar valores existentes que NO vamos a modificar
+                    // CRÍTICO: NO copiar "logging" - se crea limpio en ApplyModalLoggingToSettings
+                    var oldGlobal = settings.GlobalSettings;
+                    if (oldGlobal != null)
+                    {
+                        if (oldGlobal["defaultTimeoutMs"] != null) newGlobalSettings["defaultTimeoutMs"] = oldGlobal["defaultTimeoutMs"];
+                        if (oldGlobal["useProxy"] != null) newGlobalSettings["useProxy"] = oldGlobal["useProxy"];
+                        // ELIMINADO: if (oldGlobal["logging"] != null) - evita duplicación y campos obsoletos (levels, all)
+                    }
                     
                     // LOG INFORMACIÓN - Antes de aplicar cambios
                     AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "BEFORE GlobalSettings: " + (settings.GlobalSettings?.ToString(Newtonsoft.Json.Formatting.None) ?? "null"), null);
@@ -1547,7 +1920,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     {
                         var runModeText = GetSelectedComboContent(RunModeCombo_Modal);
                         var runMode = string.Equals(runModeText, "Agente", StringComparison.OrdinalIgnoreCase) ? "agente" : "preguntar";
-                        settings.GlobalSettings["runMode"] = runMode;
+                        newGlobalSettings["runMode"] = runMode;
                         AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET runMode = {runMode} (from UI: {runModeText})", null);
                     }
                     catch (Exception exRunMode)
@@ -1558,8 +1931,8 @@ namespace AgenteIALocalVSIX.ToolWindows
                     // requestDefaults desde controles de temperatura/maxTokens/includeUsage
                     try
                     {
-                        var requestDefaults = settings.GlobalSettings["requestDefaults"] as JObject ?? new JObject();
-                        settings.GlobalSettings["requestDefaults"] = requestDefaults;
+                        var requestDefaults = new JObject();
+                        newGlobalSettings["requestDefaults"] = requestDefaults;
                         
                         requestDefaults["stream"] = true; // siempre true
                         
@@ -1635,8 +2008,8 @@ namespace AgenteIALocalVSIX.ToolWindows
                     // agent desde controles ideIntegration/applyChanges/maxSteps
                     try
                     {
-                        var agent = settings.GlobalSettings["agent"] as JObject ?? new JObject();
-                        settings.GlobalSettings["agent"] = agent;
+                        var agent = new JObject();
+                        newGlobalSettings["agent"] = agent;
                         
                         agent["ideIntegration"] = AgentIdeIntegrationToggle_Modal?.IsChecked == true;
                         agent["applyChanges"] = AgentApplyChangesToggle_Modal?.IsChecked == true;
@@ -1658,6 +2031,19 @@ namespace AgenteIALocalVSIX.ToolWindows
                         AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Save", "Failed to set agent: " + exAgent.Message, exAgent);
                     }
                     
+                    // NUEVO - ID: 20260122_014100 - E4: Aplicar logging settings desde UI
+                    try
+                    {
+                        ApplyModalLoggingToSettings(newGlobalSettings);
+                    }
+                    catch (Exception exLogging)
+                    {
+                        AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Save", "Failed to apply logging settings: " + exLogging.Message, exLogging);
+                    }
+                    
+                    // CRÍTICO - ID: 20260123_000005 - Asignar el NUEVO JObject a settings
+                    settings.GlobalSettings = newGlobalSettings;
+                    
                     // LOG INFORMACIÓN - Después de aplicar cambios
                     AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "AFTER GlobalSettings: " + (settings.GlobalSettings?.ToString(Newtonsoft.Json.Formatting.None) ?? "null"), null);
                 }
@@ -1673,6 +2059,45 @@ namespace AgenteIALocalVSIX.ToolWindows
                 
                 // LOG CRÍTICO - Después de Save
                 AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "AgentSettingsStore.Save() COMPLETED", null);
+
+                // NUEVO - ID: 20260122_014300 - F2: Reconfigurar Serilog pipeline inmediatamente
+                try
+                {
+                    var loggingObj = settings.GlobalSettings?["logging"] as JObject;
+                    if (loggingObj != null)
+                    {
+                        var loggingSettings = new AgenteIALocal.Logging.LogSettings
+                        {
+                            Enabled = loggingObj.Value<bool?>("enabled") ?? true,
+                            All = false, // No usamos "all" - usamos "enabled" como master
+                            Verbose = loggingObj.Value<bool?>("verbose") ?? false,
+                            Debug = loggingObj.Value<bool?>("debug") ?? false,
+                            Information = loggingObj.Value<bool?>("information") ?? false,
+                            Warning = loggingObj.Value<bool?>("warning") ?? false,
+                            Error = loggingObj.Value<bool?>("error") ?? true,
+                            Critical = loggingObj.Value<bool?>("critical") ?? true
+                        };
+
+                        // Si enabled=true (master), forzar todos los niveles a true
+                        if (loggingSettings.Enabled && loggingObj.Value<bool?>("enabled") == true)
+                        {
+                            loggingSettings.Verbose = true;
+                            loggingSettings.Debug = true;
+                            loggingSettings.Information = true;
+                            loggingSettings.Warning = true;
+                            loggingSettings.Error = true;
+                            loggingSettings.Critical = true;
+                        }
+
+                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"CALLING Log.Reconfigure() - enabled={loggingSettings.Enabled}, levels: v={loggingSettings.Verbose}, d={loggingSettings.Debug}, i={loggingSettings.Information}, w={loggingSettings.Warning}, e={loggingSettings.Error}, c={loggingSettings.Critical}", null);
+                        AgenteIALocal.Logging.Log.Reconfigure(loggingSettings);
+                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "Log.Reconfigure() COMPLETED - logging changes applied immediately", null);
+                    }
+                }
+                catch (Exception exReconfigure)
+                {
+                    AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Save", "Log.Reconfigure() failed: " + exReconfigure.Message, exReconfigure);
+                }
 
                 AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigWindow", "ConfigModal: Save persisted ActiveServerId=" + settings.ActiveServerId + ", BaseUrl=" + (srv.BaseUrl ?? "(empty)") + ", ModelLength=" + (srv.Model != null ? srv.Model.Length : 0), null);
 
