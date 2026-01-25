@@ -5,8 +5,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-// COMENTADO - ID: 20260123_190000 - Localization deshabilitado temporalmente para diagnosticar UI vacía
-// using AgenteIALocal.Localization;
+// HABILITADO - ID: 20260124_001500 - Localization requerido para i18n UI
+using AgenteIALocal.Localization;
 using Task = System.Threading.Tasks.Task;
 
 namespace AgenteIALocalVSIX
@@ -20,12 +20,11 @@ namespace AgenteIALocalVSIX
         public const string PackageGuidString = "12e93cca-8723-4160-ac43-96fe08854111";
 
         private static int _serilogConfigured;
-        // COMENTADO - ID: 20260123_190000 - Localization deshabilitado
-        // private static LocalizationService _localizationService;
+        // HABILITADO - ID: 20260124_001501 - Localization requerido para i18n UI
+        private static ILocalizationService _localizationService;
         
-        // COMENTADO - ID: 20260123_190000 - Property pública deshabilitada
-        // public static ILocalizationService LocalizationService => _localizationService;
-        public static object LocalizationService => null; // Placeholder para compilar
+        // HABILITADO - ID: 20260124_001502 - Property pública accesible desde ConfigWindow
+        public static ILocalizationService LocalizationService => _localizationService;
 
         // NUEVO METODO ConfigureSerilogOnce - ID: 20260122_000301
         // MODIFICADO - ID: 20260122_010300 - Diagnóstico mejorado para troubleshooting
@@ -233,7 +232,7 @@ namespace AgenteIALocalVSIX
                 // MODIFICADO - ID: 20260123_183000 - Inicializar Serilog ANTES de LocalizationService
                 ConfigureSerilogOnce();
                 
-                /* COMENTADO - ID: 20260123_190000 - LocalizationService deshabilitado para diagnosticar UI vacía
+                // HABILITADO - ID: 20260124_001503 - LocalizationService requerido para i18n UI (Fase 2-B4, E2-E5)
                 // DIAGNÓSTICO FÍSICO - ID: 20260123_184000
                 var diagPath = System.IO.Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -271,7 +270,7 @@ namespace AgenteIALocalVSIX
                     AgenteIALocal.Logging.Log.Error("-", 1099, "VSIX.i18n.Init", "Error inicializar LocalizationService (fallback embedded activo)", exLoc);
                     System.Diagnostics.Trace.TraceError($"[VSIX.i18n] Init failed: {exLoc.Message}");
                 }
-                */
+                // FIN bloque LocalizationService - ID: 20260124_001504
 
                 AgentComposition.EnsureComposition();
                 AgenteIALocal.Logging.Log.Information("-", 9000, "VSIX.Startup", "VSIX initialized", null);

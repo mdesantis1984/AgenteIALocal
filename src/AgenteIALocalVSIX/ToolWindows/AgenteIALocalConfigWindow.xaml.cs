@@ -64,6 +64,18 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
             catch (Exception exVer) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Ctor", "Version caption failed: " + exVer.Message, exVer); }
 
+            // NUEVO - ID: 20260124_001800 - E4: Suscribir a LanguageChanged para reload automático
+            try
+            {
+                var locService = AgenteIALocalVSIXPackage.LocalizationService;
+                if (locService != null)
+                {
+                    locService.LanguageChanged += OnLanguageChanged;
+                    AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.Ctor", "LanguageChanged subscribed", null);
+                }
+            }
+            catch (Exception exLang) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Ctor", "LanguageChanged subscribe failed: " + exLang.Message, exLang); }
+
             // NUEVO: view switching is handled by XAML DataTriggers; no code-behind wiring required - ID: 20260116_094500
         }
 
@@ -216,6 +228,9 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             // NUEVO - ID: 20260122_013500 - E1: Cargar controles de logging
             LoadLoggingControls(settings);
+
+            // NUEVO - ID: 20260124_001601 - E2: Cargar controles de idioma
+            LoadIdiomaControls();
         }
 
         // MODIFICADO METODO LoadLoggingControls - ID: 20260123_225603
@@ -289,6 +304,64 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch (Exception ex)
             {
                 AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LoadLogging", "LoadLoggingControls failed: " + ex.Message, ex);
+            }
+        }
+
+        // NUEVO METODO LoadIdiomaControls - ID: 20260124_001600
+        // E2: Cargar idiomas disponibles y habilitar RadioButtons según disponibilidad
+        // ARQUITECTURA: UI llama SOLO a LocalizationService (interface) - SIN lógica de negocio
+        private void LoadIdiomaControls()
+        {
+            try
+            {
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LoadIdioma", "LoadIdiomaControls: INICIO", null);
+
+                var locService = AgenteIALocalVSIXPackage.LocalizationService;
+                if (locService == null)
+                {
+                    AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadIdioma", "LocalizationService is null - skip idioma load", null);
+                    return;
+                }
+
+                // Obtener idiomas disponibles desde LocalizationService (NO en UI - cumple Clean Architecture)
+                var available = locService.GetAvailableLanguages();
+                var currentLang = locService.CurrentLanguageCode ?? "es-AR";
+
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LoadIdioma", $"Current lang: {currentLang}, Available count: {System.Linq.Enumerable.Count(available)}", null);
+
+                // UI SOLO hace binding - NO tiene lógica de FileSystemWatcher ni detección
+                // Habilitar/deshabilitar RadioButtons según IsAvailable
+                foreach (var lang in available)
+                {
+                    try
+                    {
+                        RadioButton radio = null;
+                        switch (lang.Code.ToLowerInvariant())
+                        {
+                            case "es-ar": radio = Radio_esAR; break;
+                            case "en-us": radio = Radio_enUS; break;
+                            // pt-BR, fr-FR, de-DE, etc. - RadioButtons sin nombre en XAML actual
+                            // Futuro: generar dinámicamente o agregar nombres
+                        }
+
+                        if (radio != null)
+                        {
+                            radio.IsEnabled = lang.IsAvailable;
+                            radio.IsChecked = string.Equals(lang.Code, currentLang, StringComparison.OrdinalIgnoreCase);
+                            AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.LoadIdioma", $"{lang.Code}: enabled={lang.IsAvailable}, checked={radio.IsChecked}", null);
+                        }
+                    }
+                    catch (Exception exLang)
+                    {
+                        AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadIdioma", $"Error loading {lang.Code}: {exLang.Message}", exLang);
+                    }
+                }
+
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LoadIdioma", "LoadIdiomaControls: OK", null);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LoadIdioma", "LoadIdiomaControls failed: " + ex.Message, ex);
             }
         }
 
@@ -375,6 +448,13 @@ namespace AgenteIALocalVSIX.ToolWindows
                 LoggingCriticalToggle_Modal.Unchecked -= LoggingCriticalToggle_Modal_Checked;
                 LoggingCriticalToggle_Modal.Checked += LoggingCriticalToggle_Modal_Checked;
                 LoggingCriticalToggle_Modal.Unchecked += LoggingCriticalToggle_Modal_Checked;
+
+                // NUEVO - ID: 20260124_001702 - Wire idioma RadioButtons
+                Radio_esAR.Checked -= Radio_esAR_Checked;
+                Radio_esAR.Checked += Radio_esAR_Checked;
+
+                Radio_enUS.Checked -= Radio_enUS_Checked;
+                Radio_enUS.Checked += Radio_enUS_Checked;
             }
             catch (Exception ex)
             {
@@ -786,6 +866,110 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch (Exception ex)
             {
                 AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LoggingCritical", "Critical toggle error: " + ex.Message, ex);
+            }
+        }
+
+        // NUEVO METODO Radio_esAR_Checked - ID: 20260124_001700
+        // E3: Cambiar idioma a es-AR cuando usuario selecciona RadioButton
+        private void Radio_esAR_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializingAdvancedUi) return;
+            try
+            {
+                var locService = AgenteIALocalVSIXPackage.LocalizationService;
+                if (locService == null)
+                {
+                    AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.IdiomaChange", "LocalizationService is null - skip language change", null);
+                    return;
+                }
+
+                // UI solo llama SetLanguage - NO tiene lógica de persistencia (está en LocalizationService)
+                locService.SetLanguage("es-AR");
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.IdiomaChange", "Language changed to es-AR", null);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.IdiomaChange", "es-AR change failed: " + ex.Message, ex);
+            }
+        }
+
+        // NUEVO METODO Radio_enUS_Checked - ID: 20260124_001701
+        // E3: Cambiar idioma a en-US cuando usuario selecciona RadioButton
+        private void Radio_enUS_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializingAdvancedUi) return;
+            try
+            {
+                var locService = AgenteIALocalVSIXPackage.LocalizationService;
+                if (locService == null)
+                {
+                    AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.IdiomaChange", "LocalizationService is null - skip language change", null);
+                    return;
+                }
+
+                // UI solo llama SetLanguage - NO tiene lógica de persistencia (está en LocalizationService)
+                locService.SetLanguage("en-US");
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.IdiomaChange", "Language changed to en-US", null);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.IdiomaChange", "en-US change failed: " + ex.Message, ex);
+            }
+        }
+
+        // NUEVO METODO OnLanguageChanged - ID: 20260124_001801
+        // E4: Reload UI cuando cambia idioma (TranslateExtension auto-update con data binding)
+        // ARQUITECTURA: UI solo reacciona al evento - NO tiene lógica de reload manual
+        private void OnLanguageChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LanguageChanged", "Language changed event received - TranslateExtension auto-updating", null);
+                
+                // TranslateExtension ya está suscrito a LanguageChanged y actualiza bindings automáticamente
+                // NO necesitamos código manual para actualizar TextBlocks
+                // Este método solo loguea el evento para troubleshooting
+                
+                // Opcional: Re-cargar RadioButtons para reflejar idioma actual (si hotreload agrega idiomas)
+                var locService = AgenteIALocalVSIXPackage.LocalizationService;
+                if (locService != null)
+                {
+                    try
+                    {
+                        var currentLang = locService.CurrentLanguageCode ?? "es-AR";
+                        
+                        // Actualizar IsChecked de RadioButtons (solo si es diferente)
+                        if (Radio_esAR != null && !Radio_esAR.IsChecked.HasValue || !Radio_esAR.IsChecked.Value)
+                        {
+                            if (string.Equals(currentLang, "es-AR", StringComparison.OrdinalIgnoreCase))
+                            {
+                                _isInitializingAdvancedUi = true; // Evitar recursión
+                                Radio_esAR.IsChecked = true;
+                                _isInitializingAdvancedUi = false;
+                            }
+                        }
+
+                        if (Radio_enUS != null && !Radio_enUS.IsChecked.HasValue || !Radio_enUS.IsChecked.Value)
+                        {
+                            if (string.Equals(currentLang, "en-US", StringComparison.OrdinalIgnoreCase))
+                            {
+                                _isInitializingAdvancedUi = true; // Evitar recursión
+                                Radio_enUS.IsChecked = true;
+                                _isInitializingAdvancedUi = false;
+                            }
+                        }
+                    }
+                    catch (Exception exRadio)
+                    {
+                        AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LanguageChanged", "RadioButton update failed: " + exRadio.Message, exRadio);
+                    }
+                }
+
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LanguageChanged", "Language change handled OK", null);
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LanguageChanged", "OnLanguageChanged failed: " + ex.Message, ex);
             }
         }
 
