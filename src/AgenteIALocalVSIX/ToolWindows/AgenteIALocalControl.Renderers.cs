@@ -1,4 +1,5 @@
 // NUEVO ARCHIVO AgenteIALocalControl.Renderers.cs - ID: 20250110_000005
+// MODIFICADO - ID: 20260123_215600 - ROLLBACK System.Text.Json → Newtonsoft.Json
 using Newtonsoft.Json.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -546,3 +547,4 @@ namespace AgenteIALocalVSIX.ToolWindows
         }
     }
 }
+

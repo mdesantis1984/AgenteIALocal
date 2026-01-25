@@ -1,6 +1,6 @@
 using AgenteIALocal.Core.Settings;
 using AgenteIALocalVSIX.Commons;
-using AgenteIALocalVSIX.Settings;
+// ELIMINADO - ID: 20260123_222000 - using AgenteIALocalVSIX.Settings (namespace legacy no existente)
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;

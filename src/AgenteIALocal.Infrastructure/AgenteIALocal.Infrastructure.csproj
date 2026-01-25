@@ -17,6 +17,10 @@
       <PackagePath>\</PackagePath>
     </None>
   </ItemGroup>
+  <!-- MODIFICADO - ID: 20260123_230601 - Agregar Newtonsoft.Json para OpenAIStreamingParser -->
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
 	<ItemGroup>
     <ProjectReference Include="..\AgenteIALocal.Core\AgenteIALocal.Core.csproj" />
     <ProjectReference Include="..\AgenteIALocal.Logging\AgenteIALocal.Logging.csproj" />

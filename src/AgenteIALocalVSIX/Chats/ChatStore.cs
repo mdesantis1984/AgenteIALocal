@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+// MODIFICADO - ID: 20260123_215500 - ROLLBACK System.Text.Json → Newtonsoft.Json
 using Newtonsoft.Json;
 
 namespace AgenteIALocalVSIX.Chats

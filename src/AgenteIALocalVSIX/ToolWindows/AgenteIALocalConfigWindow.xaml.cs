@@ -12,6 +12,9 @@ using System.Windows.Controls.Primitives;
 using AgenteIALocalVSIX;
 using AgenteIALocalVSIX.Commons;
 using Microsoft.VisualStudio.Shell;
+// MODIFICADO - ID: 20260123_215600 - ROLLBACK System.Text.Json → Newtonsoft.Json + agregar Core.Configuration
+using AgenteIALocal.Core.Configuration;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace AgenteIALocalVSIX.ToolWindows
@@ -176,50 +179,47 @@ namespace AgenteIALocalVSIX.ToolWindows
             // Use TrySelectComboByText to avoid creating new items and to select the existing item
             try { TrySelectComboByText(ProviderCombo_Modal, provider == "jan" ? "JAN" : "LM Studio"); } catch (Exception exProv) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "ProviderCombo select failed: " + exProv.Message, exProv); }
 
-            var runMode = settings.GlobalSettings != null ? settings.GlobalSettings.Value<string>("runMode") : null;
-            if (string.IsNullOrEmpty(runMode)) runMode = "preguntar";
+            // MODIFICADO - ID: 20260123_225600 - Usar DTO tipado en lugar de JObject
+            var runMode = settings.GlobalSettings?.RunMode ?? "preguntar";
             try { TrySelectComboByText(RunModeCombo_Modal, string.Equals(runMode, "agente", StringComparison.OrdinalIgnoreCase) ? "Agente" : "Preguntar"); } catch (Exception exMode) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "RunModeCombo select failed: " + exMode.Message, exMode); }
 
-            var requestDefaults = settings.GlobalSettings != null ? settings.GlobalSettings["requestDefaults"] as JObject : null;
-            if (requestDefaults == null) requestDefaults = new JObject();
-            // MODIFICADO METODO LoadAdvancedControls - ID: 20260117_124200
-            // Force Stream as the only option in UI: checked + disabled
-            var streamValue = requestDefaults.Value<bool?>("stream") ?? true;
+            var requestDefaults = settings.GlobalSettings?.RequestDefaults;
+            // MODIFICADO METODO LoadAdvancedControls - ID: 20260123_225601
+            // Force Stream as the only option in UI: checked + disabled (usar DTO)
+            var streamValue = requestDefaults?.Stream ?? true;
             try { StreamToggle_Modal.IsChecked = true; StreamToggle_Modal.IsEnabled = false; } catch (Exception exStream) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "StreamToggle init failed: " + exStream.Message, exStream); }
 
-            var streamOptions = requestDefaults["streamOptions"] as JObject;
-            var includeUsage = streamOptions != null ? streamOptions.Value<bool?>("includeUsage") ?? false : false;
+            var includeUsage = requestDefaults?.StreamOptions?.IncludeUsage ?? false;
             IncludeUsageToggle_Modal.IsChecked = includeUsage;
             IncludeUsageToggle_Modal.IsEnabled = provider == "lmstudio";
 
-            // hydrate temperature and maxTokens
+            // hydrate temperature and maxTokens - MODIFICADO - ID: 20260123_225602 - Usar DTOs
             try
             {
-                var temp = requestDefaults.Value<double?>("temperature") ?? 0.2;
+                var temp = requestDefaults?.Temperature ?? 0.2;
                 TemperatureTextBox_Modal.Text = temp.ToString("G");
             }
             catch (Exception exTemp) { TemperatureTextBox_Modal.Text = "0.2"; AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "Temperature load failed: " + exTemp.Message, exTemp); }
 
             try
             {
-                var mt = requestDefaults.Value<int?>("maxTokens") ?? 0;
+                var mt = requestDefaults?.MaxTokens ?? 0;
                 MaxTokensTextBox_Modal.Text = mt.ToString();
             }
             catch (Exception exMax) { MaxTokensTextBox_Modal.Text = "0"; AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "MaxTokens load failed: " + exMax.Message, exMax); }
 
-            var agent = settings.GlobalSettings != null ? settings.GlobalSettings["agent"] as JObject : null;
-            if (agent == null) agent = new JObject();
-            AgentIdeIntegrationToggle_Modal.IsChecked = agent.Value<bool?>("ideIntegration") ?? true;
-            AgentApplyChangesToggle_Modal.IsChecked = agent.Value<bool?>("applyChanges") ?? false;
-            var maxSteps = agent.Value<int?>("maxSteps") ?? 5;
+            var agent = settings.GlobalSettings?.Agent;
+            AgentIdeIntegrationToggle_Modal.IsChecked = agent?.IdeIntegration ?? true;
+            AgentApplyChangesToggle_Modal.IsChecked = agent?.ApplyChanges ?? false;
+            var maxSteps = agent?.MaxSteps ?? 5;
             AgentMaxStepsTextBox_Modal.Text = maxSteps.ToString();
 
             // NUEVO - ID: 20260122_013500 - E1: Cargar controles de logging
             LoadLoggingControls(settings);
         }
 
-        // MODIFICADO METODO LoadLoggingControls - ID: 20260123_020400
-        // E1: Cargar estado de logging desde settings.json
+        // MODIFICADO METODO LoadLoggingControls - ID: 20260123_225603
+        // E1: Cargar estado de logging desde settings.json (usando DTOs)
         // DEFAULTS: enabled=false, critical=true, error=true, resto=false
         private void LoadLoggingControls(AgentSettings settings)
         {
@@ -238,7 +238,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     return;
                 }
 
-                var logging = settings.GlobalSettings["logging"] as JObject;
+                var logging = settings.GlobalSettings.Logging;
                 if (logging == null)
                 {
                     // Defaults si no existe sección logging: enabled=false, solo Critical + Error
@@ -252,14 +252,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                     return;
                 }
 
-                // Cargar valores desde settings.json (defaults: enabled=false si null)
-                var enabled = logging.Value<bool?>("enabled") ?? false;
-                var verbose = logging.Value<bool?>("verbose") ?? false;
-                var debug = logging.Value<bool?>("debug") ?? false;
-                var information = logging.Value<bool?>("information") ?? false;
-                var warning = logging.Value<bool?>("warning") ?? false;
-                var error = logging.Value<bool?>("error") ?? true;
-                var critical = logging.Value<bool?>("critical") ?? true;
+                // Cargar valores desde settings.json (defaults: enabled=false si null) - MODIFICADO - ID: 20260123_225604
+                var enabled = logging.Enabled;
+                var verbose = logging.Verbose;
+                var debug = logging.Debug;
+                var information = logging.Information;
+                var warning = logging.Warning;
+                var error = logging.Error;
+                var critical = logging.Critical;
 
                 // E5: Master override - si enabled=true, forzar todos los niveles a true
                 if (enabled)
@@ -493,7 +493,7 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // NUEVO METODO RunModeCombo_Modal_SelectionChanged - ID: 20250304_170004
+        // MODIFICADO METODO RunModeCombo_Modal_SelectionChanged - ID: 20260123_225605
         private void RunModeCombo_Modal_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_isInitializingAdvancedUi) return;
@@ -502,9 +502,8 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var selected = GetSelectedComboContent(RunModeCombo_Modal);
                 var runMode = string.Equals(selected, "Agente", StringComparison.OrdinalIgnoreCase) ? "agente" : "preguntar";
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
-                if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
-                var before = (settings.GlobalSettings as JObject)?.DeepClone() as JObject ?? new JObject();
-                settings.GlobalSettings["runMode"] = runMode;
+                if (settings.GlobalSettings == null) settings.GlobalSettings = new GlobalSettings();
+                settings.GlobalSettings.RunMode = runMode;
                 string provider = null;
                 try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch (Exception exFind) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.RunMode", "Provider lookup failed: " + exFind.Message, exFind); }
                 // DESHABILITADO live update - ID: 20260122_030100 - Solo SaveButton persiste
@@ -517,19 +516,16 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // NUEVO METODO StreamToggle_Modal_Checked - ID: 20250304_170005
+        // MODIFICADO METODO StreamToggle_Modal_Checked - ID: 20260123_225606
         private void StreamToggle_Modal_Checked(object sender, RoutedEventArgs e)
         {
             if (_isInitializingAdvancedUi) return;
             try
             {
-                // Ensure requestDefaults.stream is always true on save
+                // Ensure requestDefaults.stream is always true on save (usar DTO)
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
-                if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
-                var before = (settings.GlobalSettings as JObject)?.DeepClone() as JObject ?? new JObject();
-                var requestDefaults = settings.GlobalSettings["requestDefaults"] as JObject ?? new JObject();
-                settings.GlobalSettings["requestDefaults"] = requestDefaults;
-                requestDefaults["stream"] = true;
+                if (settings.GlobalSettings == null) settings.GlobalSettings = new GlobalSettings();
+                settings.GlobalSettings.RequestDefaults.Stream = true;
                 // provider for tracing
                 string provider = null;
                 try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch (Exception exFind) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.Stream", "Provider lookup failed: " + exFind.Message, exFind); }
@@ -587,20 +583,23 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // NUEVO METODO PersistAgentFlag - ID: 20250304_170009
+        // MODIFICADO METODO PersistAgentFlag - ID: 20260123_225607
         private void PersistAgentFlag(string key, bool value)
         {
             var settings = AgentSettingsStore.Load() ?? new AgentSettings();
-            if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
-            var before = (settings.GlobalSettings as JObject)?.DeepClone() as JObject ?? new JObject();
-            var agent = settings.GlobalSettings["agent"] as JObject ?? new JObject();
-            settings.GlobalSettings["agent"] = agent;
-                agent[key] = value;
-                string provider = null;
-                try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch (Exception exFind) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.Agent", "Provider lookup failed: " + exFind.Message, exFind); }
-                // DESHABILITADO live update - ID: 20260122_030100 - Solo SaveButton persiste
-                // AgentSettingsStore.Save(settings);
-                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Agent", $"Agent.{key}={value} UI changed - NOT saved yet", null);
+            if (settings.GlobalSettings == null) settings.GlobalSettings = new GlobalSettings();
+            
+            // Mapear key a propiedad DTO
+            if (key == "ideIntegration")
+                settings.GlobalSettings.Agent.IdeIntegration = value;
+            else if (key == "applyChanges")
+                settings.GlobalSettings.Agent.ApplyChanges = value;
+            
+            string provider = null;
+            try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch (Exception exFind) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.Agent", "Provider lookup failed: " + exFind.Message, exFind); }
+            // DESHABILITADO live update - ID: 20260122_030100 - Solo SaveButton persiste
+            // AgentSettingsStore.Save(settings);
+            AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Agent", $"Agent.{key}={value} UI changed - NOT saved yet", null);
         }
 
         // NUEVO METODO AgentMaxStepsTextBox_Modal_TextChanged - ID: 20250304_170010
@@ -629,20 +628,17 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.MaxSteps", "MaxSteps LostFocus failed: " + ex.Message, ex); }
         }
 
-        // NUEVO METODO PersistAgentMaxSteps - ID: 20250304_170012
+        // MODIFICADO METODO PersistAgentMaxSteps - ID: 20260123_225608
         private void PersistAgentMaxSteps(int value)
         {
             var settings = AgentSettingsStore.Load() ?? new AgentSettings();
-            if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
-            var before = (settings.GlobalSettings as JObject)?.DeepClone() as JObject ?? new JObject();
-            var agent = settings.GlobalSettings["agent"] as JObject ?? new JObject();
-            settings.GlobalSettings["agent"] = agent;
-                agent["maxSteps"] = value;
-                string provider = null;
-                try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch (Exception exFind) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.Agent", "Provider lookup failed: " + exFind.Message, exFind); }
-                // DESHABILITADO live update - ID: 20260122_030100 - Solo SaveButton persiste
-                // AgentSettingsStore.Save(settings);
-                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Agent", $"Agent.maxSteps={value} UI changed - NOT saved yet", null);
+            if (settings.GlobalSettings == null) settings.GlobalSettings = new GlobalSettings();
+            settings.GlobalSettings.Agent.MaxSteps = value;
+            string provider = null;
+            try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch (Exception exFind) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.Agent", "Provider lookup failed: " + exFind.Message, exFind); }
+            // DESHABILITADO live update - ID: 20260122_030100 - Solo SaveButton persiste
+            // AgentSettingsStore.Save(settings);
+            AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Agent", $"Agent.maxSteps={value} UI changed - NOT saved yet", null);
         }
 
         // NUEVO METODO PersistLoggingFlag - ID: 20260122_013600
@@ -793,41 +789,38 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // NUEVO METODO ApplyModalLoggingToSettings - ID: 20260122_014000
-        // E4: Aplicar TODOS los cambios de logging al presionar "Guardar"
-        private void ApplyModalLoggingToSettings(JObject newGlobalSettings)
+        // MODIFICADO METODO ApplyModalLoggingToSettings - ID: 20260123_225609
+        // E4: Aplicar TODOS los cambios de logging al presionar "Guardar" (usar DTOs)
+        private void ApplyModalLoggingToSettings(GlobalSettings globalSettings)
         {
-            if (newGlobalSettings == null) return;
+            if (globalSettings == null) return;
             try
             {
-                var logging = new JObject();
-                newGlobalSettings["logging"] = logging;
-
                 // Master checkbox
                 var enabled = LoggingEnabledToggle_Modal?.IsChecked == true;
-                logging["enabled"] = enabled;
+                globalSettings.Logging.Enabled = enabled;
 
                 // Si master enabled=true, todos los niveles son true (override)
                 if (enabled)
                 {
-                    logging["verbose"] = true;
-                    logging["debug"] = true;
-                    logging["information"] = true;
-                    logging["warning"] = true;
-                    logging["error"] = true;
-                    logging["critical"] = true;
+                    globalSettings.Logging.Verbose = true;
+                    globalSettings.Logging.Debug = true;
+                    globalSettings.Logging.Information = true;
+                    globalSettings.Logging.Warning = true;
+                    globalSettings.Logging.Error = true;
+                    globalSettings.Logging.Critical = true;
                     AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "SET logging.enabled=true (all levels forced to true)", null);
                 }
                 else
                 {
                     // Leer valores individuales de cada checkbox
-                    logging["verbose"] = LoggingVerboseToggle_Modal?.IsChecked == true;
-                    logging["debug"] = LoggingDebugToggle_Modal?.IsChecked == true;
-                    logging["information"] = LoggingInformationToggle_Modal?.IsChecked == true;
-                    logging["warning"] = LoggingWarningToggle_Modal?.IsChecked == true;
-                    logging["error"] = LoggingErrorToggle_Modal?.IsChecked == true;
-                    logging["critical"] = LoggingCriticalToggle_Modal?.IsChecked == true;
-                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET logging.enabled=false, individual levels: v={logging["verbose"]}, d={logging["debug"]}, i={logging["information"]}, w={logging["warning"]}, e={logging["error"]}, c={logging["critical"]}", null);
+                    globalSettings.Logging.Verbose = LoggingVerboseToggle_Modal?.IsChecked == true;
+                    globalSettings.Logging.Debug = LoggingDebugToggle_Modal?.IsChecked == true;
+                    globalSettings.Logging.Information = LoggingInformationToggle_Modal?.IsChecked == true;
+                    globalSettings.Logging.Warning = LoggingWarningToggle_Modal?.IsChecked == true;
+                    globalSettings.Logging.Error = LoggingErrorToggle_Modal?.IsChecked == true;
+                    globalSettings.Logging.Critical = LoggingCriticalToggle_Modal?.IsChecked == true;
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET logging.enabled=false, individual levels: v={globalSettings.Logging.Verbose}, d={globalSettings.Logging.Debug}, i={globalSettings.Logging.Information}, w={globalSettings.Logging.Warning}, e={globalSettings.Logging.Error}, c={globalSettings.Logging.Critical}", null);
                 }
             }
             catch (Exception ex)
@@ -839,35 +832,28 @@ namespace AgenteIALocalVSIX.ToolWindows
 
 
 
-        // MODIFICADO METODO PersistRequestDefaultsFromUi - ID: 20260121_235000
-        // Parse robusto: temperature (coma/punto + InvariantCulture), maxTokens (int>=0 o null si vacío), includeUsage (bool)
+        // MODIFICADO METODO PersistRequestDefaultsFromUi - ID: 20260123_225610
+        // Parse robusto usando DTOs: temperature (coma/punto + InvariantCulture), maxTokens (int>=0), includeUsage (bool)
         private void PersistRequestDefaultsFromUi()
         {
             if (_isInitializingAdvancedUi) return;
             try
             {
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
-                if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
-
-                var before = (settings.GlobalSettings as JObject)?.DeepClone() as JObject ?? new JObject();
-
-                var requestDefaults = settings.GlobalSettings["requestDefaults"] as JObject ?? new JObject();
-                settings.GlobalSettings["requestDefaults"] = requestDefaults;
+                if (settings.GlobalSettings == null) settings.GlobalSettings = new GlobalSettings();
 
                 // Force stream true
-                requestDefaults["stream"] = true;
+                settings.GlobalSettings.RequestDefaults.Stream = true;
 
                 // streamOptions.includeUsage depends on provider
                 var providerId = NormalizeProviderId(GetSelectedComboContent(ProviderCombo_Modal));
-                var streamOptions = requestDefaults["streamOptions"] as JObject ?? new JObject();
-                requestDefaults["streamOptions"] = streamOptions;
                 if (string.Equals(providerId, "lmstudio", StringComparison.OrdinalIgnoreCase))
                 {
-                    streamOptions["includeUsage"] = IncludeUsageToggle_Modal.IsChecked == true;
+                    settings.GlobalSettings.RequestDefaults.StreamOptions.IncludeUsage = IncludeUsageToggle_Modal.IsChecked == true;
                 }
                 else
                 {
-                    streamOptions["includeUsage"] = false;
+                    settings.GlobalSettings.RequestDefaults.StreamOptions.IncludeUsage = false;
                 }
 
                 // temperature - Parse robusto: acepta coma/punto, usa InvariantCulture
@@ -905,7 +891,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                 // Solo guardar si el parse fue exitoso
                 if (tempValue.HasValue)
                 {
-                    requestDefaults["temperature"] = tempValue.Value;
+                    settings.GlobalSettings.RequestDefaults.Temperature = tempValue.Value;
                 }
 
                 // maxTokens - Parse robusto: int >= 0, null si vacío
@@ -949,14 +935,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                 // Solo guardar si el parse fue exitoso
                 if (maxTokensValue.HasValue)
                 {
-                    requestDefaults["maxTokens"] = maxTokensValue.Value;
+                    settings.GlobalSettings.RequestDefaults.MaxTokens = maxTokensValue.Value;
                 }
 
                 string provider = null;
                 try { provider = settings.Servers?.Find(s => string.Equals(s.Id, settings.ActiveServerId, StringComparison.OrdinalIgnoreCase))?.Provider; } catch (Exception exFind) { AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.RequestDefaults", "Provider lookup failed: " + exFind.Message, exFind); }
                 // DESHABILITADO live update - ID: 20260122_030100 - Solo SaveButton persiste
                 // AgentSettingsStore.Save(settings);
-                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.RequestDefaults", $"RequestDefaults UI changed (temp={requestDefaults["temperature"]}, max={requestDefaults["maxTokens"]}) - NOT saved yet", null);
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.RequestDefaults", $"RequestDefaults UI changed (temp={settings.GlobalSettings.RequestDefaults.Temperature}, max={settings.GlobalSettings.RequestDefaults.MaxTokens}) - NOT saved yet", null);
             }
             catch (Exception ex)
             {
@@ -1881,46 +1867,20 @@ namespace AgenteIALocalVSIX.ToolWindows
 
                 settings.ActiveServerId = targetId;
                 
-                // MODIFICADO SaveButton_Click - ID: 20260123_020100
-                // FIX 1: NO copiar logging del oldGlobal (evita duplicación + estructura redundante)
-                // ApplyModalLoggingToSettings() creará una sección logging limpia desde cero
+                // MODIFICADO SaveButton_Click - ID: 20260123_225611
+                // Usar DTOs tipados en lugar de JObject - UI sin lógica JSON
                 try
                 {
-                    // CREAR NUEVO JObject - NO modificar el existente
-                    var newGlobalSettings = new JObject();
-                    
-                    // Copiar valores existentes que NO vamos a modificar
-                    // CRÍTICO: NO copiar "logging" - se crea limpio en ApplyModalLoggingToSettings
-                    var oldGlobal = settings.GlobalSettings;
-                    if (oldGlobal != null)
-                    {
-                        if (oldGlobal["defaultTimeoutMs"] != null) newGlobalSettings["defaultTimeoutMs"] = oldGlobal["defaultTimeoutMs"];
-                        if (oldGlobal["useProxy"] != null) newGlobalSettings["useProxy"] = oldGlobal["useProxy"];
-                        // ELIMINADO: if (oldGlobal["logging"] != null) - evita duplicación y campos obsoletos (levels, all)
-                    }
-                    
-                    // LOG INFORMACIÓN - Antes de aplicar cambios
-                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "BEFORE GlobalSettings: " + (settings.GlobalSettings?.ToString(Newtonsoft.Json.Formatting.None) ?? "null"), null);
-                    
-                    // LOG VALORES RAW DE CONTROLES UI
-                    try
-                    {
-                        var tempUi = TemperatureTextBox_Modal?.Text ?? "null";
-                        var maxUi = MaxTokensTextBox_Modal?.Text ?? "null";
-                        var runModeUi = RunModeCombo_Modal?.SelectedItem?.ToString() ?? "null";
-                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"UI RAW VALUES: temp='{tempUi}', max='{maxUi}', runMode='{runModeUi}'", null);
-                    }
-                    catch (Exception exUi)
-                    {
-                        AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Save", "Failed to read UI raw values: " + exUi.Message, exUi);
-                    }
-                    
+                    // Asegurar GlobalSettings existe
+                    if (settings.GlobalSettings == null)
+                        settings.GlobalSettings = new GlobalSettings();
+
                     // runMode desde RunModeCombo_Modal
                     try
                     {
                         var runModeText = GetSelectedComboContent(RunModeCombo_Modal);
                         var runMode = string.Equals(runModeText, "Agente", StringComparison.OrdinalIgnoreCase) ? "agente" : "preguntar";
-                        newGlobalSettings["runMode"] = runMode;
+                        settings.GlobalSettings.RunMode = runMode;
                         AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET runMode = {runMode} (from UI: {runModeText})", null);
                     }
                     catch (Exception exRunMode)
@@ -1931,10 +1891,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     // requestDefaults desde controles de temperatura/maxTokens/includeUsage
                     try
                     {
-                        var requestDefaults = new JObject();
-                        newGlobalSettings["requestDefaults"] = requestDefaults;
-                        
-                        requestDefaults["stream"] = true; // siempre true
+                        settings.GlobalSettings.RequestDefaults.Stream = true; // siempre true
                         
                         // temperature
                         try
@@ -1946,7 +1903,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 double tempVal;
                                 if (double.TryParse(normalized, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out tempVal))
                                 {
-                                    requestDefaults["temperature"] = tempVal;
+                                    settings.GlobalSettings.RequestDefaults.Temperature = tempVal;
                                     AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET temperature = {tempVal} (from UI: {tempText})", null);
                                 }
                             }
@@ -1965,7 +1922,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                                 int maxVal;
                                 if (int.TryParse(maxText, out maxVal) && maxVal >= 0)
                                 {
-                                    requestDefaults["maxTokens"] = maxVal;
+                                    settings.GlobalSettings.RequestDefaults.MaxTokens = maxVal;
                                     AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET maxTokens = {maxVal} (from UI: {maxText})", null);
                                 }
                             }
@@ -1978,20 +1935,17 @@ namespace AgenteIALocalVSIX.ToolWindows
                         // includeUsage (solo LM Studio)
                         try
                         {
-                            var streamOptions = requestDefaults["streamOptions"] as JObject ?? new JObject();
-                            requestDefaults["streamOptions"] = streamOptions;
-                            
                             var providerText = GetSelectedComboContent(ProviderCombo_Modal);
                             var isLmStudio = string.Equals(providerText, "LM Studio", StringComparison.OrdinalIgnoreCase);
                             
                             if (isLmStudio && IncludeUsageToggle_Modal != null)
                             {
-                                streamOptions["includeUsage"] = IncludeUsageToggle_Modal.IsChecked == true;
+                                settings.GlobalSettings.RequestDefaults.StreamOptions.IncludeUsage = IncludeUsageToggle_Modal.IsChecked == true;
                                 AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET includeUsage = {IncludeUsageToggle_Modal.IsChecked} (LM Studio)", null);
                             }
                             else
                             {
-                                streamOptions["includeUsage"] = false;
+                                settings.GlobalSettings.RequestDefaults.StreamOptions.IncludeUsage = false;
                                 AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET includeUsage = false (provider: {providerText})", null);
                             }
                         }
@@ -2008,22 +1962,19 @@ namespace AgenteIALocalVSIX.ToolWindows
                     // agent desde controles ideIntegration/applyChanges/maxSteps
                     try
                     {
-                        var agent = new JObject();
-                        newGlobalSettings["agent"] = agent;
-                        
-                        agent["ideIntegration"] = AgentIdeIntegrationToggle_Modal?.IsChecked == true;
-                        agent["applyChanges"] = AgentApplyChangesToggle_Modal?.IsChecked == true;
+                        settings.GlobalSettings.Agent.IdeIntegration = AgentIdeIntegrationToggle_Modal?.IsChecked == true;
+                        settings.GlobalSettings.Agent.ApplyChanges = AgentApplyChangesToggle_Modal?.IsChecked == true;
                         
                         try
                         {
                             var maxStepsText = AgentMaxStepsTextBox_Modal?.Text ?? "5";
                             var maxStepsVal = ParseMaxSteps(maxStepsText);
-                            agent["maxSteps"] = maxStepsVal;
-                            AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET agent.ideIntegration={agent["ideIntegration"]}, applyChanges={agent["applyChanges"]}, maxSteps={maxStepsVal}", null);
+                            settings.GlobalSettings.Agent.MaxSteps = maxStepsVal;
+                            AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET agent.ideIntegration={settings.GlobalSettings.Agent.IdeIntegration}, applyChanges={settings.GlobalSettings.Agent.ApplyChanges}, maxSteps={maxStepsVal}", null);
                         }
                         catch
                         {
-                            agent["maxSteps"] = 5;
+                            settings.GlobalSettings.Agent.MaxSteps = 5;
                         }
                     }
                     catch (Exception exAgent)
@@ -2034,18 +1985,12 @@ namespace AgenteIALocalVSIX.ToolWindows
                     // NUEVO - ID: 20260122_014100 - E4: Aplicar logging settings desde UI
                     try
                     {
-                        ApplyModalLoggingToSettings(newGlobalSettings);
+                        ApplyModalLoggingToSettings(settings.GlobalSettings);
                     }
                     catch (Exception exLogging)
                     {
                         AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.Save", "Failed to apply logging settings: " + exLogging.Message, exLogging);
                     }
-                    
-                    // CRÍTICO - ID: 20260123_000005 - Asignar el NUEVO JObject a settings
-                    settings.GlobalSettings = newGlobalSettings;
-                    
-                    // LOG INFORMACIÓN - Después de aplicar cambios
-                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "AFTER GlobalSettings: " + (settings.GlobalSettings?.ToString(Newtonsoft.Json.Formatting.None) ?? "null"), null);
                 }
                 catch (Exception exGlobals)
                 {
@@ -2053,46 +1998,42 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 
                 // LOG CRÍTICO - Antes de Save
-                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"CALLING AgentSettingsStore.Save() - ActiveServerId={settings.ActiveServerId}, GlobalSettings keys={settings.GlobalSettings?.Properties()?.Count() ?? 0}", null);
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"CALLING AgentSettingsStore.Save() - ActiveServerId={settings.ActiveServerId}", null);
                 
                 AgentSettingsStore.Save(settings);
                 
                 // LOG CRÍTICO - Después de Save
                 AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "AgentSettingsStore.Save() COMPLETED", null);
 
-                // NUEVO - ID: 20260122_014300 - F2: Reconfigurar Serilog pipeline inmediatamente
+                // MODIFICADO - ID: 20260123_225612 - F2: Reconfigurar Serilog pipeline (usar DTOs)
                 try
                 {
-                    var loggingObj = settings.GlobalSettings?["logging"] as JObject;
-                    if (loggingObj != null)
+                    var loggingSettings = new AgenteIALocal.Logging.LogSettings
                     {
-                        var loggingSettings = new AgenteIALocal.Logging.LogSettings
-                        {
-                            Enabled = loggingObj.Value<bool?>("enabled") ?? true,
-                            All = false, // No usamos "all" - usamos "enabled" como master
-                            Verbose = loggingObj.Value<bool?>("verbose") ?? false,
-                            Debug = loggingObj.Value<bool?>("debug") ?? false,
-                            Information = loggingObj.Value<bool?>("information") ?? false,
-                            Warning = loggingObj.Value<bool?>("warning") ?? false,
-                            Error = loggingObj.Value<bool?>("error") ?? true,
-                            Critical = loggingObj.Value<bool?>("critical") ?? true
-                        };
+                        Enabled = settings.GlobalSettings.Logging.Enabled,
+                        All = false, // No usamos "all" - usamos "enabled" como master
+                        Verbose = settings.GlobalSettings.Logging.Verbose,
+                        Debug = settings.GlobalSettings.Logging.Debug,
+                        Information = settings.GlobalSettings.Logging.Information,
+                        Warning = settings.GlobalSettings.Logging.Warning,
+                        Error = settings.GlobalSettings.Logging.Error,
+                        Critical = settings.GlobalSettings.Logging.Critical
+                    };
 
-                        // Si enabled=true (master), forzar todos los niveles a true
-                        if (loggingSettings.Enabled && loggingObj.Value<bool?>("enabled") == true)
-                        {
-                            loggingSettings.Verbose = true;
-                            loggingSettings.Debug = true;
-                            loggingSettings.Information = true;
-                            loggingSettings.Warning = true;
-                            loggingSettings.Error = true;
-                            loggingSettings.Critical = true;
-                        }
-
-                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"CALLING Log.Reconfigure() - enabled={loggingSettings.Enabled}, levels: v={loggingSettings.Verbose}, d={loggingSettings.Debug}, i={loggingSettings.Information}, w={loggingSettings.Warning}, e={loggingSettings.Error}, c={loggingSettings.Critical}", null);
-                        AgenteIALocal.Logging.Log.Reconfigure(loggingSettings);
-                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "Log.Reconfigure() COMPLETED - logging changes applied immediately", null);
+                    // Si enabled=true (master), forzar todos los niveles a true
+                    if (loggingSettings.Enabled && settings.GlobalSettings.Logging.Enabled)
+                    {
+                        loggingSettings.Verbose = true;
+                        loggingSettings.Debug = true;
+                        loggingSettings.Information = true;
+                        loggingSettings.Warning = true;
+                        loggingSettings.Error = true;
+                        loggingSettings.Critical = true;
                     }
+
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"CALLING Log.Reconfigure() - enabled={loggingSettings.Enabled}, levels: v={loggingSettings.Verbose}, d={loggingSettings.Debug}, i={loggingSettings.Information}, w={loggingSettings.Warning}, e={loggingSettings.Error}, c={loggingSettings.Critical}", null);
+                    AgenteIALocal.Logging.Log.Reconfigure(loggingSettings);
+                    AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", "Log.Reconfigure() COMPLETED - logging changes applied immediately", null);
                 }
                 catch (Exception exReconfigure)
                 {
@@ -2188,41 +2129,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // NUEVO METODO ApplyModalGlobalsToSettings - ID: 20260118_000002
-        private void ApplyModalGlobalsToSettings(AgentSettings settings)
-        {
-            if (settings == null) return;
-            try
-            {
-                // provider -> active server selection already applied via servers list
-                if (settings.GlobalSettings == null) settings.GlobalSettings = new JObject();
-
-                // runMode
-                try
-                {
-                    var selected = GetSelectedComboContent(RunModeCombo_Modal);
-                    var runMode = string.Equals(selected, "Agente", StringComparison.OrdinalIgnoreCase) ? "agente" : "preguntar";
-                    settings.GlobalSettings["runMode"] = runMode;
-                }
-                catch (Exception exRunMode) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.ApplyGlobals", "RunMode failed: " + exRunMode.Message, exRunMode); }
-
-                // agent settings
-                try
-                {
-                    var agent = settings.GlobalSettings["agent"] as JObject ?? new JObject();
-                    settings.GlobalSettings["agent"] = agent;
-                    agent["ideIntegration"] = AgentIdeIntegrationToggle_Modal.IsChecked == true;
-                    agent["applyChanges"] = AgentApplyChangesToggle_Modal.IsChecked == true;
-                    int ms = ParseMaxSteps(AgentMaxStepsTextBox_Modal.Text);
-                    agent["maxSteps"] = ms;
-                }
-                catch (Exception exAgent) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.ApplyGlobals", "Agent settings failed: " + exAgent.Message, exAgent); }
-
-                // requestDefaults via unified persister
-                PersistRequestDefaultsFromUi();
-            }
-            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.ApplyGlobals", "ApplyModalGlobalsToSettings failed: " + ex.Message, ex); }
-        }
+        // ELIMINADO METODO ApplyModalGlobalsToSettings - ID: 20260123_225950
+        // Ya no necesario - SaveButton_Click maneja directamente GlobalSettings DTO
 
         protected override void OnClosed(EventArgs e)
         {

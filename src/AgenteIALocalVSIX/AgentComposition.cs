@@ -4,6 +4,9 @@ using AgenteIALocal.Core.Settings;
 using AgenteIALocal.Infrastructure.Agents;
 using AgenteIALocal.Core.Models.Agent;
 // MODIFICADO - ID: 20260122_030204 - Eliminado using AgenteIALocal.Core.Logging (legacy, no usado)
+// MODIFICADO - ID: 20260123_215500 - ROLLBACK System.Text.Json → Newtonsoft.Json + agregar Core.Configuration
+// MODIFICADO - ID: 20260123_230801 - Eliminado using Newtonsoft.Json.Linq (no usado tras eliminar LogGlobalSettingsPersistence)
+using AgenteIALocal.Core.Configuration;
 
 namespace AgenteIALocalVSIX
 {
@@ -24,6 +27,18 @@ namespace AgenteIALocalVSIX
             lock (sync)
             {
                 if (composed) return;
+
+                // NUEVO - ID: 20260123_221500 - Registrar settings provider (Clean Architecture)
+                try
+                {
+                    var settingsProvider = new AgenteIALocal.Application.Settings.FileAgentSettingsProvider();
+                    AgentSettingsStore.Initialize(settingsProvider);
+                    AgenteIALocal.Logging.Log.Information("-", 9000, "Composition.DI", "FileAgentSettingsProvider registered successfully", null);
+                }
+                catch (Exception exDI)
+                {
+                    AgenteIALocal.Logging.Log.Error("-", 9000, "Composition.DI", "Failed to register FileAgentSettingsProvider", exDI);
+                }
 
                 // Default: assign mock immediately to avoid blocking UI
                 AgentService = new MockAgentService();
@@ -193,91 +208,14 @@ namespace AgenteIALocalVSIX
             }
         }
 
+
         // ELIMINADOS METODOS helpers LoggingV2 - ID: 20260122_195506
         // Info(), Verbose(), Error() eliminados completamente (líneas 196-222 originales)
         // Usar AgenteIALocal.Logging.Log.* directamente en TODO el código
 
-        // NUEVO METODO LogGlobalSettingsPersistence - ID: 20260118_182300
-        // Emits a single-line trace when globalSettings relevant fields change between snapshots.
-        public static void LogGlobalSettingsPersistence(string source, Newtonsoft.Json.Linq.JObject before, Newtonsoft.Json.Linq.JObject after, string provider = null)
-        {
-            try
-            {
-                if (before == null) before = new Newtonsoft.Json.Linq.JObject();
-                if (after == null) after = new Newtonsoft.Json.Linq.JObject();
-
-                string runModeBefore = before.Value<string>("runMode");
-                if (string.IsNullOrEmpty(runModeBefore))
-                {
-                    try
-                    {
-                        var gs = before["globalSettings"] as Newtonsoft.Json.Linq.JObject;
-                        runModeBefore = gs != null ? gs.Value<string>("runMode") : null;
-                    }
-                    catch (Exception exBefore) { runModeBefore = null; AgenteIALocal.Logging.Log.Debug("-", 9002, "Composition.LogPersist", "runModeBefore parse failed: " + exBefore.Message, exBefore); }
-                }
-                string runModeAfter = after.Value<string>("runMode");
-                if (string.IsNullOrEmpty(runModeAfter))
-                {
-                    try
-                    {
-                        var gs = after["globalSettings"] as Newtonsoft.Json.Linq.JObject;
-                        runModeAfter = gs != null ? gs.Value<string>("runMode") : null;
-                    }
-                    catch (Exception exAfter) { runModeAfter = null; AgenteIALocal.Logging.Log.Debug("-", 9002, "Composition.LogPersist", "runModeAfter parse failed: " + exAfter.Message, exAfter); }
-                }
-
-                var reqBefore = before["requestDefaults"] as Newtonsoft.Json.Linq.JObject ?? new Newtonsoft.Json.Linq.JObject();
-                var reqAfter = after["requestDefaults"] as Newtonsoft.Json.Linq.JObject ?? new Newtonsoft.Json.Linq.JObject();
-
-                var agentBefore = before["agent"] as Newtonsoft.Json.Linq.JObject ?? new Newtonsoft.Json.Linq.JObject();
-                var agentAfter = after["agent"] as Newtonsoft.Json.Linq.JObject ?? new Newtonsoft.Json.Linq.JObject();
-
-                bool streamBefore = reqBefore.Value<bool?>("stream") ?? false;
-                bool streamAfter = reqAfter.Value<bool?>("stream") ?? false;
-                double? tempBefore = reqBefore.Value<double?>("temperature");
-                double? tempAfter = reqAfter.Value<double?>("temperature");
-                int? maxBefore = reqBefore.Value<int?>("maxTokens");
-                int? maxAfter = reqAfter.Value<int?>("maxTokens");
-                var soBefore = reqBefore["streamOptions"] as Newtonsoft.Json.Linq.JObject;
-                var soAfter = reqAfter["streamOptions"] as Newtonsoft.Json.Linq.JObject;
-                bool includeBefore = soBefore != null ? soBefore.Value<bool?>("includeUsage") ?? false : false;
-                bool includeAfter = soAfter != null ? soAfter.Value<bool?>("includeUsage") ?? false : false;
-
-                bool ideBefore = agentBefore.Value<bool?>("ideIntegration") ?? false;
-                bool ideAfter = agentAfter.Value<bool?>("ideIntegration") ?? false;
-                bool applyBefore = agentBefore.Value<bool?>("applyChanges") ?? false;
-                bool applyAfter = agentAfter.Value<bool?>("applyChanges") ?? false;
-                int? stepsBefore = agentBefore.Value<int?>("maxSteps");
-                int? stepsAfter = agentAfter.Value<int?>("maxSteps");
-
-                var changed = new System.Collections.Generic.List<string>();
-                if (!string.Equals(runModeBefore, runModeAfter, StringComparison.OrdinalIgnoreCase)) changed.Add("runMode");
-                if (streamBefore != streamAfter) changed.Add("requestDefaults.stream");
-                if (tempBefore.GetValueOrDefault() != tempAfter.GetValueOrDefault()) changed.Add("requestDefaults.temperature");
-                if (maxBefore.GetValueOrDefault() != maxAfter.GetValueOrDefault()) changed.Add("requestDefaults.maxTokens");
-                if (includeBefore != includeAfter) changed.Add("requestDefaults.streamOptions.includeUsage");
-                if (ideBefore != ideAfter) changed.Add("agent.ideIntegration");
-                if (applyBefore != applyAfter) changed.Add("agent.applyChanges");
-                if (stepsBefore.GetValueOrDefault() != stepsAfter.GetValueOrDefault()) changed.Add("agent.maxSteps");
-
-                if (changed.Count == 0) return; // nothing relevant changed -> no log
-
-                var tempStr = tempAfter.HasValue ? tempAfter.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "n/a";
-                var maxStr = (maxAfter.HasValue && maxAfter.Value > 0) ? maxAfter.Value.ToString() : "n/a";
-                var includeStr = includeAfter ? "true" : "false";
-                var ideStr = ideAfter ? "true" : "false";
-                var applyStr = applyAfter ? "true" : "false";
-                var stepsStr = stepsAfter.HasValue ? stepsAfter.Value.ToString() : "n/a";
-                var runStr = string.IsNullOrEmpty(runModeAfter) ? "preguntar" : runModeAfter;
-                var prov = string.IsNullOrEmpty(provider) ? "" : provider;
-
-                var msg = $"ConfigPersist source={source} provider={prov} runMode={runStr} stream={streamAfter} temp={tempStr} maxTokens={maxStr} includeUsage={includeStr} ideIntegration={ideStr} applyChanges={applyStr} maxSteps={stepsStr} changed=[{string.Join(",", changed)}]";
-
-                AgenteIALocal.Logging.Log.Information("-", 9002, "VSIX.ConfigPersist", msg, null);
-            }
-            catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9002, "Composition.LogPersist", "LogGlobalSettingsPersistence failed: " + ex.Message, ex); }
-        }
+        // ELIMINADO LogGlobalSettingsPersistence - ID: 20260123_230800
+        // Método obsoleto (nunca usado) con dependencia JObject - violaba Clean Architecture
+        // Si se necesita logging de cambios settings → usar DTOs tipados en lugar de JObject
 
         // ELIMINADOS METODOS helpers LoggingV2 - ID: 20260122_195505
         // Info(), Verbose(), Error(), Warning() eliminados completamente
@@ -315,21 +253,21 @@ namespace AgenteIALocalVSIX
             {
                 // Build prompt and include optional AgentConfig instructions based on persisted settings
                 var settings = AgentSettingsStore.Load();
-                var global = settings != null ? settings.GlobalSettings : null;
+                var global = settings?.GlobalSettings;
 
                 // agent config defaults
                 bool ideIntegration = true;
                 bool applyChanges = false;
                 int maxSteps = 5;
 
+                // MODIFICADO - ID: 20260123_225801 - Usar DTOs en lugar de JsonObject
                 try
                 {
-                    var agentObj = global != null ? global["agent"] as Newtonsoft.Json.Linq.JObject : null;
-                    if (agentObj != null)
+                    if (global != null)
                     {
-                        ideIntegration = agentObj.Value<bool?>("ideIntegration") ?? ideIntegration;
-                        applyChanges = agentObj.Value<bool?>("applyChanges") ?? applyChanges;
-                        maxSteps = agentObj.Value<int?>("maxSteps") ?? maxSteps;
+                        ideIntegration = global.Agent.IdeIntegration;
+                        applyChanges = global.Agent.ApplyChanges;
+                        maxSteps = global.Agent.MaxSteps;
                     }
                 }
                 catch (Exception ex)
@@ -378,16 +316,15 @@ namespace AgenteIALocalVSIX
                     OnDelta = req?.OnDelta
                 };
 
-                // Populate temperature/maxTokens from settings.requestDefaults when present
+                // Populate temperature/maxTokens from settings.requestDefaults when present - MODIFICADO - ID: 20260123_225901
                 try
                 {
-                    var requestDefaults = global != null ? global["requestDefaults"] as Newtonsoft.Json.Linq.JObject : null;
-                    if (requestDefaults != null)
+                    if (global != null)
                     {
-                        var temp = requestDefaults.Value<double?>("temperature");
-                        if (temp.HasValue) agentReq.Temperature = temp.Value;
-                        var mt = requestDefaults.Value<int?>("maxTokens");
-                        if (mt.HasValue && mt.Value > 0) agentReq.MaxTokens = mt.Value;
+                        var temp = global.RequestDefaults.Temperature;
+                        agentReq.Temperature = temp;
+                        var mt = global.RequestDefaults.MaxTokens;
+                        if (mt > 0) agentReq.MaxTokens = mt;
                     }
                 }
                 catch (Exception ex)

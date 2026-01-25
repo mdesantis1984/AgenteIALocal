@@ -3,6 +3,8 @@ using AgenteIALocalVSIX.Chats;
 using AgenteIALocalVSIX.Execution;
 using MaterialDesignThemes.Wpf;
 using Microsoft.VisualStudio.Shell;
+// MODIFICADO - ID: 20260123_215600 - ROLLBACK System.Text.Json → Newtonsoft.Json + agregar Core.Configuration
+using AgenteIALocal.Core.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -34,9 +36,13 @@ namespace AgenteIALocalVSIX.ToolWindows
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
+
         private IChatService _chatService;
 
         private IRunExecutor _runExecutor;
+
+        // NUEVO - ID: 20260123_230700 - Parser streaming SSE (elimina lógica JSON de UI)
+        private AgenteIALocal.Core.Streaming.IStreamingResponseParser _streamingParser;
 
         private ExecutionState currentExecutionState = ExecutionState.Idle;
 
@@ -183,14 +189,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                 try
                 {
                     var settings = AgentSettingsStore.Load() ?? new AgentSettings();
-                    var current = settings.GlobalSettings != null ? settings.GlobalSettings.Value<string>("runMode") : null;
-                    if (!string.Equals(current ?? string.Empty, normalized ?? string.Empty, StringComparison.OrdinalIgnoreCase))
+                    var current = settings.GlobalSettings?.RunMode ?? string.Empty;
+                    if (!string.Equals(current, normalized ?? string.Empty, StringComparison.OrdinalIgnoreCase))
                     {
-                        // Persist new runMode value (this will raise SettingsSaved event)
+                        // Persist new runMode value (this will raise SettingsSaved event) - MODIFICADO - ID: 20260123_225700
                         try
                         {
-                            if (settings.GlobalSettings == null) settings.GlobalSettings = new Newtonsoft.Json.Linq.JObject();
-                            settings.GlobalSettings["runMode"] = normalized;
+                            if (settings.GlobalSettings == null) settings.GlobalSettings = new GlobalSettings();
+                            settings.GlobalSettings.RunMode = normalized;
                             AgentSettingsStore.Save(settings);
                         }
                         catch (Exception exSave) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.TypeActivitie", "Save runMode failed: " + exSave.Message, exSave); }
@@ -229,11 +235,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
                 catch (Exception exUi) { AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.GetRunMode", "UI access failed: " + exUi.Message, exUi); }
 
-                // 2) Fallback to persisted settings
+                // 2) Fallback to persisted settings - MODIFICADO - ID: 20260123_225701
                 try
                 {
                     var settings = AgentSettingsStore.Load();
-                    var runMode = settings != null && settings.GlobalSettings != null ? settings.GlobalSettings.Value<string>("runMode") : null;
+                    var runMode = settings?.GlobalSettings?.RunMode ?? "preguntar";
                     if (string.IsNullOrWhiteSpace(runMode)) return "preguntar";
                     return runMode;
                 }
@@ -711,6 +717,9 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         public AgenteIALocalControl()
         {
+            // MODIFICADO - ID: 20260123_230701 - Inicializar parser streaming
+            _streamingParser = new AgenteIALocal.Infrastructure.Streaming.OpenAIStreamingParser();
+
             EnsureMahAppsIconPacksLoaded();
             InitializeComponent();
 
@@ -1209,10 +1218,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                         finally { _isRefreshingUiProvider = false; }
                     }
 
-                    // RunMode -> map globalSettings.runMode to TypeActivitie options
+                    // RunMode -> map globalSettings.runMode to TypeActivitie options - MODIFICADO - ID: 20260123_225702
                     try
                     {
-                        var runMode = settings != null && settings.GlobalSettings != null ? settings.GlobalSettings.Value<string>("runMode") : null;
+                        var runMode = settings?.GlobalSettings?.RunMode ?? "preguntar";
                         if (string.IsNullOrEmpty(runMode)) runMode = "preguntar";
                         string runModeUi = string.Equals(runMode, "agente", StringComparison.OrdinalIgnoreCase) ? "Agente" : "Preguntar";
                         if (TypeActivitie != null)
@@ -1476,23 +1485,16 @@ namespace AgenteIALocalVSIX.ToolWindows
                 var selected = cb?.SelectedItem;
                 if (selected == null) return;
 
+
                 string modelId = null;
                 try { modelId = selected.ToString(); } catch { modelId = null; }
                 if (string.IsNullOrWhiteSpace(modelId)) return;
 
+                // ELIMINADO - ID: 20260123_225703 - selectedModel legacy (modelo se persiste en ServerConfig.Model)
                 // Persist selected model to settings
-                try
-                {
-                    var settings = AgentSettingsStore.Load() ?? new AgentSettings();
-                    if (settings.GlobalSettings == null) settings.GlobalSettings = new Newtonsoft.Json.Linq.JObject();
-                    settings.GlobalSettings["selectedModel"] = modelId;
-                    AgentSettingsStore.Save(settings);
-                    AgenteIALocal.Logging.Log.Information(activeCorrelationId ?? "-", 9101, "Control.ModelChanged", "Model selection changed to: " + modelId, null);
-                }
-                catch (Exception ex)
-                {
-                    AgenteIALocal.Logging.Log.Warning(activeCorrelationId ?? "-", 9102, "Control.ModelChanged", "Failed to persist model selection: " + ex.Message, ex);
-                }
+                // ARQUITECTURA: Modelo se persiste en activeServer.Model, NO en globalSettings
+                // UI Config modal maneja persistencia de modelo correctamente
+                AgenteIALocal.Logging.Log.Information(activeCorrelationId ?? "-", 9101, "Control.ModelChanged", "Model selection changed to: " + modelId + " (not persisted - UI Config handles it)", null);
             }
             catch (Exception ex)
             {
@@ -1758,15 +1760,14 @@ namespace AgenteIALocalVSIX.ToolWindows
                 try
                 {
                     var settings = AgentSettingsStore.Load();
-                    var global = settings != null ? settings.GlobalSettings : null;
-                    var reqDefaults = global != null ? global["requestDefaults"] as Newtonsoft.Json.Linq.JObject : null;
-                    if (reqDefaults != null)
+                    var global = settings?.GlobalSettings;
+                    // MODIFICADO - ID: 20260123_225704 - Usar DTOs en lugar de JObject
+                    if (global != null)
                     {
-                        temperature = reqDefaults.Value<double?>("temperature");
-                        var mt = reqDefaults.Value<int?>("maxTokens");
-                        if (mt.HasValue && mt.Value > 0) maxTokens = mt.Value;
-                        var so = reqDefaults["streamOptions"] as Newtonsoft.Json.Linq.JObject;
-                        includeUsage = so != null ? so.Value<bool?>("includeUsage") ?? false : false;
+                        temperature = global.RequestDefaults.Temperature;
+                        var mt = global.RequestDefaults.MaxTokens;
+                        if (mt > 0) maxTokens = mt;
+                        includeUsage = global.RequestDefaults.StreamOptions.IncludeUsage;
                     }
                 }
                 catch (Exception exSettings)
@@ -1824,49 +1825,34 @@ namespace AgenteIALocalVSIX.ToolWindows
                         if (!line.StartsWith("data:", StringComparison.Ordinal)) continue;
 
                         var jsonPart = line.Substring(5).TrimStart();
-                        if (string.Equals(jsonPart, "[DONE]", StringComparison.Ordinal)) break;
 
-                        // Parse chunk JSON
-                        try
+                        // REFACTORIZADO - ID: 20260123_230702 - Usar parser en lugar de lógica JSON en UI
+                        var parsedChunk = _streamingParser.ParseChunk(jsonPart);
+
+                        if (parsedChunk.IsDone) break;
+
+                        if (parsedChunk.HasError)
                         {
-                            var chunk = Newtonsoft.Json.Linq.JObject.Parse(jsonPart);
-                            var choices = chunk["choices"] as Newtonsoft.Json.Linq.JArray;
-                            if (choices != null && choices.Count > 0)
-                            {
-                                var first = choices[0] as Newtonsoft.Json.Linq.JObject;
-                                if (first != null)
-                                {
-                                    var delta = first["delta"] as Newtonsoft.Json.Linq.JObject;
-                                    if (delta != null)
-                                    {
-                                        var content = delta.Value<string>("content");
-                                        if (!string.IsNullOrEmpty(content))
-                                        {
-                                            responseBuilder.Append(content);
-
-                                            // Update UI incrementally usando helper existente
-                                            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
-                                            try { ApplyStreamingDeltaFrom(responseBuilder); } catch { }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Extract usage tokens from last chunk (if includeUsage=true)
-                            if (includeUsage)
-                            {
-                                var usage = chunk["usage"] as Newtonsoft.Json.Linq.JObject;
-                                if (usage != null)
-                                {
-                                    promptTokensExtracted = usage.Value<int?>("prompt_tokens");
-                                    completionTokensExtracted = usage.Value<int?>("completion_tokens");
-                                    totalTokensExtracted = usage.Value<int?>("total_tokens");
-                                }
-                            }
+                            try { AgenteIALocal.Logging.Log.Warning(activeCorrelationId ?? "-", 9117, "Control.StreamRequest", $"Failed to parse SSE chunk: {parsedChunk.ErrorMessage}", null); } catch { }
+                            continue;
                         }
-                        catch (Exception exParse)
+
+                        // Aplicar contenido si existe
+                        if (!string.IsNullOrEmpty(parsedChunk.Content))
                         {
-                            try { AgenteIALocal.Logging.Log.Warning(activeCorrelationId ?? "-", 9117, "Control.StreamRequest", $"Failed to parse SSE chunk: {exParse.Message}", null); } catch { }
+                            responseBuilder.Append(parsedChunk.Content);
+
+                            // Update UI incrementally usando helper existente
+                            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+                            try { ApplyStreamingDeltaFrom(responseBuilder); } catch { }
+                        }
+
+                        // Extract usage tokens si vienen en el chunk
+                        if (parsedChunk.Usage != null)
+                        {
+                            promptTokensExtracted = parsedChunk.Usage.PromptTokens;
+                            completionTokensExtracted = parsedChunk.Usage.CompletionTokens;
+                            totalTokensExtracted = parsedChunk.Usage.TotalTokens;
                         }
                     }
                 }

@@ -1,10 +1,12 @@
 // NUEVA CLASE LocalizationService - ID: 20260123_121930
 // MODIFICADO - ID: 20260123_134500 - Agregar EnsureDirectoryStructure()
 // MODIFICADO - ID: 20260123_141600 - Logs con System.Diagnostics.Trace (no Serilog por refs circulares)
+// MODIFICADO - ID: 20260123_210000 - ROLLBACK System.Text.Json → Newtonsoft.Json
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace AgenteIALocal.Localization
@@ -152,10 +154,13 @@ namespace AgenteIALocal.Localization
                     {
                         var txt = File.ReadAllText(path);
                         var obj = JObject.Parse(txt);
-                        _external[code] = obj;
-                        
-                        var name = obj["metadata"]?["nativeName"]?.ToString() ?? code;
-                        System.Diagnostics.Trace.TraceInformation($"[i18n.LoadExt] ✓ {code}: {name}");
+                        if (obj != null)
+                        {
+                            _external[code] = obj;
+                            
+                            var name = obj["metadata"]?["nativeName"]?.Value<string>() ?? code;
+                            System.Diagnostics.Trace.TraceInformation($"[i18n.LoadExt] ✓ {code}: {name}");
+                        }
                     }
                     catch (Exception exParse)
                     {
@@ -194,7 +199,7 @@ namespace AgenteIALocal.Localization
 
         public IEnumerable<LanguageInfo> GetAvailableLanguages()
         {
-            var list = _external.Keys.Select(k => new LanguageInfo { Code = k, Name = _external[k]["metadata"]?["name"]?.ToString() ?? k, NativeName = _external[k]["metadata"]?["nativeName"]?.ToString() ?? k, FlagPath = Path.Combine(_languagesRoot, "flags", "img", _external[k]["metadata"]?["flag"]?.ToString() ?? ""), IsAvailable = true });
+            var list = _external.Keys.Select(k => new LanguageInfo { Code = k, Name = _external[k]["metadata"]?["name"]?.Value<string>() ?? k, NativeName = _external[k]["metadata"]?["nativeName"]?.Value<string>() ?? k, FlagPath = Path.Combine(_languagesRoot, "flags", "img", _external[k]["metadata"]?["flag"]?.Value<string>() ?? ""), IsAvailable = true });
             var es = new LanguageInfo { Code = "es-AR", Name = "Spanish (Argentina)", NativeName = "Español (Argentina)", FlagPath = Path.Combine(_languagesRoot, "flags", "img", "es-AR.png"), IsAvailable = true };
             return new[] { es }.Concat(list);
         }
@@ -207,10 +212,10 @@ namespace AgenteIALocal.Localization
                 JToken cur = _active;
                 foreach (var p in parts)
                 {
-                    if (cur[p] == null) return key;
+                    if (cur == null || cur[p] == null) return key;
                     cur = cur[p];
                 }
-                return cur.Type == JTokenType.String ? cur.ToString() : key;
+                return cur?.Value<string>() ?? key;
             }
             catch
             {

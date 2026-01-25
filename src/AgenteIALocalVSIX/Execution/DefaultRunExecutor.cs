@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using AgenteIALocal.Core.Models.Agent;
 using AgenteIALocalVSIX.Chats;
+// MODIFICADO - ID: 20260123_215600 - ROLLBACK System.Text.Json → Newtonsoft.Json + agregar Core.Configuration
+using AgenteIALocal.Core.Configuration;
+using Newtonsoft.Json.Linq;
 
 namespace AgenteIALocalVSIX.ToolWindows
 {
@@ -313,7 +316,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         else
                         {
                             // Reuse the same inexpensive check used later to know if streaming is available.
-                            AgenteIALocalVSIX.ServerConfig tmpServer = null;
+                            ServerConfig tmpServer = null;
                             var tmpCanStream = o.TryGetActiveOpenAiCompatibleServer(out tmpServer);
                             if (tmpCanStream)
                             {
@@ -338,25 +341,20 @@ namespace AgenteIALocalVSIX.ToolWindows
                     bool applyChanges = false;
                     int? agentMaxSteps = null;
 
+                    // MODIFICADO - ID: 20260123_225800 - Usar DTOs en lugar de JsonObject
                     try
                     {
-                        var global = settings != null ? settings.GlobalSettings : null;
-                        var reqDefaults = global != null ? global["requestDefaults"] as Newtonsoft.Json.Linq.JObject : null;
-                        if (reqDefaults != null)
+                        var global = settings?.GlobalSettings;
+                        if (global != null)
                         {
-                            temperature = reqDefaults.Value<double?>("temperature");
-                            var mt = reqDefaults.Value<int?>("maxTokens");
-                            if (mt.HasValue && mt.Value > 0) maxTokensVal = mt.Value;
-                            var so = reqDefaults["streamOptions"] as Newtonsoft.Json.Linq.JObject;
-                            includeUsage = so != null ? so.Value<bool?>("includeUsage") ?? false : false;
-                        }
-
-                        var agentObj = global != null ? global["agent"] as Newtonsoft.Json.Linq.JObject : null;
-                        if (agentObj != null)
-                        {
-                            ideIntegration = agentObj.Value<bool?>("ideIntegration") ?? ideIntegration;
-                            applyChanges = agentObj.Value<bool?>("applyChanges") ?? applyChanges;
-                            agentMaxSteps = agentObj.Value<int?>("maxSteps") ?? (int?)null;
+                            temperature = global.RequestDefaults.Temperature;
+                            var mt = global.RequestDefaults.MaxTokens;
+                            if (mt > 0) maxTokensVal = mt;
+                            includeUsage = global.RequestDefaults.StreamOptions.IncludeUsage;
+                            
+                            ideIntegration = global.Agent.IdeIntegration;
+                            applyChanges = global.Agent.ApplyChanges;
+                            agentMaxSteps = global.Agent.MaxSteps;
                         }
                     }
                     catch { }
@@ -372,7 +370,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                     try { o.AppendLog(logMsg); } catch { }
                 }
                 catch { }
-                AgenteIALocalVSIX.ServerConfig lmServer = null;
+                ServerConfig lmServer = null;
                 var canStreamOpenAi = o.TryGetActiveOpenAiCompatibleServer(out lmServer);
 
                 if (string.Equals(runMode, "agente", StringComparison.OrdinalIgnoreCase))

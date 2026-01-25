@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Windows;
+// MODIFICADO - ID: 20260123_215500 - Agregar using Core.Configuration
+using AgenteIALocal.Core.Configuration;
 using System.Windows.Controls;
 using AgenteIALocal.Core.Settings;
 

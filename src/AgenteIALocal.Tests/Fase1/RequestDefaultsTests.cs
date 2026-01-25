@@ -1,7 +1,9 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Globalization;
-using Newtonsoft.Json.Linq;
+// MODIFICADO - ID: 20260123_194500 - Migración Newtonsoft.Json → System.Text.Json
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using AgenteIALocal.Core.Agents;
 using AgenteIALocal.Core.Settings;
 using AgenteIALocal.Infrastructure.Agents;
@@ -154,17 +156,17 @@ namespace AgenteIALocal.Tests.Fase1
                 }
             }";
 
-            var global = JObject.Parse(settingsJson)["globalSettings"] as JObject;
-            var requestDefaults = global?["requestDefaults"] as JObject;
+            var global = (JsonNode.Parse(settingsJson)?["globalSettings"]) as JsonObject;
+            var requestDefaults = global?["requestDefaults"] as JsonObject;
 
             var agentReq = new AgentRequest { Prompt = "Test" };
 
             // Act - Simulate logic from CoreAgentServiceAdapter lines 424-436
             if (requestDefaults != null)
             {
-                var temp = requestDefaults.Value<double?>("temperature");
+                var temp = requestDefaults["temperature"]?.GetValue<double?>();
                 if (temp.HasValue) agentReq.Temperature = temp.Value;
-                var mt = requestDefaults.Value<int?>("maxTokens");
+                var mt = requestDefaults["maxTokens"]?.GetValue<int?>();
                 if (mt.HasValue && mt.Value > 0) agentReq.MaxTokens = mt.Value;
             }
 
@@ -186,17 +188,17 @@ namespace AgenteIALocal.Tests.Fase1
                 }
             }";
 
-            var global = JObject.Parse(settingsJson)["globalSettings"] as JObject;
-            var requestDefaults = global?["requestDefaults"] as JObject;
+            var global = (JsonNode.Parse(settingsJson)?["globalSettings"]) as JsonObject;
+            var requestDefaults = global?["requestDefaults"] as JsonObject;
 
             var agentReq = new AgentRequest { Prompt = "Test" };
 
             // Act
             if (requestDefaults != null)
             {
-                var temp = requestDefaults.Value<double?>("temperature");
+                var temp = requestDefaults["temperature"]?.GetValue<double?>();
                 if (temp.HasValue) agentReq.Temperature = temp.Value;
-                var mt = requestDefaults.Value<int?>("maxTokens");
+                var mt = requestDefaults["maxTokens"]?.GetValue<int?>();
                 if (mt.HasValue && mt.Value > 0) agentReq.MaxTokens = mt.Value; // Should skip 0
             }
 

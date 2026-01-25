@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+// MODIFICADO - ID: 20260123_215600 - ROLLBACK System.Text.Json → Newtonsoft.Json
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -39,7 +40,7 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             try
             {
-                // Fast path: try parse as JSON
+                // Fast path: try parse as JSON - MODIFICADO - ID: 20260123_230100
                 JToken root;
                 try
                 {
@@ -59,21 +60,21 @@ namespace AgenteIALocalVSIX.ToolWindows
                     var errorToken = root["error"];
                     if (errorToken != null)
                     {
-                        if (errorToken.Type == JTokenType.Object)
+                        if (errorToken is JObject errorObj)
                         {
-                            var msg = errorToken.Value<string>("message") ?? errorToken.ToString(Formatting.None);
+                            var msg = errorObj["message"]?.Value<string>() ?? errorObj.ToString();
                             var val = "Error: " + (msg ?? "(unknown error)");
                             LogVerbose(correlationId, "Normalize: detected error object", val);
                             return val;
                         }
 
-                        var errStr = errorToken.ToString(Formatting.None);
+                        var errStr = errorToken.ToString();
                         var val2 = "Error: " + (string.IsNullOrEmpty(errStr) ? "(unknown error)" : errStr);
                         LogVerbose(correlationId, "Normalize: detected error token", val2);
                         return val2;
                     }
 
-                    var altErr = root.Value<string>("error_message") ?? root.Value<string>("errorMessage");
+                    var altErr = root["error_message"]?.Value<string>() ?? root["errorMessage"]?.Value<string>();
                     if (!string.IsNullOrEmpty(altErr))
                     {
                         var val3 = "Error: " + altErr;
@@ -92,10 +93,10 @@ namespace AgenteIALocalVSIX.ToolWindows
                     var choices = root["choices"] as JArray;
                     if (choices != null && choices.Count > 0)
                     {
-                        var first = choices[0] as JToken;
+                        var first = choices[0];
                         if (first != null)
                         {
-                            var msg = first["message"] as JToken;
+                            var msg = first["message"];
                             if (msg != null && msg["content"] != null)
                             {
                                 var content = msg["content"].ToString();
@@ -127,10 +128,11 @@ namespace AgenteIALocalVSIX.ToolWindows
                     var possible = root["output"] ?? root["result"] ?? root["content"];
                     if (possible != null)
                     {
-                        if (possible.Type == JTokenType.String)
+                        var strVal = possible.Value<string>();
+                        if (strVal != null)
                         {
                             LogVerbose(correlationId, "Normalize: top-level output/result/content string detected");
-                            return NormalizeContentString(possible.ToString(), raw, correlationId);
+                            return NormalizeContentString(strVal, raw, correlationId);
                         }
 
                         var pretty = possible.ToString(Formatting.Indented);
@@ -195,7 +197,7 @@ namespace AgenteIALocalVSIX.ToolWindows
                         }
                     }
 
-                    // Try to unescape if content is a JSON string literal (e.g. "\"{\\\"a\\\":1}\"")
+                    // Try to unescape if content is a JSON string literal (e.g. "\"{\\\"a\\\":1}\"") - MODIFICADO - ID: 20260123_230101
                     try
                     {
                         var unescapedLiteral = JsonConvert.DeserializeObject<string>(s);

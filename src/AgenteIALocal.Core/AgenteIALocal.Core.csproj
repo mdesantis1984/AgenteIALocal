@@ -9,4 +9,8 @@
 	  <EmbeddedResource Remove="Helpers\**" />
 	  <None Remove="Helpers\**" />
 	</ItemGroup>
+	<!-- NUEVO - ID: 20260123_225900 - Referencia a Logging para usar LogSettings en GlobalSettings -->
+	<ItemGroup>
+	  <ProjectReference Include="..\AgenteIALocal.Logging\AgenteIALocal.Logging.csproj" />
+	</ItemGroup>
 </Project>

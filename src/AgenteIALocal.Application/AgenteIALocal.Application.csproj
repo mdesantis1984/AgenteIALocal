@@ -24,4 +24,9 @@
     <ProjectReference Include="..\AgenteIALocal.Core\AgenteIALocal.Core.csproj" />
     <ProjectReference Include="..\AgenteIALocal.Logging\AgenteIALocal.Logging.csproj" />
   </ItemGroup>
+
+  <!-- NUEVO - ID: 20260123_212100 - Newtonsoft.Json para FileAgentSettingsProvider -->
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
 </Project>

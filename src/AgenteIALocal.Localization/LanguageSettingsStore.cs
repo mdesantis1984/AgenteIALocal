@@ -1,4 +1,5 @@
 // NUEVA CLASE LanguageSettingsStore - ID: 20260123_121915
+// MODIFICADO - ID: 20260123_210200 - ROLLBACK System.Text.Json → Newtonsoft.Json
 using System;
 using System.IO;
 using System.Text;
