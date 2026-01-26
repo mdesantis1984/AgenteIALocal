@@ -225,7 +225,10 @@
   </ItemGroup>
   <!-- ELIMINADO - ID: 20260123_210300 - ROLLBACK: Eliminadas 5 PackageReferences System.Text.Json -->
   <ItemGroup>
-    <ProjectReference Include="..\AgenteIALocal.Localization\AgenteIALocal.Localization.csproj" />
+    <ProjectReference Include="..\AgenteIALocal.Localization\AgenteIALocal.Localization.csproj">
+      <Project>{B9E55B74-10ED-9985-A41F-2F6AB977AF46}</Project>
+      <Name>AgenteIALocal.Localization</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Settings\" />

@@ -15,33 +15,36 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgenteIALocal.Tests", "src\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgenteIALocalVSIX", "src\AgenteIALocalVSIX\AgenteIALocalVSIX.csproj", "{215F26C1-312F-407E-A713-FA4C4E7D755A}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentacion", "Documentacion", "{21E4881B-57BE-4504-95AF-24633B85FE23}"
-	ProjectSection(SolutionItems) = preProject
-		CHANGELOG.md = CHANGELOG.md
-		GettingStarted.txt = GettingStarted.txt
-		LICENSE.txt = LICENSE.txt
-		MARKETPLACE.md = MARKETPLACE.md
-		artifacts\Plan_14-01-2026\PLAN_IDIOMA\PLAN_IDIOMA_1.0.md = artifacts\Plan_14-01-2026\PLAN_IDIOMA\PLAN_IDIOMA_1.0.md
-		artifacts\Plan_14-01-2026\PLAN_Log_Configuracion\PLAN_LOG_CONFIG_1.0.md = artifacts\Plan_14-01-2026\PLAN_Log_Configuracion\PLAN_LOG_CONFIG_1.0.md
-		artifacts\Plan_14-01-2026\PLAN_Provider_Configuracion\PLAN_Provider_Configuracion_2.4.md = artifacts\Plan_14-01-2026\PLAN_Provider_Configuracion\PLAN_Provider_Configuracion_2.4.md
-		artifacts\Plan_14-01-2026\PLAN_SERILOG\PLAN_SERILOG_2.2.md = artifacts\Plan_14-01-2026\PLAN_SERILOG\PLAN_SERILOG_2.2.md
-		PRIVACY.md = PRIVACY.md
-		src\README.architecture.en.md = src\README.architecture.en.md
-		src\README.architecture.es.md = src\README.architecture.es.md
-		src\README.en.md = src\README.en.md
-		src\README.es.md = src\README.es.md
-		src\README.md = src\README.md
-		README.md = README.md
-		src\Readme.UX.md = src\Readme.UX.md
-		src\Reglas.IA.md = src\Reglas.IA.md
-		ReleaseNotes.txt = ReleaseNotes.txt
-		RELEASE_NOTES.md = RELEASE_NOTES.md
-		SUPPORT.md = SUPPORT.md
-	EndProjectSection
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgenteIALocal.Logging", "src\AgenteIALocal.Logging\AgenteIALocal.Logging.csproj", "{DF45AAD0-2A6A-463F-A43A-814BD4F1A959}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgenteIALocal.Localization", "src\AgenteIALocal.Localization\AgenteIALocal.Localization.csproj", "{B9E55B74-10ED-9985-A41F-2F6AB977AF46}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{551B24F1-2982-4944-87F0-1DBA55AC2A1B}"
+	ProjectSection(SolutionItems) = preProject
+		docs\LANGUAGE_CONTRIBUTION_GUIDE.md = docs\LANGUAGE_CONTRIBUTION_GUIDE.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plans", "plans", "{93A81817-522D-4547-A9A7-76FA9AD54702}"
+	ProjectSection(SolutionItems) = preProject
+		docs\plans\PLAN_IDIOMA_1.0.md = docs\plans\PLAN_IDIOMA_1.0.md
+		docs\plans\PLAN_Log_Configuracion_1.0.md = docs\plans\PLAN_Log_Configuracion_1.0.md
+		docs\plans\PLAN_Provider_Configuracion_2.5.md = docs\plans\PLAN_Provider_Configuracion_2.5.md
+		docs\plans\PLAN_SERILOG_1.3.md = docs\plans\PLAN_SERILOG_1.3.md
+		docs\plans\PLAN_SYSTEM_TEXT_JSON_MIGRATION.md = docs\plans\PLAN_SYSTEM_TEXT_JSON_MIGRATION.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "es", "es", "{4C25B729-B355-4C28-82BD-0919245E4BD2}"
+	ProjectSection(SolutionItems) = preProject
+		docs\es\architecture.md = docs\es\architecture.md
+		docs\es\configuration.md = docs\es\configuration.md
+		docs\es\development.md = docs\es\development.md
+		docs\es\i18n.md = docs\es\i18n.md
+		docs\es\logging.md = docs\es\logging.md
+		docs\es\README.md = docs\es\README.md
+		docs\es\troubleshooting.md = docs\es\troubleshooting.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "en", "en", "{1E9F022C-E647-4AEE-A9D2-1B0207993EC9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -147,9 +150,11 @@ Global
 		{52B94B48-0ED4-C9B0-441A-BC825034B877} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
 		{25353395-9DC8-2DE2-A616-00019CAEBEE5} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
 		{215F26C1-312F-407E-A713-FA4C4E7D755A} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
-		{21E4881B-57BE-4504-95AF-24633B85FE23} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
 		{DF45AAD0-2A6A-463F-A43A-814BD4F1A959} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
 		{B9E55B74-10ED-9985-A41F-2F6AB977AF46} = {ED9CAEBE-2C79-45DB-9E23-6D3F5271B1D3}
+		{93A81817-522D-4547-A9A7-76FA9AD54702} = {551B24F1-2982-4944-87F0-1DBA55AC2A1B}
+		{4C25B729-B355-4C28-82BD-0919245E4BD2} = {551B24F1-2982-4944-87F0-1DBA55AC2A1B}
+		{1E9F022C-E647-4AEE-A9D2-1B0207993EC9} = {551B24F1-2982-4944-87F0-1DBA55AC2A1B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0AC6B85A-033F-465F-813E-E4296842506A}
