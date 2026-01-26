@@ -103,6 +103,7 @@
     <None Include="Languages\flags\create-flag-placeholders-all-ISO-v3.ps1" />
     <None Include="Languages\flags\README.md" />
     <None Include="Languages\fr-FR\strings.json" />
+    <None Include="README.md" />
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
     </None>

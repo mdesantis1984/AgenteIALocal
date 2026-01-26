@@ -45,6 +45,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "es", "es", "{4C25B729-B355-
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "en", "en", "{1E9F022C-E647-4AEE-A9D2-1B0207993EC9}"
+	ProjectSection(SolutionItems) = preProject
+		docs\en\architecture.md = docs\en\architecture.md
+		docs\en\configuration.md = docs\en\configuration.md
+		docs\en\development.md = docs\en\development.md
+		docs\en\i18n.md = docs\en\i18n.md
+		docs\en\logging.md = docs\en\logging.md
+		docs\en\README.md = docs\en\README.md
+		docs\en\troubleshooting.md = docs\en\troubleshooting.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
