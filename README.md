@@ -102,7 +102,7 @@ AgenteIALocal/
 ¡Las contribuciones son bienvenidas! Por favor lee:
 
 - **[Guía de Desarrollo](docs/es/development.md#contribuir)** — Proceso general de contribución
-- **[Guía de Idiomas](artifacts/LANGUAGE_CONTRIBUTION_GUIDE.md)** — Cómo agregar un nuevo idioma
+- **[Guía de Idiomas](docs/LANGUAGE_CONTRIBUTION_GUIDE.md)** — Cómo agregar un nuevo idioma
 - **[Reglas de Trabajo](src/Reglas.md)** — Flujo de commits y restricciones
 
 ### 📝 Licencia
@@ -213,7 +213,7 @@ AgenteIALocal/
 Contributions are welcome! Please read:
 
 - **[Development Guide](docs/en/development.md#contributing)** — General contribution process
-- **[Language Guide](artifacts/LANGUAGE_CONTRIBUTION_GUIDE.md)** — How to add a new language
+- **[Language Guide](docs/LANGUAGE_CONTRIBUTION_GUIDE.md)** — How to add a new language
 
 ### 📝 License
 
