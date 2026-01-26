@@ -212,5 +212,5 @@ Selección en ejecución:
 
 - [README.en.md](../README.en.md)
 - [Readme.UX.md](Readme.UX.md)
-- [README.architecture.es.md](../README.architecture.es.md)
-- [README.architecture.en.md](../README.architecture.en.md)
+- [README.architecture.es.md](README.architecture.es.md)
+- [README.architecture.en.md](README.architecture.en.md)
