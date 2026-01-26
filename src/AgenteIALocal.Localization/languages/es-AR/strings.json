@@ -1,0 +1,123 @@
+{
+  "ui": {
+    "chat": {
+      "window": {
+        "title": "Chat de Agente IA Local"
+      },
+      "new_chat": "Nuevo chat",
+      "placeholder": "Escribe tu consulta aquí, puedes presionar # para referenciar una solución / archivo de proyecto",
+      "ask_button": "Preguntar",
+      "stop_button": "Detener",
+      "clear_button": "Limpiar",
+      "labels": {
+        "log": "Registro",
+        "changes_count": "Cambios ({0})"
+      },
+      "status": {
+        "not_configured": "Sin configurar",
+        "ready": "Listo",
+        "thinking": "Pensando...",
+        "error": "Error"
+      }
+    },
+    "config": {
+      "window": {
+        "title": "Configuración"
+      },
+      "sidebar": {
+        "idioma": "Idioma",
+        "local_llms": "LLMs locales",
+        "logging": "Registro",
+        "agent": "Agente",
+        "general": "General"
+      },
+      "buttons": {
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "apply": "Aplicar",
+        "reset": "Restablecer",
+        "test_connection": "Probar conexión"
+      },
+      "changes": {
+        "title": "Cambios",
+        "count": "Cambios ({0})",
+        "unsaved": "Cambios sin guardar",
+        "saved": "Cambios guardados"
+      },
+      "language": {
+        "title": "Seleccionar idioma",
+        "search_placeholder": "Buscar idioma...",
+        "current": "Idioma actual",
+        "available": "Idiomas disponibles",
+        "apply_restart": "Los cambios se aplicarán al reiniciar"
+      },
+      "idioma": {
+        "page": {
+          "title": "Configuración de Idioma",
+          "description": "Seleccione el idioma de la interfaz"
+        },
+        "languages": {
+          "es": "Español",
+          "en": "Inglés",
+          "pt": "Portugués",
+          "fr": "Francés",
+          "de": "Alemán"
+        }
+      },
+      "llm": {
+        "title": "Configuración de LLM",
+        "provider": "Proveedor",
+        "model": "Modelo",
+        "base_url": "URL base",
+        "api_key": "Clave API",
+        "temperature": "Temperatura",
+        "max_tokens": "Tokens máximos",
+        "add_server": "Agregar servidor",
+        "edit_server": "Editar servidor",
+        "delete_server": "Eliminar servidor"
+      },
+      "logging": {
+        "title": "Configuración de registro",
+        "enabled": "Habilitar registro",
+        "level": "Nivel de registro",
+        "path": "Ruta de archivo",
+        "max_size": "Tamaño máximo",
+        "retention": "Retención de archivos"
+      }
+    },
+    "log": {
+      "panel_title": "Registro",
+      "clear": "Limpiar",
+      "copy": "Copiar",
+      "save": "Guardar",
+      "filter": "Filtrar...",
+      "levels": {
+        "verbose": "Detallado",
+        "debug": "Depuración",
+        "info": "Información",
+        "warning": "Advertencia",
+        "error": "Error",
+        "fatal": "Fatal"
+      }
+    },
+    "common": {
+      "ok": "Aceptar",
+      "cancel": "Cancelar",
+      "yes": "Sí",
+      "no": "No",
+      "close": "Cerrar",
+      "save": "Guardar",
+      "delete": "Eliminar",
+      "edit": "Editar",
+      "add": "Agregar",
+      "remove": "Quitar",
+      "search": "Buscar",
+      "filter": "Filtrar",
+      "loading": "Cargando...",
+      "error": "Error",
+      "success": "Éxito",
+      "warning": "Advertencia",
+      "info": "Información"
+    }
+  }
+}

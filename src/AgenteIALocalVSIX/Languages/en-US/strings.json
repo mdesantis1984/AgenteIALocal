@@ -1,0 +1,165 @@
+{
+  "metadata": {
+    "code": "en-US",
+    "name": "English (United States)",
+    "nativeName": "English (United States)",
+    "flag": "en-US.png",
+    "version": "1.0.0",
+    "author": "AgenteIALocal Team"
+  },
+  "ui": {
+    "config": {
+      "window": {
+        "title": "Configuration"
+      },
+      "sidebar": {
+        "idioma": "Language",
+        "llm": "Local LLM's",
+        "logging": "Logging"
+      },
+      "buttons": {
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "idioma": {
+        "page": {
+          "title": "Language Configuration",
+          "description": "Select interface language"
+        },
+        "languages": {
+          "es": "Spanish",
+          "en": "English",
+          "pt": "Portuguese",
+          "fr": "French",
+          "de": "German",
+          "it": "Italian",
+          "ja": "Japanese",
+          "ko": "Korean",
+          "zh": "Chinese",
+          "ru": "Russian",
+          "ar": "Arabic",
+          "hi": "Hindi",
+          "tr": "Turkish",
+          "nl": "Dutch",
+          "sv": "Swedish"
+        }
+      },
+      "llm": {
+        "page": {
+          "title": "Local LLM Providers Configuration"
+        },
+        "provider": {
+          "label": "Provider",
+          "lmstudio": "LM Studio",
+          "jan": "Jan"
+        },
+        "runmode": {
+          "label": "Run Mode",
+          "preguntar": "Ask",
+          "agente": "Agent"
+        },
+        "server": {
+          "activeServerId": "Active Server Id",
+          "baseUrl": "Base URL",
+          "model": "Model",
+          "apiKey": "API Key",
+          "pingError": "Server not responding (/v1/models)."
+        },
+        "requestDefaults": {
+          "stream": "Stream",
+          "includeUsage": "Include usage",
+          "temperature": "Temperature",
+          "maxTokens": "Max tokens"
+        },
+        "agent": {
+          "ideIntegration": "IDE integration",
+          "applyChanges": "Apply changes",
+          "maxSteps": "Max steps"
+        }
+      },
+      "logging": {
+        "page": {
+          "title": "Logging Configuration"
+        },
+        "enabled": "Logging enabled (activates all levels)",
+        "groups": {
+          "basic": "Basic Levels",
+          "advanced": "Advanced Levels"
+        },
+        "levels": {
+          "verbose": "Verbose",
+          "debug": "Debug",
+          "information": "Information",
+          "warning": "Warning",
+          "error": "Error",
+          "critical": "Critical"
+        },
+        "tooltips": {
+          "enabled": "Activates all logging levels (overrides individual settings)",
+          "information": "Logs general informational system events",
+          "warning": "Logs warnings that don't stop execution",
+          "error": "Logs recoverable system errors",
+          "critical": "Logs critical errors that may halt the system",
+          "verbose": "Logs detailed diagnostic information (high volume)",
+          "debug": "Logs debug information for development (very high volume)"
+        }
+      },
+      "tooltips": {
+        "sidebar": {
+          "idioma": "Configure interface language",
+          "llm": "Configure local LLM providers",
+          "logging": "Configure system logging levels"
+        },
+        "llm": {
+          "provider": "Select local LLM provider (LM Studio or Jan)",
+          "runMode": "Ask mode: responds without executing code. Agent mode: executes code with confirmation",
+          "activeServerId": "Active server identifier",
+          "baseUrl": "Base URL of OpenAI-compatible server (e.g., http://localhost:1234/v1)",
+          "model": "LLM model to use for queries",
+          "apiKey": "API key (optional for local servers)",
+          "stream": "Enable streaming responses (token by token)",
+          "includeUsage": "Include token usage statistics in responses (LM Studio only)",
+          "temperature": "Controls response creativity (0.0-2.0). Higher = more creative",
+          "maxTokens": "Maximum number of tokens in response (0 = unlimited)",
+          "ideIntegration": "Allows agent to access project files and symbols",
+          "applyChanges": "Automatically applies suggested code changes (requires confirmation)",
+          "maxSteps": "Maximum number of steps the agent can execute"
+        },
+        "buttons": {
+          "save": "Save configuration and close",
+          "cancel": "Discard changes and close"
+        },
+        "idioma": {
+          "esAR": "Spanish (Argentina)",
+          "enUS": "English (United States)",
+          "ptBR": "Portuguese (Brazil)",
+          "frFR": "French (France)",
+          "deDE": "German (Germany)"
+        }
+      }
+    },
+    "chat": {
+      "window": {
+        "title": "Local AI Agent Chat"
+      },
+      "placeholder": "Type your query here, you can press # to reference a solution / project file",
+      "labels": {
+        "mode": "Mode",
+        "log": "Log"
+      },
+      "tooltips": {
+        "solution": "Solution",
+        "projects": "Projects",
+        "config": "Config",
+        "refresh": "Refresh",
+        "copyAll": "Copy all",
+        "openLog": "Open log file",
+        "deleteLog": "Delete log file",
+        "newChat": "Start new chat (clears history)",
+        "settings": "Open agent settings",
+        "acceptChanges": "Accept suggested changes",
+        "rejectChanges": "Reject suggested changes"
+      }
+    }
+  }
+}

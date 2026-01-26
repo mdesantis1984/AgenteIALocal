@@ -31,6 +31,20 @@ namespace AgenteIALocal.Localization
                 _languagesRoot = languagesRoot;
                 _settingsStore = new LanguageSettingsStore(languageSettingsPath);
                 
+                // MODIFICADO - ID: 20260126_023000 - Cargar es-AR embebido en _external
+                // Razón: GetAvailableLanguages() necesita metadata (Name, NativeName) desde _external
+                try
+                {
+                    var esArDict = EmbeddedLocalization.EsAR;
+                    var esArJObject = Newtonsoft.Json.Linq.JObject.FromObject(esArDict);
+                    _external["es-AR"] = esArJObject;
+                    System.Diagnostics.Trace.TraceInformation("[i18n.Ctor] ✓ es-AR embebido agregado a _external");
+                }
+                catch (Exception exEmbed)
+                {
+                    System.Diagnostics.Trace.TraceWarning($"[i18n.Ctor] WARNING: es-AR embed failed: {exEmbed.Message}");
+                }
+                
                 EnsureDirectoryStructure();
                 LoadExternalLanguages();
                 
@@ -52,6 +66,9 @@ namespace AgenteIALocal.Localization
             }
         }
 
+
+        // MODIFICADO METODO EnsureDirectoryStructure - ID: 20260124_002100
+        // Agregar copia inicial desde instalación VSIX si runtime folders vacías
         private void EnsureDirectoryStructure()
         {
             try
@@ -85,6 +102,9 @@ namespace AgenteIALocal.Localization
                     System.Diagnostics.Trace.TraceInformation($"[i18n.EnsureDir] ✓ en-US: {enUsPath}");
                 }
                 
+                // NUEVO - ID: 20260124_002101 - Copiar archivos desde instalación VSIX si no existen
+                CopyDefaultLanguageFilesFromVsixInstallation();
+                
                 System.Diagnostics.Trace.TraceInformation("[i18n.EnsureDir] Estructura OK");
             }
             catch (Exception ex)
@@ -93,38 +113,150 @@ namespace AgenteIALocal.Localization
             }
         }
 
+        // NUEVO METODO CopyDefaultLanguageFilesFromVsixInstallation - ID: 20260124_002102
+        // Copia strings.json + banderas PNG desde instalación VSIX a %LOCALAPPDATA% si no existen
+        private void CopyDefaultLanguageFilesFromVsixInstallation()
+        {
+            try
+            {
+                // Obtener ruta instalación VSIX (donde está AgenteIALocal.Localization.dll)
+                var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                var vsixInstallDir = Path.GetDirectoryName(assemblyLocation);
+                var vsixLanguagesDir = Path.Combine(vsixInstallDir, "Languages");
+
+                System.Diagnostics.Trace.TraceInformation($"[i18n.CopyDefaults] VSIX dir: {vsixInstallDir}");
+
+                if (!Directory.Exists(vsixLanguagesDir))
+                {
+                    System.Diagnostics.Trace.TraceWarning($"[i18n.CopyDefaults] VSIX Languages/ no existe - skip copy");
+                    return;
+                }
+
+                // MODIFICADO - ID: 20260126_013000 - Copiar TODOS los idiomas disponibles en VSIX (dinámico)
+                // Itera cada subdirectorio en VSIX\Languages\ y copia strings.json si no existe en runtime
+                foreach (var vsixLangDir in Directory.GetDirectories(vsixLanguagesDir))
+                {
+                    var langCode = Path.GetFileName(vsixLangDir);
+                    
+                    // Skip carpeta "flags" (no es idioma)
+                    if (langCode.Equals("flags", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    var vsixJson = Path.Combine(vsixLangDir, "strings.json");
+                    var runtimeLangDir = Path.Combine(_languagesRoot, langCode);
+                    var runtimeJson = Path.Combine(runtimeLangDir, "strings.json");
+
+                    if (File.Exists(vsixJson) && !File.Exists(runtimeJson))
+                    {
+                        Directory.CreateDirectory(runtimeLangDir);
+                        File.Copy(vsixJson, runtimeJson, overwrite: false);
+                        System.Diagnostics.Trace.TraceInformation($"[i18n.CopyDefaults] ✓ Copiado: {langCode}/strings.json ({new FileInfo(vsixJson).Length} bytes)");
+                    }
+                }
+
+                // Copiar banderas PNG si no existen
+                var vsixFlagsDir = Path.Combine(vsixLanguagesDir, "flags", "img");
+                var runtimeFlagsDir = Path.Combine(_languagesRoot, "flags", "img");
+
+                if (Directory.Exists(vsixFlagsDir))
+                {
+                    Directory.CreateDirectory(runtimeFlagsDir);
+
+                    foreach (var vsixFlag in Directory.GetFiles(vsixFlagsDir, "*.png"))
+                    {
+                        var flagName = Path.GetFileName(vsixFlag);
+                        var runtimeFlag = Path.Combine(runtimeFlagsDir, flagName);
+
+                        if (!File.Exists(runtimeFlag))
+                        {
+                            File.Copy(vsixFlag, runtimeFlag, overwrite: false);
+                            System.Diagnostics.Trace.TraceInformation($"[i18n.CopyDefaults] ✓ Copiada bandera: {flagName} ({new FileInfo(vsixFlag).Length} bytes)");
+                        }
+                    }
+                }
+
+                System.Diagnostics.Trace.TraceInformation("[i18n.CopyDefaults] Copy defaults OK");
+            }
+            catch (Exception exCopy)
+            {
+                // No critical - runtime puede funcionar sin archivos externos (usa embedded es-AR)
+                System.Diagnostics.Trace.TraceWarning($"[i18n.CopyDefaults] Copy failed (no crítico): {exCopy.Message}");
+            }
+        }
+
+
+        // MODIFICADO METODO DetectLanguage - ID: 20260125_003800
+        // Agregar: 1) Detección VS (DTE.LocaleID), 2) Fallback idioma base (es-ES → es-AR), 3) Logs físicos
         private string DetectLanguage(LanguageSettings settings)
         {
-            System.Diagnostics.Trace.TraceInformation($"[i18n.Detect] Current={settings.Current}, AutoDetect={settings.AutoDetect}");
+            var diagPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "AgenteIALocal", "diag_i18n.txt");
+
+            try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] DetectLanguage: Current={settings.Current}, AutoDetect={settings.AutoDetect}\r\n"); } catch { }
             
-            if (!string.IsNullOrEmpty(settings.Current) && _external.ContainsKey(settings.Current))
+            // 1. Settings guardados (prioridad máxima)
+            if (!string.IsNullOrEmpty(settings.Current))
             {
-                System.Diagnostics.Trace.TraceInformation($"[i18n.Detect] → Guardado: {settings.Current}");
-                return settings.Current;
+                if (_external.ContainsKey(settings.Current))
+                {
+                    try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] → Guardado EXACTO: {settings.Current}\r\n"); } catch { }
+                    return settings.Current;
+                }
+                
+                // Fallback idioma base: es-ES → buscar cualquier es-* (es-AR, es-MX, etc.)
+                var langBase = settings.Current.Split('-')[0]; // "es-ES" → "es"
+                var fallback = _external.Keys.FirstOrDefault(k => k.StartsWith(langBase + "-", StringComparison.OrdinalIgnoreCase));
+                if (fallback != null)
+                {
+                    try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] → Guardado FALLBACK: {settings.Current} → {fallback}\r\n"); } catch { }
+                    return fallback;
+                }
             }
 
+            // 2. AutoDetect: VS → OS → default
             if (settings.AutoDetect)
             {
+                // 2a. Visual Studio locale (NUEVO - prioridad sobre OS)
+                try
+                {
+                    // NOTA: DTE no disponible desde Localization layer (sin refs VSIX SDK)
+                    // Alternativa: pasar VS locale como parámetro en constructor (futuro)
+                    // Por ahora: solo OS detection
+                }
+                catch { }
+
+                // 2b. Sistema Operativo
                 try
                 {
                     var os = System.Globalization.CultureInfo.CurrentUICulture.Name;
-                    System.Diagnostics.Trace.TraceInformation($"[i18n.Detect] OS Culture: {os}");
+                    try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] OS Culture: {os}\r\n"); } catch { }
                     
                     if (_external.ContainsKey(os))
                     {
-                        System.Diagnostics.Trace.TraceInformation($"[i18n.Detect] → OS: {os}");
+                        try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] → OS EXACTO: {os}\r\n"); } catch { }
                         return os;
                     }
                     
-                    System.Diagnostics.Trace.TraceWarning($"[i18n.Detect] OS {os} no disponible");
+                    // Fallback idioma base: es-ES → buscar cualquier es-* (es-AR, es-MX, etc.)
+                    var langBase = os.Split('-')[0]; // "es-ES" → "es"
+                    var fallback = _external.Keys.FirstOrDefault(k => k.StartsWith(langBase + "-", StringComparison.OrdinalIgnoreCase));
+                    if (fallback != null)
+                    {
+                        try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] → OS FALLBACK: {os} → {fallback}\r\n"); } catch { }
+                        return fallback;
+                    }
+                    
+                    try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] WARNING: OS {os} no disponible\r\n"); } catch { }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Trace.TraceError($"[i18n.Detect] Error OS culture: {ex.Message}");
+                    try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] ERROR OS culture: {ex.Message}\r\n"); } catch { }
                 }
             }
 
-            System.Diagnostics.Trace.TraceInformation("[i18n.Detect] → Fallback: es-AR");
+            // 3. Fallback final: es-AR embebido
+            try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] → Fallback FINAL: es-AR\r\n"); } catch { }
             return "es-AR";
         }
 
@@ -197,12 +329,147 @@ namespace AgenteIALocal.Localization
 
         public bool IsLanguageAvailable(string code) => _external.ContainsKey(code) || string.Equals(code, "es-AR", StringComparison.OrdinalIgnoreCase);
 
+        // MODIFICADO GetAvailableLanguages - ID: 20260126_023100
+        // NUEVA ARQUITECTURA ÓPTIMA: Escanear SOLO Languages/*/strings.json (idiomas traducidos)
+        // Lógica invertida: en lugar de escanear 306 PNG y filtrar, escanear carpetas traducidas
+        // Ventajas: performance + sin hardcode + sin recompilar + solo muestra idiomas disponibles
+        // FIX 20260126_023100: Metadata es-AR leída desde EmbeddedLocalization (NO hardcoded)
         public IEnumerable<LanguageInfo> GetAvailableLanguages()
         {
-            var list = _external.Keys.Select(k => new LanguageInfo { Code = k, Name = _external[k]["metadata"]?["name"]?.Value<string>() ?? k, NativeName = _external[k]["metadata"]?["nativeName"]?.Value<string>() ?? k, FlagPath = Path.Combine(_languagesRoot, "flags", "img", _external[k]["metadata"]?["flag"]?.Value<string>() ?? ""), IsAvailable = true });
-            var es = new LanguageInfo { Code = "es-AR", Name = "Spanish (Argentina)", NativeName = "Español (Argentina)", FlagPath = Path.Combine(_languagesRoot, "flags", "img", "es-AR.png"), IsAvailable = true };
-            return new[] { es }.Concat(list);
+            var result = new List<LanguageInfo>();
+
+            try
+            {
+                if (!Directory.Exists(_languagesRoot))
+                {
+                    System.Diagnostics.Trace.TraceWarning($"[i18n.GetAvailable] Languages root not found: {_languagesRoot}");
+                    
+                    // MODIFICADO - ID: 20260126_023100 - Leer metadata desde EmbeddedLocalization (NO hardcode)
+                    result.Add(CreateEmbeddedLanguageInfo());
+                    return result;
+                }
+
+                // NÚCLEO: Escanear carpetas Languages/*/ que tengan strings.json
+                foreach (var langDir in Directory.GetDirectories(_languagesRoot))
+                {
+                    try
+                    {
+                        var langCode = Path.GetFileName(langDir);
+                        
+                        // Skip carpeta "flags" (no es idioma)
+                        if (langCode.Equals("flags", StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        // Verificar si existe strings.json (determina si idioma está traducido)
+                        var stringsJson = Path.Combine(langDir, "strings.json");
+                        if (!File.Exists(stringsJson))
+                        {
+                            System.Diagnostics.Trace.TraceInformation($"[i18n.GetAvailable] Skipping {langCode} (no strings.json)");
+                            continue; // Idioma sin traducción → no mostrar
+                        }
+
+                        // Buscar bandera PNG correspondiente
+                        var flagPath = Path.Combine(_languagesRoot, "flags", "img", $"{langCode}.png");
+                        if (!File.Exists(flagPath))
+                        {
+                            System.Diagnostics.Trace.TraceWarning($"[i18n.GetAvailable] {langCode} has strings.json but missing flag PNG");
+                            // Continuar de todos modos (mostrar sin bandera)
+                        }
+
+                        // Obtener metadata desde JSON (si está cargado en _external)
+                        string name = langCode;
+                        string nativeName = langCode;
+
+                        if (_external.ContainsKey(langCode))
+                        {
+                            try
+                            {
+                                name = _external[langCode]["metadata"]?["name"]?.Value<string>() ?? langCode;
+                                nativeName = _external[langCode]["metadata"]?["nativeName"]?.Value<string>() ?? langCode;
+                            }
+                            catch
+                            {
+                                // Fallback a langCode si metadata falla
+                            }
+                        }
+
+                        result.Add(new LanguageInfo
+                        {
+                            Code = langCode,
+                            Name = name,
+                            NativeName = nativeName,
+                            FlagPath = flagPath,
+                            IsAvailable = true // Si llegó aquí, strings.json existe
+                        });
+
+                        System.Diagnostics.Trace.TraceInformation($"[i18n.GetAvailable] ✓ {langCode} (name={name}, flag={File.Exists(flagPath)})");
+                    }
+                    catch (Exception exLang)
+                    {
+                        System.Diagnostics.Trace.TraceWarning($"[i18n.GetAvailable] Error processing {langDir}: {exLang.Message}");
+                    }
+                }
+
+                System.Diagnostics.Trace.TraceInformation($"[i18n.GetAvailable] Total: {result.Count} idiomas disponibles (dinámico, sin hardcode)");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError($"[i18n.GetAvailable] ERROR: {ex.Message}");
+            }
+
+            // MODIFICADO - ID: 20260126_023100 - Fallback final sin hardcode
+            if (result.Count == 0)
+            {
+                result.Add(CreateEmbeddedLanguageInfo());
+            }
+
+            return result;
         }
+
+        // NUEVO METODO CreateEmbeddedLanguageInfo - ID: 20260126_023100
+        // Factory: Crea LanguageInfo para es-AR embebido leyendo metadata desde EmbeddedLocalization
+        // Razón: Eliminar strings hardcoded ("Spanish (Argentina)", "Español (Argentina)")
+        // Escalabilidad: Si se agregan más idiomas embebidos, este método es genérico
+        private LanguageInfo CreateEmbeddedLanguageInfo()
+        {
+            try
+            {
+                var esArDict = EmbeddedLocalization.EsAR;
+                var metadata = esArDict["metadata"] as Dictionary<string, object>;
+                
+                var code = metadata?["code"] as string ?? "es-AR";
+                var name = metadata?["name"] as string ?? "es-AR";
+                var nativeName = metadata?["nativeName"] as string ?? "es-AR";
+                var flagFile = metadata?["flag"] as string ?? "es-AR.png";
+                
+                return new LanguageInfo
+                {
+                    Code = code,
+                    Name = name,
+                    NativeName = nativeName,
+                    FlagPath = Path.Combine(_languagesRoot, "flags", "img", flagFile),
+                    IsAvailable = true
+                };
+            }
+            catch (Exception exFactory)
+            {
+                System.Diagnostics.Trace.TraceWarning($"[i18n.CreateEmbedded] Factory failed: {exFactory.Message}");
+                
+                // Fallback ultra-defensivo si falla lectura de metadata
+                return new LanguageInfo
+                {
+                    Code = "es-AR",
+                    Name = "es-AR",
+                    NativeName = "es-AR",
+                    FlagPath = Path.Combine(_languagesRoot, "flags", "img", "es-AR.png"),
+                    IsAvailable = true
+                };
+            }
+        }
+
+
+
+
 
         public string GetString(string key)
         {

@@ -28,14 +28,39 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         public AgenteIALocalToolWindow() : base(null)
         {
-            var version = typeof(AgenteIALocalVSIXPackage).GetVsixVersionString();
-            this.Caption = $"Chat de Agente IA Local {version}";
+            // MODIFICADO - ID: 20260125_003007 - Constructor minimalista (evitar deadlock)
+            // Version + i18n title se setean en OnToolWindowCreated() después de init
+            this.Caption = "Chat de Agente IA Local";
             this.Content = new AgenteIALocalControl();
         }
 
         public override void OnToolWindowCreated()
         {
             base.OnToolWindowCreated();
+            
+            // NUEVO - ID: 20260125_003006 - Lazy init LocalizationService AQUÍ (después de constructor)
+            try
+            {
+                AgenteIALocalVSIXPackage.InitializeLocalizationServiceOnce();
+            }
+            catch (Exception exInit)
+            {
+                System.Diagnostics.Trace.TraceError($"[ToolWindow.OnCreated] InitializeLocalizationServiceOnce failed: {exInit.Message}");
+            }
+            
+            // NUEVO - ID: 20260125_003007 - Actualizar Caption con versión + i18n DESPUÉS de init
+            try
+            {
+                var version = typeof(AgenteIALocalVSIXPackage).GetVsixVersionString();
+                var locService = AgenteIALocalVSIXPackage.LocalizationService;
+                var title = locService != null ? locService.GetString("ui.chat.window.title") : "Chat de Agente IA Local";
+                this.Caption = $"{title} {version}";
+            }
+            catch (Exception exCaption)
+            {
+                System.Diagnostics.Trace.TraceError($"[ToolWindow.OnCreated] Caption update failed: {exCaption.Message}");
+            }
+            
             // MODIFICADO - ID: 20260122_010802 - Migrado a Serilog
             try { AgenteIALocal.Logging.Log.Information("-", 9100, "ToolWindow.OnCreated", "OnToolWindowCreated", null); } catch { }
 

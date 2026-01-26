@@ -4,6 +4,9 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AssemblyName>AgenteIALocal.Localization</AssemblyName>
     <RootNamespace>AgenteIALocal.Localization</RootNamespace>
+    <!-- NUEVO - ID: 20260125_003100 - Strong name signing (requerido por VSIX firmado) -->
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\AgenteIALocalVSIX\key.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,5 +19,10 @@
     <Reference Include="PresentationCore" />
     <Reference Include="WindowsBase" />
     <Reference Include="System.Xaml" />
+  </ItemGroup>
+
+  <!-- NUEVO - ID: 20260125_003200 - Embedded resources para idiomas -->
+  <ItemGroup>
+    <EmbeddedResource Include="languages\**\*.json" />
   </ItemGroup>
 </Project>

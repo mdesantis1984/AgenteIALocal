@@ -66,7 +66,7 @@
     <Compile Include="Execution\DefaultRunExecutor.cs" />
     <Compile Include="Execution\IRunExecutor.cs" />
     <Compile Include="Execution\MockAgentExecutor.cs" />
-    <Compile Include="Localization\TranslateExtension.cs" />
+    <!-- ELIMINADO - ID: 20260126_005000 - Localization\TranslateExtension.cs duplicado (existe en AgenteIALocal.Localization assembly) -->
     <Compile Include="Options\AgentOptionsViewModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AgenteIALocalVSIXPackage.cs" />
@@ -100,6 +100,9 @@
   <!-- Misc -->
   <ItemGroup>
     <None Include="key.snk" />
+    <None Include="Languages\flags\create-flag-placeholders-all-ISO-v3.ps1" />
+    <None Include="Languages\flags\README.md" />
+    <None Include="Languages\fr-FR\strings.json" />
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
     </None>
@@ -145,6 +148,12 @@
       <IncludeAssets>compile; runtime; native</IncludeAssets>
       <PrivateAssets>none</PrivateAssets>
     </PackageReference>
+    <!-- NUEVO - ID: 20260125_002300 - Newtonsoft.Json para Localization (dependencia transitiva de Application/Infrastructure) -->
+    <PackageReference Include="Newtonsoft.Json">
+      <Version>13.0.3</Version>
+      <IncludeAssets>compile; runtime; native</IncludeAssets>
+      <PrivateAssets>none</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AgenteIALocal.Application\AgenteIALocal.Application.csproj">
@@ -180,12 +189,29 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
+    <!-- ELIMINADO - ID: 20260126_011500 - 234 líneas <Content> de banderas PNG duplicadas (líneas 192-425) -->
+    <!-- RAZON: Todas las banderas ya están declaradas como <Resource> (líneas 440-830) para pack URIs XAML -->
+    <!-- IMPACTO: RG1000 "Ya se agregó un elemento con la misma clave" resuelto -->
     <Content Include="LICENSE.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
     <Content Include="ReleaseNotes.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+  </ItemGroup>
+  <!-- NUEVO - ID: 20260124_002000 - Empaquetar archivos i18n en VSIX -->
+  <ItemGroup>
+    <!-- Languages JSON files - versionados en Git + empaquetados en VSIX -->
+    <Content Include="Languages\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <!-- MODIFICADO - ID: 20260126_021100 - Cambio Resource → Content (306 líneas → 4) -->
+    <!-- Banderas PNG: Content permite copia física (no embebido en DLL) -->
+    <Content Include="Languages\flags\img\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
   </ItemGroup>
@@ -207,4 +233,37 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets" Condition="'$(VSToolsPath)' != ''" />
   <!-- ELIMINADO - ID: 20260123_210301 - ROLLBACK: Eliminado Target IncludeSystemTextJsonInVSIX (10 DLLs) -->
+  <!-- MODIFICADO - ID: 20260125_002500 - Target expandido: Newtonsoft.Json + 6 System DLLs transitivas -->
+  <Target Name="IncludeNewtonsoftJsonInVSIX" AfterTargets="GetVsixSourceItems">
+    <ItemGroup>
+      <VSIXSourceItem Include="$(OutDir)Newtonsoft.Json.dll">
+        <VSIXSubPath>
+        </VSIXSubPath>
+      </VSIXSourceItem>
+      <VSIXSourceItem Include="$(OutDir)System.Buffers.dll">
+        <VSIXSubPath>
+        </VSIXSubPath>
+      </VSIXSourceItem>
+      <VSIXSourceItem Include="$(OutDir)System.Diagnostics.DiagnosticSource.dll">
+        <VSIXSubPath>
+        </VSIXSubPath>
+      </VSIXSourceItem>
+      <VSIXSourceItem Include="$(OutDir)System.Memory.dll">
+        <VSIXSubPath>
+        </VSIXSubPath>
+      </VSIXSourceItem>
+      <VSIXSourceItem Include="$(OutDir)System.Numerics.Vectors.dll">
+        <VSIXSubPath>
+        </VSIXSubPath>
+      </VSIXSourceItem>
+      <VSIXSourceItem Include="$(OutDir)System.Runtime.CompilerServices.Unsafe.dll">
+        <VSIXSubPath>
+        </VSIXSubPath>
+      </VSIXSourceItem>
+      <VSIXSourceItem Include="$(OutDir)System.Threading.Tasks.Extensions.dll">
+        <VSIXSubPath>
+        </VSIXSubPath>
+      </VSIXSourceItem>
+    </ItemGroup>
+  </Target>
 </Project>

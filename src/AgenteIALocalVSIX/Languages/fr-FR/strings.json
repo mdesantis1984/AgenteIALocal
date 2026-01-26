@@ -1,0 +1,165 @@
+{
+  "metadata": {
+    "code": "fr-FR",
+    "name": "Français (France)",
+    "nativeName": "Français (France)",
+    "flag": "fr-FR.png",
+    "version": "1.0.0",
+    "author": "AgenteIALocal Team"
+  },
+  "ui": {
+    "config": {
+      "window": {
+        "title": "Configuration"
+      },
+      "sidebar": {
+        "idioma": "Langue",
+        "llm": "LLM locaux",
+        "logging": "Journalisation"
+      },
+      "buttons": {
+        "save": "Enregistrer",
+        "cancel": "Annuler"
+      },
+      "idioma": {
+        "page": {
+          "title": "Configuration de la langue",
+          "description": "Sélectionnez la langue de l'interface"
+        },
+        "languages": {
+          "es": "Espagnol",
+          "en": "Anglais",
+          "pt": "Portugais",
+          "fr": "Français",
+          "de": "Allemand",
+          "it": "Italien",
+          "ja": "Japonais",
+          "ko": "Coréen",
+          "zh": "Chinois",
+          "ru": "Russe",
+          "ar": "Arabe",
+          "hi": "Hindi",
+          "tr": "Turc",
+          "nl": "Néerlandais",
+          "sv": "Suédois"
+        }
+      },
+      "llm": {
+        "page": {
+          "title": "Configuration des fournisseurs LLM locaux"
+        },
+        "provider": {
+          "label": "Fournisseur",
+          "lmstudio": "LM Studio",
+          "jan": "Jan"
+        },
+        "runmode": {
+          "label": "Mode d'exécution",
+          "preguntar": "Demander",
+          "agente": "Agent"
+        },
+        "server": {
+          "activeServerId": "Identifiant du serveur actif",
+          "baseUrl": "URL de base",
+          "model": "Modèle",
+          "apiKey": "Clé API",
+          "pingError": "Le serveur ne répond pas (/v1/models)."
+        },
+        "requestDefaults": {
+          "stream": "Flux",
+          "includeUsage": "Inclure l'utilisation",
+          "temperature": "Température",
+          "maxTokens": "Nombre maximum de jetons"
+        },
+        "agent": {
+          "ideIntegration": "Intégration IDE",
+          "applyChanges": "Appliquer les modifications",
+          "maxSteps": "Nombre maximum d'étapes"
+        }
+      },
+      "logging": {
+        "page": {
+          "title": "Configuration de la journalisation"
+        },
+        "enabled": "Journalisation activée (active tous les niveaux)",
+        "groups": {
+          "basic": "Niveaux de base",
+          "advanced": "Niveaux avancés"
+        },
+        "levels": {
+          "verbose": "Détaillé",
+          "debug": "Débogage",
+          "information": "Information",
+          "warning": "Avertissement",
+          "error": "Erreur",
+          "critical": "Critique"
+        },
+        "tooltips": {
+          "enabled": "Active tous les niveaux de journalisation (remplace les paramètres individuels)",
+          "information": "Enregistre les événements informatifs généraux du système",
+          "warning": "Enregistre les avertissements qui n'arrêtent pas l'exécution",
+          "error": "Enregistre les erreurs système récupérables",
+          "critical": "Enregistre les erreurs critiques pouvant arrêter le système",
+          "verbose": "Enregistre des informations de diagnostic détaillées (volume élevé)",
+          "debug": "Enregistre des informations de débogage pour le développement (volume très élevé)"
+        }
+      },
+      "tooltips": {
+        "sidebar": {
+          "idioma": "Configurer la langue de l'interface",
+          "llm": "Configurer les fournisseurs LLM locaux",
+          "logging": "Configurer les niveaux de journalisation du système"
+        },
+        "llm": {
+          "provider": "Sélectionner le fournisseur LLM local (LM Studio ou Jan)",
+          "runMode": "Mode Demander : répond sans exécuter de code. Mode Agent : exécute du code avec confirmation",
+          "activeServerId": "Identifiant du serveur actif",
+          "baseUrl": "URL de base du serveur compatible OpenAI (par ex. http://localhost:1234/v1)",
+          "model": "Modèle LLM à utiliser pour les requêtes",
+          "apiKey": "Clé API (facultative pour les serveurs locaux)",
+          "stream": "Activer les réponses en flux (jeton par jeton)",
+          "includeUsage": "Inclure les statistiques d'utilisation des jetons dans les réponses (LM Studio uniquement)",
+          "temperature": "Contrôle la créativité des réponses (0.0-2.0). Plus élevé = plus créatif",
+          "maxTokens": "Nombre maximum de jetons dans la réponse (0 = illimité)",
+          "ideIntegration": "Permet à l'agent d'accéder aux fichiers et symboles du projet",
+          "applyChanges": "Applique automatiquement les modifications de code suggérées (nécessite confirmation)",
+          "maxSteps": "Nombre maximum d'étapes que l'agent peut exécuter"
+        },
+        "buttons": {
+          "save": "Enregistrer la configuration et fermer",
+          "cancel": "Annuler les modifications et fermer"
+        },
+        "idioma": {
+          "esAR": "Espagnol (Argentine)",
+          "enUS": "Anglais (États-Unis)",
+          "ptBR": "Portugais (Brésil)",
+          "frFR": "Français (France)",
+          "deDE": "Allemand (Allemagne)"
+        }
+      }
+    },
+    "chat": {
+      "window": {
+        "title": "Chat de l'agent IA local"
+      },
+      "placeholder": "Tapez votre requête ici, vous pouvez appuyer sur # pour référencer une solution / un fichier de projet",
+      "labels": {
+        "mode": "Mode",
+        "log": "Journal"
+      },
+      "tooltips": {
+        "solution": "Solution",
+        "projects": "Projets",
+        "config": "Configuration",
+        "refresh": "Actualiser",
+        "copyAll": "Tout copier",
+        "openLog": "Ouvrir le fichier journal",
+        "deleteLog": "Supprimer le fichier journal",
+        "newChat": "Nouveau chat",
+        "settings": "Paramètres",
+        "acceptChanges": "Accepter les modifications",
+        "rejectChanges": "Rejeter les modifications"
+      }
+    }
+  }
+}

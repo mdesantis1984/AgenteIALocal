@@ -1,12 +1,15 @@
-<Window x:Class="AgenteIALocalVSIX.ToolWindows.AgenteIALocalConfigWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
-        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="Configuración" Height="720" Width="1024" MinHeight="720" MinWidth="1024"
-        WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False"
-        Background="#282828"
-        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+
+    
+    <Window x:Class="AgenteIALocalVSIX.ToolWindows.AgenteIALocalConfigWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+    xmlns:loc="clr-namespace:AgenteIALocal.Localization;assembly=AgenteIALocal.Localization"
+    Title="{loc:Translate ui.config.window.title}" Height="720" Width="1024" MinHeight="720" MinWidth="1024"
+    WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False"
+    Background="#282828"
+    shell:WindowChrome.IsHitTestVisibleInChrome="True">
 
     <!-- Make custom chrome act as window caption for dragging -->
     <shell:WindowChrome.WindowChrome>
@@ -355,7 +358,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="HeaderTitleText" Text="Configuración" Style="{StaticResource Text.Headline}" VerticalAlignment="Center" />
+                    <TextBlock x:Name="HeaderTitleText" Text="{loc:Translate ui.config.window.title}" Style="{StaticResource Text.Headline}" VerticalAlignment="Center" />
                 </Grid>
              </Border>
 
@@ -371,25 +374,25 @@
                 <Border Grid.Column="0" Background="{StaticResource HeaderBackgroundBrush}" Padding="16,16,16,16">
                     <StackPanel Orientation="Vertical" VerticalAlignment="Top">
                         <!-- Navigation items: ToggleButtons with icon + text - mutual exclusive implemented manually - MODIFICADO - ID: 20260116_112500 -->
-                        <ToggleButton x:Name="NavIdiomaToggle" IsChecked="False" Margin="0,0,0,12" Height="56" Style="{StaticResource SidebarNavToggleStyle}" Checked="NavToggle_Checked">
+                        <ToggleButton x:Name="NavIdiomaToggle" IsChecked="False" Margin="0,0,0,12" Height="56" Style="{StaticResource SidebarNavToggleStyle}" Checked="NavToggle_Checked" ToolTip="{loc:Translate ui.config.tooltips.sidebar.idioma}">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <md:PackIcon Kind="Translate" Width="20" Height="20" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
-                                <TextBlock Text="Idioma" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <TextBlock Text="{loc:Translate ui.config.sidebar.idioma}" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
                         </ToggleButton>
 
-                        <ToggleButton x:Name="NavLlmToggle" IsChecked="True" Margin="0,0,0,12" Height="56" Style="{StaticResource SidebarNavToggleStyle}" Checked="NavToggle_Checked">
+                        <ToggleButton x:Name="NavLlmToggle" IsChecked="True" Margin="0,0,0,12" Height="56" Style="{StaticResource SidebarNavToggleStyle}" Checked="NavToggle_Checked" ToolTip="{loc:Translate ui.config.tooltips.sidebar.llm}">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <md:PackIcon Kind="Brain" Width="20" Height="20" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
-                                <TextBlock Text="LLM's Local" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <TextBlock Text="{loc:Translate ui.config.sidebar.llm}" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
                         </ToggleButton>
 
                         <!-- NUEVO - ID: 20260122_013100 - D1: Navigation entry for Logging page -->
-                        <ToggleButton x:Name="NavLoggingToggle" IsChecked="False" Margin="0,0,0,0" Height="56" Style="{StaticResource SidebarNavToggleStyle}" Checked="NavToggle_Checked">
+                        <ToggleButton x:Name="NavLoggingToggle" IsChecked="False" Margin="0,0,0,0" Height="56" Style="{StaticResource SidebarNavToggleStyle}" Checked="NavToggle_Checked" ToolTip="{loc:Translate ui.config.tooltips.sidebar.logging}">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <md:PackIcon Kind="FileDocumentEdit" Width="20" Height="20" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
-                                <TextBlock Text="Logging" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <TextBlock Text="{loc:Translate ui.config.sidebar.logging}" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
                         </ToggleButton>
                     </StackPanel>
@@ -398,7 +401,8 @@
                 <!-- Main content host -->
                 <Grid Grid.Column="1" Margin="24,0,0,0">
                     <!-- Idioma Page - MODIFICADO ID: 20260123_130000 - B1-B3: UniformGrid 5 cols + 15 idiomas -->
-                    <Grid x:Name="IdiomaPageGrid" Visibility="Collapsed">
+                    <!-- MODIFICADO - ID: 20260125_003600 - Eliminar Visibility redundante (Style.Triggers maneja) -->
+                    <Grid x:Name="IdiomaPageGrid">
                         <Grid.Style>
                             <Style TargetType="Grid">
                                 <Setter Property="Visibility" Value="Collapsed" />
@@ -411,47 +415,13 @@
                         </Grid.Style>
 
                         <StackPanel Orientation="Vertical" Margin="16">
-                            <TextBlock Text="Configuración de Idioma" Style="{StaticResource Text.Headline}" Margin="0,0,0,8" />
-                            <TextBlock Text="Seleccione el idioma de la interfaz" Style="{StaticResource Text.Body}" Opacity="0.7" Margin="0,0,0,24" />
+                            <TextBlock Text="{loc:Translate ui.config.idioma.page.title}" Style="{StaticResource Text.Headline}" Margin="0,0,0,8" />
+                            <TextBlock Text="{loc:Translate ui.config.idioma.page.description}" Style="{StaticResource Text.Body}" Opacity="0.7" Margin="0,0,0,24" />
 
-                            <UniformGrid x:Name="LanguageGrid" Columns="5" HorizontalAlignment="Left">
-                                <!-- Fila 1 -->
-                                <Border x:Name="Lang_esAR" Margin="0,0,8,8" Padding="12" Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Width="120" Height="140">
-                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                                        <TextBlock Text="AR" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,8,0,8" Foreground="{StaticResource AccentBrush}" />
-                                        <TextBlock Text="Español" Style="{StaticResource Text.Body}" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                                        <RadioButton x:Name="Radio_esAR" GroupName="Language" IsChecked="True" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                                <Border x:Name="Lang_enUS" Margin="0,0,8,8" Padding="12" Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Width="120" Height="140">
-                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                                        <TextBlock Text="US" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,8,0,8" />
-                                        <TextBlock Text="English" Style="{StaticResource Text.Body}" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                                        <RadioButton x:Name="Radio_enUS" GroupName="Language" IsEnabled="False" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Margin="0,0,8,8" Padding="12" Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Width="120" Height="140" Opacity="0.5">
-                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                                        <TextBlock Text="BR" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,8,0,8" />
-                                        <TextBlock Text="Português" Style="{StaticResource Text.Body}" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                                        <RadioButton GroupName="Language" IsEnabled="False" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Margin="0,0,8,8" Padding="12" Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Width="120" Height="140" Opacity="0.5">
-                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                                        <TextBlock Text="FR" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,8,0,8" />
-                                        <TextBlock Text="Français" Style="{StaticResource Text.Body}" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                                        <RadioButton GroupName="Language" IsEnabled="False" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Margin="0,0,0,8" Padding="12" Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Width="120" Height="140" Opacity="0.5">
-                                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                                        <TextBlock Text="DE" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,8,0,8" />
-                                        <TextBlock Text="Deutsch" Style="{StaticResource Text.Body}" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                                        <RadioButton GroupName="Language" IsEnabled="False" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                            </UniformGrid>
+                            <!-- MODIFICADO - ID: 20260126_021300 - Agregar ScrollViewer para scroll vertical (opcional con 15 idiomas) -->
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="500" HorizontalScrollBarVisibility="Disabled">
+                                <UniformGrid x:Name="LanguageGrid" Columns="5" HorizontalAlignment="Left" />
+                            </ScrollViewer>
                         </StackPanel>
                     </Grid>
 
@@ -476,7 +446,7 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="Configuración de los proveedores locales" Style="{StaticResource Text.Headline}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" />
+                        <TextBlock Grid.Row="0" Text="{loc:Translate ui.config.llm.page.title}" Style="{StaticResource Text.Headline}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" />
 
                         <!-- Top row: Provider (left) + Run Mode (right) -->
                         <Grid Grid.Row="1" Margin="0,0,0,12">
@@ -485,17 +455,23 @@
                                 <ColumnDefinition Width="1.2*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Orientation="Vertical">
-                                <TextBlock Text="Provider" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,6" />
-                                <ComboBox x:Name="ProviderCombo_Modal" Style="{StaticResource DarkFlatComboBoxStyle}" IsEditable="False">
-                                    <ComboBoxItem Content="LM Studio" />
-                                    <ComboBoxItem Content="Jan" />
+                                <TextBlock Text="{loc:Translate ui.config.llm.provider.label}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,6" />
+                                <ComboBox x:Name="ProviderCombo_Modal" Style="{StaticResource DarkFlatComboBoxStyle}" IsEditable="False" ToolTip="{loc:Translate ui.config.tooltips.llm.provider}">
+                                    <!-- MODIFICADO - ID: 20260126_032600 - Content string directo (NO TextBlock) - Provider es INVARIANTE -->
+                                    <ComboBoxItem Tag="lmstudio" Content="LM Studio" />
+                                    <ComboBoxItem Tag="jan" Content="JAN" />
                                 </ComboBox>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Vertical" Margin="12,0,0,0">
-                                <TextBlock Text="Run Mode" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,6" />
-                                <ComboBox x:Name="RunModeCombo_Modal" Style="{StaticResource DarkFlatComboBoxStyle}" IsEditable="False">
-                                    <ComboBoxItem Content="Preguntar" />
-                                    <ComboBoxItem Content="Agente" />
+                                <TextBlock Text="{loc:Translate ui.config.llm.runmode.label}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,6" />
+                                <ComboBox x:Name="RunModeCombo_Modal" Style="{StaticResource DarkFlatComboBoxStyle}" IsEditable="False" ToolTip="{loc:Translate ui.config.tooltips.llm.runMode}">
+                                    <!-- MODIFICADO - ID: 20260126_031900 - Agregado Tag invariante para lectura code-behind -->
+                                    <ComboBoxItem Tag="preguntar">
+                                        <TextBlock Text="{loc:Translate ui.config.llm.runmode.preguntar}" />
+                                    </ComboBoxItem>
+                                    <ComboBoxItem Tag="agente">
+                                        <TextBlock Text="{loc:Translate ui.config.llm.runmode.agente}" />
+                                    </ComboBoxItem>
                                 </ComboBox>
                             </StackPanel>
                         </Grid>
@@ -503,48 +479,48 @@
                         <!-- Server card -->
                         <Border Grid.Row="2" Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Padding="12" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" BorderThickness="1" Margin="0,0,0,12">
                             <StackPanel Orientation="Vertical" >
-                                <TextBlock Text="Active Server Id" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
-                                <TextBox x:Name="ActiveServerIdTextBox_Modal" Style="{StaticResource UxTextBox}" />
+                                <TextBlock Text="{loc:Translate ui.config.llm.server.activeServerId}" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
+                                <TextBox x:Name="ActiveServerIdTextBox_Modal" Style="{StaticResource UxTextBox}" ToolTip="{loc:Translate ui.config.tooltips.llm.activeServerId}" />
 
-                                <TextBlock Text="Base URL" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,10,0,0" />
-                                <TextBox x:Name="ServerBaseUrlTextBox_Modal" Style="{StaticResource UxTextBox}" TextChanged="ServerBaseUrlTextBox_Modal_TextChanged" />
-                                <TextBlock x:Name="ServerBaseUrlPingErrorText_Modal" Foreground="{StaticResource DangerBrush}" Visibility="Collapsed" Text="Servidor no responde (/v1/models)." Margin="0,6,0,0" />
+                                <TextBlock Text="{loc:Translate ui.config.llm.server.baseUrl}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,10,0,0" />
+                                <TextBox x:Name="ServerBaseUrlTextBox_Modal" Style="{StaticResource UxTextBox}" TextChanged="ServerBaseUrlTextBox_Modal_TextChanged" ToolTip="{loc:Translate ui.config.tooltips.llm.baseUrl}" />
+                                <TextBlock x:Name="ServerBaseUrlPingErrorText_Modal" Foreground="{StaticResource DangerBrush}" Visibility="Collapsed" Text="{loc:Translate ui.config.llm.server.pingError}" Margin="0,6,0,0" />
 
-                                <TextBlock Text="Model" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,10,0,0" />
-                                <ComboBox x:Name="ServerModelCombo_Modal" Style="{StaticResource DarkFlatComboBoxStyle}" IsEditable="False" />
+                                <TextBlock Text="{loc:Translate ui.config.llm.server.model}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,10,0,0" />
+                                <ComboBox x:Name="ServerModelCombo_Modal" Style="{StaticResource DarkFlatComboBoxStyle}" IsEditable="False" ToolTip="{loc:Translate ui.config.tooltips.llm.model}" />
 
-                                <TextBlock Text="API Key" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,10,0,0" />
-                                <TextBox x:Name="ServerApiKeyTextBox_Modal" Style="{StaticResource UxTextBox}" />
+                                <TextBlock Text="{loc:Translate ui.config.llm.server.apiKey}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,10,0,0" />
+                                <TextBox x:Name="ServerApiKeyTextBox_Modal" Style="{StaticResource UxTextBox}" ToolTip="{loc:Translate ui.config.tooltips.llm.apiKey}" />
                             </StackPanel>
                         </Border>
 
                         <!-- Checkboxes and max steps -->
                         <StackPanel Grid.Row="3" Orientation="Vertical" >
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <CheckBox x:Name="StreamToggle_Modal" Content="Stream" Foreground="{StaticResource HeaderHighEmphasisBrush}" Visibility="Collapsed" />
-                                <CheckBox x:Name="IncludeUsageToggle_Modal" Content="Include usage" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" />
+                                <CheckBox x:Name="StreamToggle_Modal" Content="{loc:Translate ui.config.llm.requestDefaults.stream}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Visibility="Collapsed" />
+                                <CheckBox x:Name="IncludeUsageToggle_Modal" Content="{loc:Translate ui.config.llm.requestDefaults.includeUsage}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" ToolTip="{loc:Translate ui.config.tooltips.llm.includeUsage}" />
                             </StackPanel>
 
                             <!-- Temperature and MaxTokens controls for requestDefaults -->
                             <StackPanel Orientation="Horizontal" Margin="0,6,0,0" VerticalAlignment="Center">
                                 <StackPanel Orientation="Vertical">
-                                    <TextBlock Text="Temperature" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,6" />
-                                    <TextBox x:Name="TemperatureTextBox_Modal" Style="{StaticResource UxTextBox}" Width="140" />
+                                    <TextBlock Text="{loc:Translate ui.config.llm.requestDefaults.temperature}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,6" />
+                                    <TextBox x:Name="TemperatureTextBox_Modal" Style="{StaticResource UxTextBox}" Width="140" ToolTip="{loc:Translate ui.config.tooltips.llm.temperature}" />
                                 </StackPanel>
 
                                 <StackPanel Orientation="Vertical" Margin="12,0,0,0">
-                                    <TextBlock Text="Max tokens" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,6" />
-                                    <TextBox x:Name="MaxTokensTextBox_Modal" Style="{StaticResource UxTextBox}" Width="120" />
+                                    <TextBlock Text="{loc:Translate ui.config.llm.requestDefaults.maxTokens}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,6" />
+                                    <TextBox x:Name="MaxTokensTextBox_Modal" Style="{StaticResource UxTextBox}" Width="120" ToolTip="{loc:Translate ui.config.tooltips.llm.maxTokens}" />
                                 </StackPanel>
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,6,0,0">
-                                <CheckBox x:Name="AgentIdeIntegrationToggle_Modal" Content="IDE integration" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
-                                <CheckBox x:Name="AgentApplyChangesToggle_Modal" Content="Apply changes" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="16,0,0,0" />
+                                <CheckBox x:Name="AgentIdeIntegrationToggle_Modal" Content="{loc:Translate ui.config.llm.agent.ideIntegration}" Foreground="{StaticResource HeaderHighEmphasisBrush}" ToolTip="{loc:Translate ui.config.tooltips.llm.ideIntegration}" />
+                                <CheckBox x:Name="AgentApplyChangesToggle_Modal" Content="{loc:Translate ui.config.llm.agent.applyChanges}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="16,0,0,0" ToolTip="{loc:Translate ui.config.tooltips.llm.applyChanges}" />
 
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,0,0,0">
-                                    <TextBlock Text="Max steps" Foreground="{StaticResource HeaderHighEmphasisBrush}" VerticalAlignment="Center" Margin="20,0,8,0" />
-                                    <TextBox x:Name="AgentMaxStepsTextBox_Modal" Style="{StaticResource UxTextBox}" Width="80" />
+                                    <TextBlock Text="{loc:Translate ui.config.llm.agent.maxSteps}" Foreground="{StaticResource HeaderHighEmphasisBrush}" VerticalAlignment="Center" Margin="20,0,8,0" />
+                                    <TextBox x:Name="AgentMaxStepsTextBox_Modal" Style="{StaticResource UxTextBox}" Width="80" ToolTip="{loc:Translate ui.config.tooltips.llm.maxSteps}" />
                                 </StackPanel>
                             </StackPanel>
                         </StackPanel>
@@ -566,28 +542,28 @@
 
                         <StackPanel Orientation="Vertical" Margin="0">
                             <!-- Page title -->
-                            <TextBlock Text="Configuración de Logging" Style="{StaticResource Text.Headline}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,24" />
+                        <TextBlock Text="{loc:Translate ui.config.logging.page.title}" Style="{StaticResource Text.Headline}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,24" />
 
                             <!-- D3: Master checkbox "Logging enabled" (global override) -->
-                            <CheckBox x:Name="LoggingEnabledToggle_Modal" Content="Logging enabled (activa todos los niveles)" Foreground="{StaticResource HeaderHighEmphasisBrush}" FontWeight="SemiBold" Margin="0,0,0,24" />
+                            <CheckBox x:Name="LoggingEnabledToggle_Modal" Content="{loc:Translate ui.config.logging.enabled}" Foreground="{StaticResource HeaderHighEmphasisBrush}" FontWeight="SemiBold" Margin="0,0,0,24" ToolTip="{loc:Translate ui.config.logging.tooltips.enabled}" />
 
                             <!-- D4: Basic levels group -->
-                            <TextBlock Text="Basic Levels" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" FontWeight="SemiBold" Margin="0,0,0,12" />
+                            <TextBlock Text="{loc:Translate ui.config.logging.groups.basic}" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" FontWeight="SemiBold" Margin="0,0,0,12" />
                             <Border Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Padding="16" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" BorderThickness="1" Margin="0,0,0,24">
                                 <StackPanel Orientation="Vertical">
-                                    <CheckBox x:Name="LoggingInformationToggle_Modal" Content="Information" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" />
-                                    <CheckBox x:Name="LoggingWarningToggle_Modal" Content="Warning" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" />
-                                    <CheckBox x:Name="LoggingErrorToggle_Modal" Content="Error" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" />
-                                    <CheckBox x:Name="LoggingCriticalToggle_Modal" Content="Critical" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,0" />
+                            <CheckBox x:Name="LoggingInformationToggle_Modal" Content="{loc:Translate ui.config.logging.levels.information}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" ToolTip="{loc:Translate ui.config.logging.tooltips.information}" />
+                            <CheckBox x:Name="LoggingWarningToggle_Modal" Content="{loc:Translate ui.config.logging.levels.warning}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" ToolTip="{loc:Translate ui.config.logging.tooltips.warning}" />
+                            <CheckBox x:Name="LoggingErrorToggle_Modal" Content="{loc:Translate ui.config.logging.levels.error}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" ToolTip="{loc:Translate ui.config.logging.tooltips.error}" />
+                            <CheckBox x:Name="LoggingCriticalToggle_Modal" Content="{loc:Translate ui.config.logging.levels.critical}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,0" ToolTip="{loc:Translate ui.config.logging.tooltips.critical}" />
                                 </StackPanel>
                             </Border>
 
                             <!-- D5: Advanced levels group -->
-                            <TextBlock Text="Advanced Levels" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" FontWeight="SemiBold" Margin="0,0,0,12" />
+                            <TextBlock Text="{loc:Translate ui.config.logging.groups.advanced}" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" FontWeight="SemiBold" Margin="0,0,0,12" />
                             <Border Background="{StaticResource HeaderBackgroundBrush}" CornerRadius="8" Padding="16" BorderBrush="{StaticResource HeaderMediumEmphasisBrush}" BorderThickness="1" Margin="0,0,0,0">
                                 <StackPanel Orientation="Vertical">
-                                    <CheckBox x:Name="LoggingVerboseToggle_Modal" Content="Verbose" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" />
-                                    <CheckBox x:Name="LoggingDebugToggle_Modal" Content="Debug" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,0" />
+                            <CheckBox x:Name="LoggingVerboseToggle_Modal" Content="{loc:Translate ui.config.logging.levels.verbose}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,12" ToolTip="{loc:Translate ui.config.logging.tooltips.verbose}" />
+                            <CheckBox x:Name="LoggingDebugToggle_Modal" Content="{loc:Translate ui.config.logging.levels.debug}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="0,0,0,0" ToolTip="{loc:Translate ui.config.logging.tooltips.debug}" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -605,8 +581,8 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <!-- MODIFICADO - ID: 20260116_110200: reduced button sizes and spacing -->
-                        <Button x:Name="SaveButton_Modal" Content="Guardar" Click="SaveButton_Click" Style="{StaticResource UxPrimaryButton}" Width="120" Height="40" Margin="0,0,12,0" />
-                        <Button x:Name="CloseButton_Modal" Content="Cancelar" Click="CloseButton_Click" Style="{StaticResource UxSecondaryButton}" Width="120" Height="40" />
+                        <Button x:Name="SaveButton_Modal" Content="{loc:Translate ui.config.buttons.save}" Click="SaveButton_Click" Style="{StaticResource UxPrimaryButton}" Width="120" Height="40" Margin="0,0,12,0" ToolTip="{loc:Translate ui.config.tooltips.buttons.save}" />
+                        <Button x:Name="CloseButton_Modal" Content="{loc:Translate ui.config.buttons.cancel}" Click="CloseButton_Click" Style="{StaticResource UxSecondaryButton}" Width="120" Height="40" ToolTip="{loc:Translate ui.config.tooltips.buttons.cancel}" />
                     </StackPanel>
                 </Grid>
             </Border>

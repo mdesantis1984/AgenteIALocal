@@ -1,0 +1,239 @@
+{
+  "ui": {
+    "chat": {
+      "window": {
+        "title": "Chat de Agente IA Local"
+      },
+      "new_chat": "Nuevo chat",
+      "placeholder": "Escribe tu consulta aquí, puedes presionar # para referenciar una solución / archivo de proyecto",
+      "ask_button": "Preguntar",
+      "stop_button": "Detener",
+      "clear_button": "Limpiar",
+      "labels": {
+        "log": "Registro",
+        "changes_count": "Cambios ({0})"
+      },
+      "status": {
+        "not_configured": "Sin configurar",
+        "ready": "Listo",
+        "thinking": "Pensando...",
+        "error": "Error"
+      }
+    },
+    "config": {
+      "window": {
+        "title": "Configuración"
+      },
+      "sidebar": {
+        "idioma": "Idioma",
+        "local_llms": "LLMs locales",
+        "logging": "Registro",
+        "agent": "Agente",
+        "general": "General"
+      },
+      "buttons": {
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "apply": "Aplicar",
+        "reset": "Restablecer",
+        "test_connection": "Probar conexión"
+      },
+      "changes": {
+        "title": "Cambios",
+        "count": "Cambios ({0})",
+        "unsaved": "Cambios sin guardar",
+        "saved": "Cambios guardados"
+      },
+      "language": {
+        "title": "Seleccionar idioma",
+        "search_placeholder": "Buscar idioma...",
+        "current": "Idioma actual",
+        "available": "Idiomas disponibles",
+        "apply_restart": "Los cambios se aplicarán al reiniciar"
+      },
+      "idioma": {
+        "page": {
+          "title": "Configuración de Idioma",
+          "description": "Seleccione el idioma de la interfaz"
+        },
+        "languages": {
+          "es": "Español",
+          "en": "Inglés",
+          "pt": "Portugués",
+          "fr": "Francés",
+          "de": "Alemán",
+          "it": "Italiano",
+          "ja": "Japonés",
+          "ko": "Coreano",
+          "zh": "Chino",
+          "ru": "Ruso",
+          "ar": "Árabe",
+          "hi": "Hindi",
+          "tr": "Turco",
+          "nl": "Holandés",
+          "sv": "Sueco"
+        }
+      },
+      "llm": {
+        "title": "Configuración de LLM",
+        "provider": "Proveedor",
+        "model": "Modelo",
+        "base_url": "URL base",
+        "api_key": "Clave API",
+        "temperature": "Temperatura",
+        "max_tokens": "Tokens máximos",
+        "add_server": "Agregar servidor",
+        "edit_server": "Editar servidor",
+        "delete_server": "Eliminar servidor",
+        "runmode": {
+          "label": "Modo de Ejecución",
+          "preguntar": "Preguntar",
+          "agente": "Agente"
+        }
+      },
+      "logging": {
+        "title": "Configuración de registro",
+        "enabled": "Habilitar registro",
+        "level": "Nivel de registro",
+        "path": "Ruta de archivo",
+        "max_size": "Tamaño máximo",
+        "retention": "Retención de archivos",
+        "page": {
+          "title": "Configuración de Registro",
+          "description": "Configure los niveles de registro del sistema"
+        },
+        "groups": {
+          "basic": "Niveles Básicos",
+          "advanced": "Niveles Avanzados"
+        },
+        "levels": {
+          "information": "Información",
+          "warning": "Advertencia",
+          "error": "Error",
+          "critical": "Crítico",
+          "verbose": "Detallado",
+          "debug": "Depuración"
+        },
+        "tooltips": {
+          "enabled": "Activa todos los niveles de registro (sobreescribe configuración individual)",
+          "information": "Registra eventos informativos generales del sistema",
+          "warning": "Registra advertencias que no detienen la ejecución",
+          "error": "Registra errores recuperables del sistema",
+          "critical": "Registra errores críticos que pueden detener el sistema",
+          "verbose": "Registra información detallada de diagnóstico (alto volumen)",
+          "debug": "Registra información de depuración para desarrollo (muy alto volumen)"
+        }
+      },
+      "tooltips": {
+        "sidebar": {
+          "idioma": "Configurar idioma de la interfaz",
+          "llm": "Configurar proveedores LLM locales",
+          "logging": "Configurar niveles de registro del sistema"
+        },
+        "llm": {
+          "provider": "Seleccione el proveedor de LLM local (LM Studio o Jan)",
+          "runMode": "Modo Preguntar: responde sin ejecutar código. Modo Agente: ejecuta código con confirmación",
+          "activeServerId": "Identificador del servidor activo",
+          "baseUrl": "URL base del servidor OpenAI-compatible (ej: http://localhost:1234/v1)",
+          "model": "Modelo LLM a utilizar para las consultas",
+          "apiKey": "Clave API (opcional para servidores locales)",
+          "stream": "Habilita respuestas en streaming (token por token)",
+          "includeUsage": "Incluye estadísticas de uso de tokens en las respuestas (solo LM Studio)",
+          "temperature": "Controla la creatividad de las respuestas (0.0-2.0). Mayor = más creativo",
+          "maxTokens": "Número máximo de tokens en la respuesta (0 = ilimitado)",
+          "ideIntegration": "Permite al agente acceder a archivos y símbolos del proyecto",
+          "applyChanges": "Aplica automáticamente los cambios sugeridos al código (requiere confirmación)",
+          "maxSteps": "Número máximo de pasos que el agente puede ejecutar"
+        },
+        "buttons": {
+          "save": "Guardar configuración y cerrar",
+          "cancel": "Descartar cambios y cerrar"
+        },
+        "idioma": {
+          "esAR": "Español (Argentina)",
+          "enUS": "English (United States)",
+          "ptBR": "Português (Brasil)",
+          "frFR": "Français (France)",
+          "deDE": "Deutsch (Deutschland)",
+          "itIT": "Italiano (Italia)",
+          "jaJP": "日本語 (日本)",
+          "koKR": "한국어 (대한민국)",
+          "zhCN": "中文 (简体)",
+          "ruRU": "Русский (Россия)",
+          "arSA": "العربية (السعودية)",
+          "hiIN": "हिन्दी (भारत)",
+          "trTR": "Türkçe (Türkiye)",
+          "nlNL": "Nederlands (Nederland)",
+          "svSE": "Svenska (Sverige)"
+        }
+      }
+    },
+    "chat": {
+      "window": {
+        "title": "Chat de Agente IA Local"
+      },
+      "new_chat": "Nuevo chat",
+      "placeholder": "Escribe tu consulta aquí, puedes presionar # para referenciar una solución / archivo de proyecto",
+      "ask_button": "Preguntar",
+      "stop_button": "Detener",
+      "clear_button": "Limpiar",
+      "labels": {
+        "log": "Registro",
+        "changes_count": "Cambios ({0})"
+      },
+      "status": {
+        "not_configured": "Sin configurar",
+        "ready": "Listo",
+        "thinking": "Pensando...",
+        "error": "Error"
+      },
+      "tooltips": {
+        "solution": "Seleccionar solución activa",
+        "projects": "Ver proyectos de la solución",
+        "config": "Abrir configuración",
+        "refresh": "Actualizar lista de proyectos",
+        "copyAll": "Copiar todo el log",
+        "openLog": "Abrir archivo de log en editor",
+        "deleteLog": "Eliminar archivo de log",
+        "newChat": "Iniciar nuevo chat (limpia historial)",
+        "settings": "Abrir configuración del agente",
+        "acceptChanges": "Aceptar cambios sugeridos",
+        "rejectChanges": "Rechazar cambios sugeridos"
+      }
+    },
+    "log": {
+      "panel_title": "Registro",
+      "clear": "Limpiar",
+      "copy": "Copiar",
+      "save": "Guardar",
+      "filter": "Filtrar...",
+      "levels": {
+        "verbose": "Detallado",
+        "debug": "Depuración",
+        "info": "Información",
+        "warning": "Advertencia",
+        "error": "Error",
+        "fatal": "Fatal"
+      }
+    },
+    "common": {
+      "ok": "Aceptar",
+      "cancel": "Cancelar",
+      "yes": "Sí",
+      "no": "No",
+      "close": "Cerrar",
+      "save": "Guardar",
+      "delete": "Eliminar",
+      "edit": "Editar",
+      "add": "Agregar",
+      "remove": "Quitar",
+      "search": "Buscar",
+      "filter": "Filtrar",
+      "loading": "Cargando...",
+      "error": "Error",
+      "success": "Éxito",
+      "warning": "Advertencia",
+      "info": "Información"
+    }
+  }
+}

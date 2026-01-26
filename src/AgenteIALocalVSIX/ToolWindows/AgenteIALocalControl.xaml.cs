@@ -163,7 +163,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.FilterChat", "FilterChatModelsInPlace failed: " + ex.Message, ex); }
         }
 
-        // MODIFICADO METODO TypeActivitie_SelectionChanged - ID: 20260116_173000
+        // MODIFICADO METODO TypeActivitie_SelectionChanged - ID: 20260126_031800
+        // FIX: Leer Tag invariante de ComboBoxItem (NO texto traducido)
         private void TypeActivitie_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             try
@@ -172,19 +173,20 @@ namespace AgenteIALocalVSIX.ToolWindows
                 if (_isRefreshingFromSettings) return; // avoid persisting during programmatic refresh
 
                 var cb = sender as ComboBox;
-                var selected = cb?.SelectedItem as ComboBoxItem;
-                string text = null;
-                try { text = selected?.Content?.ToString(); } catch (Exception exContent) { text = null; AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.TypeActivitie", "Content parse failed: " + exContent.Message, exContent); }
-                if (string.IsNullOrWhiteSpace(text))
+                var cbi = cb?.SelectedItem as ComboBoxItem;
+                
+                if (cbi == null) return;
+                
+                // NUEVO - ID: 20260126_031800 - Leer Tag invariante ("agente"/"preguntar")
+                var tag = cbi.Tag as string;
+                if (string.IsNullOrWhiteSpace(tag))
                 {
-                    try { text = cb?.SelectedItem?.ToString(); } catch (Exception exToString) { text = null; AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.TypeActivitie", "ToString parse failed: " + exToString.Message, exToString); }
+                    AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.TypeActivitie", "Tag is null - skipping", null);
+                    return;
                 }
 
-                if (string.IsNullOrWhiteSpace(text)) return;
-
-                string normalized = null;
-                if (string.Equals(text, "Agente", StringComparison.OrdinalIgnoreCase)) normalized = "agente";
-                else normalized = "preguntar";
+                string normalized = tag.ToLowerInvariant();
+                AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.TypeActivitie", $"RunMode from UI Tag: {normalized}", null);
 
                 try
                 {
@@ -207,7 +209,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch (Exception ex) { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.TypeActivitie", "TypeActivitie_SelectionChanged failed: " + ex.Message, ex); }
         }
 
-        // MODIFICADO METODO GetRunModeNormalized - ID: 20260116_173000
+        // MODIFICADO METODO GetRunModeNormalized - ID: 20260126_031700
+        // FIX: Leer Tag invariante de ComboBoxItem (NO texto traducido)
         public string GetRunModeNormalized()
         {
             try
@@ -217,19 +220,16 @@ namespace AgenteIALocalVSIX.ToolWindows
                 {
                     if (TypeActivitie != null)
                     {
-                        string txt = null;
-                        try
+                        var cbi = TypeActivitie.SelectedItem as ComboBoxItem;
+                        if (cbi != null)
                         {
-                            var cbi = TypeActivitie.SelectedItem as ComboBoxItem;
-                            if (cbi != null) txt = cbi.Content?.ToString();
-                            if (string.IsNullOrWhiteSpace(txt)) txt = TypeActivitie.SelectedItem?.ToString();
-                        }
-                        catch (Exception exParse) { txt = null; AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.GetRunMode", "UI parse failed: " + exParse.Message, exParse); }
-
-                        if (!string.IsNullOrWhiteSpace(txt))
-                        {
-                            if (string.Equals(txt, "Agente", StringComparison.OrdinalIgnoreCase)) return "agente";
-                            return "preguntar";
+                            // NUEVO - ID: 20260126_031700 - Leer Tag invariante ("agente"/"preguntar")
+                            var tag = cbi.Tag as string;
+                            if (!string.IsNullOrWhiteSpace(tag))
+                            {
+                                AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.GetRunMode", $"RunMode from UI Tag: {tag}", null);
+                                return tag.ToLowerInvariant();
+                            }
                         }
                     }
                 }
@@ -725,6 +725,20 @@ namespace AgenteIALocalVSIX.ToolWindows
 
             // Set DataContext for XAML bindings
             this.DataContext = this;
+
+            // NUEVO - ID: 20260125_003400 - Inicializar ConfigLabel con valor traducido
+            try
+            {
+                var locService = AgenteIALocalVSIXPackage.LocalizationService;
+                if (locService != null)
+                {
+                    ConfigLabel = locService.GetString("ui.chat.status.not_configured");
+                }
+            }
+            catch (Exception exLoc)
+            {
+                AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.Constructor", "ConfigLabel i18n init failed: " + exLoc.Message, exLoc);
+            }
 
             // Wire up footer RunMode selector persistence
             try

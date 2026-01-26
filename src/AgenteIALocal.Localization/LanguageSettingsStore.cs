@@ -16,11 +16,13 @@ namespace AgenteIALocal.Localization
             _filePath = filePath;
         }
 
+        // MODIFICADO METODO Load - ID: 20260125_003900
+        // FIX: Current vacío en defaults para forzar detección OS (no hardcodear en-US)
         public LanguageSettings Load()
         {
             if (!File.Exists(_filePath))
             {
-                var def = new LanguageSettings { Current = "en-US", AutoDetect = true };
+                var def = new LanguageSettings { Current = "", AutoDetect = true };
                 Save(def);
                 return def;
             }
@@ -28,12 +30,12 @@ namespace AgenteIALocal.Localization
             var json = File.ReadAllText(_filePath, Encoding.UTF8);
             try
             {
-                return JsonConvert.DeserializeObject<LanguageSettings>(json) ?? new LanguageSettings { Current = "en-US", AutoDetect = true };
+                return JsonConvert.DeserializeObject<LanguageSettings>(json) ?? new LanguageSettings { Current = "", AutoDetect = true };
             }
             catch
             {
                 // Si no se puede leer, fallback a valores por defecto
-                return new LanguageSettings { Current = "en-US", AutoDetect = true };
+                return new LanguageSettings { Current = "", AutoDetect = true };
             }
         }
 

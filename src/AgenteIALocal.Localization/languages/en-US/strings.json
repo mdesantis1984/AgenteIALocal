@@ -1,0 +1,123 @@
+{
+  "ui": {
+    "chat": {
+      "window": {
+        "title": "Local AI Agent Chat"
+      },
+      "new_chat": "New chat",
+      "placeholder": "Type your query here, you can press # to reference a solution / project file",
+      "ask_button": "Ask",
+      "stop_button": "Stop",
+      "clear_button": "Clear",
+      "labels": {
+        "log": "Log",
+        "changes_count": "Changes ({0})"
+      },
+      "status": {
+        "not_configured": "Not configured",
+        "ready": "Ready",
+        "thinking": "Thinking...",
+        "error": "Error"
+      }
+    },
+    "config": {
+      "window": {
+        "title": "Configuration"
+      },
+      "sidebar": {
+        "idioma": "Language",
+        "local_llms": "Local LLMs",
+        "logging": "Logging",
+        "agent": "Agent",
+        "general": "General"
+      },
+      "buttons": {
+        "save": "Save",
+        "cancel": "Cancel",
+        "apply": "Apply",
+        "reset": "Reset",
+        "test_connection": "Test connection"
+      },
+      "changes": {
+        "title": "Changes",
+        "count": "Changes ({0})",
+        "unsaved": "Unsaved changes",
+        "saved": "Changes saved"
+      },
+      "language": {
+        "title": "Select language",
+        "search_placeholder": "Search language...",
+        "current": "Current language",
+        "available": "Available languages",
+        "apply_restart": "Changes will apply after restart"
+      },
+      "idioma": {
+        "page": {
+          "title": "Language Configuration",
+          "description": "Select interface language"
+        },
+        "languages": {
+          "es": "Spanish",
+          "en": "English",
+          "pt": "Portuguese",
+          "fr": "French",
+          "de": "German"
+        }
+      },
+      "llm": {
+        "title": "LLM Configuration",
+        "provider": "Provider",
+        "model": "Model",
+        "base_url": "Base URL",
+        "api_key": "API Key",
+        "temperature": "Temperature",
+        "max_tokens": "Max tokens",
+        "add_server": "Add server",
+        "edit_server": "Edit server",
+        "delete_server": "Delete server"
+      },
+      "logging": {
+        "title": "Logging configuration",
+        "enabled": "Enable logging",
+        "level": "Log level",
+        "path": "File path",
+        "max_size": "Max size",
+        "retention": "File retention"
+      }
+    },
+    "log": {
+      "panel_title": "Log",
+      "clear": "Clear",
+      "copy": "Copy",
+      "save": "Save",
+      "filter": "Filter...",
+      "levels": {
+        "verbose": "Verbose",
+        "debug": "Debug",
+        "info": "Information",
+        "warning": "Warning",
+        "error": "Error",
+        "fatal": "Fatal"
+      }
+    },
+    "common": {
+      "ok": "OK",
+      "cancel": "Cancel",
+      "yes": "Yes",
+      "no": "No",
+      "close": "Close",
+      "save": "Save",
+      "delete": "Delete",
+      "edit": "Edit",
+      "add": "Add",
+      "remove": "Remove",
+      "search": "Search",
+      "filter": "Filter",
+      "loading": "Loading...",
+      "error": "Error",
+      "success": "Success",
+      "warning": "Warning",
+      "info": "Information"
+    }
+  }
+}

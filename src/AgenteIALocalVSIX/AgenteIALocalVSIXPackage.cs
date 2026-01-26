@@ -15,6 +15,8 @@ namespace AgenteIALocalVSIX
     [Guid(AgenteIALocalVSIXPackage.PackageGuidString)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideToolWindow(typeof(ToolWindows.AgenteIALocalToolWindow))]
+    // ELIMINADO - ID: 20260125_003000 - AutoLoad removido (VS 2026 no ejecuta confiablemente)
+    // DECISIÓN: Lazy init de LocalizationService en ToolWindow constructor (carga garantizada)
     public sealed class AgenteIALocalVSIXPackage : AsyncPackage
     {
         public const string PackageGuidString = "12e93cca-8723-4160-ac43-96fe08854111";
@@ -25,6 +27,75 @@ namespace AgenteIALocalVSIX
         
         // HABILITADO - ID: 20260124_001502 - Property pública accesible desde ConfigWindow
         public static ILocalizationService LocalizationService => _localizationService;
+
+        // NUEVO METODO InitializeLocalizationServiceOnce - ID: 20260125_003001
+        // Lazy init llamado desde ToolWindow constructor (garantiza ejecución)
+        internal static void InitializeLocalizationServiceOnce()
+        {
+            var diagPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "AgenteIALocal", "diag_i18n.txt");
+
+            // DIAGNÓSTICO ANTES del guard para confirmar llamada
+            try
+            {
+                var dir = System.IO.Path.GetDirectoryName(diagPath);
+                if (!System.IO.Directory.Exists(dir)) System.IO.Directory.CreateDirectory(dir);
+                System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] InitializeLocalizationServiceOnce LLAMADO - _localizationService={((_localizationService == null) ? "NULL" : "NOT_NULL")}\r\n");
+            }
+            catch { }
+
+            if (_localizationService != null)
+            {
+                try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] SKIP - LocalizationService ya inicializado\r\n"); } catch { }
+                return;
+            }
+
+            try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] Iniciando creación de LocalizationService...\r\n"); } catch { }
+
+            try
+            {
+                var dir = System.IO.Path.GetDirectoryName(diagPath);
+                if (!System.IO.Directory.Exists(dir)) System.IO.Directory.CreateDirectory(dir);
+                System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] InitializeLocalizationServiceOnce INICIO\r\n");
+            }
+            catch { }
+
+            try
+            {
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var appDataRoot = System.IO.Path.Combine(localAppData, "AgenteIALocal");
+                var languagesRoot = System.IO.Path.Combine(appDataRoot, "languages");
+                var languageSettingsPath = System.IO.Path.Combine(appDataRoot, "language.json");
+
+
+                try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] Paths: {languagesRoot}\r\n"); } catch { }
+
+                System.Diagnostics.Trace.TraceInformation($"[i18n.Ctor] Iniciando LocalizationService...");
+                
+                try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] Antes new LocalizationService()\r\n"); } catch { }
+
+                _localizationService = new LocalizationService(languagesRoot, languageSettingsPath);
+
+                // MODIFICADO - ID: 20260126_022200 - Inicializar singleton con servicio
+                // Cambio: LocalizationProvider ahora es clase instanciable con PropertyChanged
+                AgenteIALocal.Localization.LocalizationProvider.Instance.Initialize(_localizationService);
+
+                try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] LocalizationService creado OK. Idioma: {_localizationService.CurrentLanguageCode}\r\n"); } catch { }
+
+                System.Diagnostics.Trace.TraceInformation($"[VSIX.i18n.Init] OK. Idioma: {_localizationService.CurrentLanguageCode}");
+                
+                var available = _localizationService.GetAvailableLanguages();
+                var count = System.Linq.Enumerable.Count(available);
+                System.Diagnostics.Trace.TraceInformation($"[i18n.Available] {count} idiomas");
+            }
+
+            catch (Exception exLoc)
+            {
+                try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] ERROR: {exLoc.GetType().Name} - {exLoc.Message}\r\n"); } catch { }
+                System.Diagnostics.Trace.TraceError($"[i18n.Init] Error: {exLoc.Message}");
+            }
+        }
 
         // NUEVO METODO ConfigureSerilogOnce - ID: 20260122_000301
         // MODIFICADO - ID: 20260122_010300 - Diagnóstico mejorado para troubleshooting
@@ -214,63 +285,28 @@ namespace AgenteIALocalVSIX
             RegisterAssemblyResolveHandler();
             
             
+            
             // PASO 2: Configurar Serilog (único sistema de logging)
             ConfigureSerilogOnce();
 
-            // PASO 3: Log diagnóstico ANTES de switch to main thread
-            AgenteIALocal.Logging.Log.Information("-", 9005, "VSIX.Startup", "InitializeAsync: Logging ready, switching to main thread", null);
+            // PASO 3: Inicializar LocalizationService TEMPRANO (ANTES de que XAML se parsee)
+            // NUEVO - ID: 20260126_014000 - Mover init aquí para que LocalizationProvider.Instance esté disponible en XAML load
+            InitializeLocalizationServiceOnce();
 
-            // PASO 4: Switch to main thread (CON logging ya disponible)
+            // PASO 4: Log diagnóstico ANTES de switch to main thread
+            AgenteIALocal.Logging.Log.Information("-", 9005, "VSIX.Startup", "InitializeAsync: Logging + i18n ready, switching to main thread", null);
+
+            // PASO 5: Switch to main thread (CON logging + i18n ya disponibles)
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
-            // PASO 5: Log diagnóstico DESPUÉS de switch to main thread
+            // PASO 6: Log diagnóstico DESPUÉS de switch to main thread
             AgenteIALocal.Logging.Log.Information("-", 9006, "VSIX.Startup", "InitializeAsync: On main thread now", null);
 
-            // PASO 6: Resto de inicialización
+            // PASO 7: Resto de inicialización
             try
             {
-                // MODIFICADO - ID: 20260123_183000 - Inicializar Serilog ANTES de LocalizationService
-                ConfigureSerilogOnce();
-                
-                // HABILITADO - ID: 20260124_001503 - LocalizationService requerido para i18n UI (Fase 2-B4, E2-E5)
-                // DIAGNÓSTICO FÍSICO - ID: 20260123_184000
-                var diagPath = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "AgenteIALocal", "diag_i18n.txt");
-                try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] LocalizationService init INICIO\r\n"); } catch { }
-                
-                try
-                {
-                    var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    var appDataRoot = System.IO.Path.Combine(localAppData, "AgenteIALocal");
-                    var languagesRoot = System.IO.Path.Combine(appDataRoot, "languages");
-                    var languageSettingsPath = System.IO.Path.Combine(appDataRoot, "language.json");
-
-                    try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] Paths: {languagesRoot}\r\n"); } catch { }
-
-                    System.Diagnostics.Trace.TraceInformation($"[VSIX.i18n.Init] Paths: languages={languagesRoot}, settings={languageSettingsPath}");
-                    AgenteIALocal.Logging.Log.Debug("-", 1001, "VSIX.i18n.Init", $"Paths: languages={languagesRoot}, settings={languageSettingsPath}", null);
-
-                    try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] Antes new LocalizationService()\r\n"); } catch { }
-
-                    _localizationService = new LocalizationService(languagesRoot, languageSettingsPath);
-
-                    try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] LocalizationService creado OK. Idioma: {_localizationService.CurrentLanguageCode}\r\n"); } catch { }
-
-                    System.Diagnostics.Trace.TraceInformation($"[VSIX.i18n.Init] LocalizationService OK. Idioma: {_localizationService.CurrentLanguageCode}");
-                    AgenteIALocal.Logging.Log.Information("-", 1002, "VSIX.i18n.Init", $"LocalizationService OK. Idioma: {_localizationService.CurrentLanguageCode}", null);
-                    
-                    var available = _localizationService.GetAvailableLanguages();
-                    var count = System.Linq.Enumerable.Count(available);
-                    AgenteIALocal.Logging.Log.Debug("-", 1003, "VSIX.i18n.Init", $"Idiomas disponibles: {count}", null);
-                }
-                catch (Exception exLoc)
-                {
-                    try { System.IO.File.AppendAllText(diagPath, $"[{DateTime.Now:HH:mm:ss.fff}] ERROR i18n: {exLoc.GetType().Name} - {exLoc.Message}\r\n"); } catch { }
-                    AgenteIALocal.Logging.Log.Error("-", 1099, "VSIX.i18n.Init", "Error inicializar LocalizationService (fallback embedded activo)", exLoc);
-                    System.Diagnostics.Trace.TraceError($"[VSIX.i18n] Init failed: {exLoc.Message}");
-                }
-                // FIN bloque LocalizationService - ID: 20260124_001504
+                // ELIMINADO - ID: 20260125_003002 - LocalizationService movido a InitializeLocalizationServiceOnce()
+                // (Lazy init desde ToolWindow constructor - carga garantizada)
 
                 AgentComposition.EnsureComposition();
                 AgenteIALocal.Logging.Log.Information("-", 9000, "VSIX.Startup", "VSIX initialized", null);

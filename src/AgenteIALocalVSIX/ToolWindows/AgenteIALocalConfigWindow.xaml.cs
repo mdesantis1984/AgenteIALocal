@@ -43,6 +43,10 @@ namespace AgenteIALocalVSIX.ToolWindows
         public AgenteIALocalConfigWindow(string serverId = null)
         {
             InitializeComponent();
+            
+            // NUEVO - ID: 20260125_003004 - Lazy init LocalizationService (garantiza ejecución)
+            AgenteIALocalVSIXPackage.InitializeLocalizationServiceOnce();
+            
             try { HeaderDragArea.MouseLeftButtonDown += HeaderDragArea_MouseLeftButtonDown; } catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.Ctor", "HeaderDragArea wire failed: " + ex.Message, ex); }
             Loaded += AgenteIALocalConfigWindow_Loaded;
             // Subscribe to settings saved notifications to refresh modal when settings change elsewhere
@@ -182,18 +186,38 @@ namespace AgenteIALocalVSIX.ToolWindows
             finally { _suppressNavToggleChecked_20260116 = false; }
         }
 
-        // NUEVO METODO LoadAdvancedControls - ID: 20250304_170001
+        // MODIFICADO METODO LoadAdvancedControls - ID: 20260126_031100
+        // FIX: Usar i18n keys para RunMode (mapear valor persistido → texto traducido actual)
         private void LoadAdvancedControls(AgentSettings settings, ServerConfig activeServer)
         {
             if (settings == null) return;
 
+            // Provider: nombres INVARIANTES ("LM Studio", "JAN" en todos los idiomas) - NO necesita i18n
             var provider = (activeServer != null ? activeServer.Provider : string.Empty).ToLowerInvariant();
-            // Use TrySelectComboByText to avoid creating new items and to select the existing item
             try { TrySelectComboByText(ProviderCombo_Modal, provider == "jan" ? "JAN" : "LM Studio"); } catch (Exception exProv) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "ProviderCombo select failed: " + exProv.Message, exProv); }
 
-            // MODIFICADO - ID: 20260123_225600 - Usar DTO tipado en lugar de JObject
+            // RunMode: nombres VARIABLES entre idiomas - usar LocalizationService para obtener texto traducido
             var runMode = settings.GlobalSettings?.RunMode ?? "preguntar";
-            try { TrySelectComboByText(RunModeCombo_Modal, string.Equals(runMode, "agente", StringComparison.OrdinalIgnoreCase) ? "Agente" : "Preguntar"); } catch (Exception exMode) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "RunModeCombo select failed: " + exMode.Message, exMode); }
+            try
+            {
+                var locService = AgenteIALocalVSIXPackage.LocalizationService;
+                string runModeText;
+                
+                if (string.Equals(runMode, "agente", StringComparison.OrdinalIgnoreCase))
+                {
+                    // runMode persistido = "agente" → i18n key → texto actual ("Agente" en es-AR, "Agent" en en-US)
+                    runModeText = locService != null ? locService.GetString("ui.config.llm.runmode.agente") : "Agente";
+                }
+                else
+                {
+                    // runMode persistido = "preguntar" → i18n key → texto actual ("Preguntar" en es-AR, "Ask" en en-US)
+                    runModeText = locService != null ? locService.GetString("ui.config.llm.runmode.preguntar") : "Preguntar";
+                }
+                
+                TrySelectComboByText(RunModeCombo_Modal, runModeText);
+                AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.LoadAdvanced", $"RunMode selected: {runMode} → i18n: {runModeText}", null);
+            }
+            catch (Exception exMode) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "RunModeCombo select failed: " + exMode.Message, exMode); }
 
             var requestDefaults = settings.GlobalSettings?.RequestDefaults;
             // MODIFICADO METODO LoadAdvancedControls - ID: 20260123_225601
@@ -201,9 +225,15 @@ namespace AgenteIALocalVSIX.ToolWindows
             var streamValue = requestDefaults?.Stream ?? true;
             try { StreamToggle_Modal.IsChecked = true; StreamToggle_Modal.IsEnabled = false; } catch (Exception exStream) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "StreamToggle init failed: " + exStream.Message, exStream); }
 
+            // MODIFICADO - ID: 20260126_031200 - FIX: IncludeUsage CheckBox se recarga SIEMPRE desde settings.json
             var includeUsage = requestDefaults?.StreamOptions?.IncludeUsage ?? false;
-            IncludeUsageToggle_Modal.IsChecked = includeUsage;
-            IncludeUsageToggle_Modal.IsEnabled = provider == "lmstudio";
+            try
+            {
+                IncludeUsageToggle_Modal.IsChecked = includeUsage;
+                IncludeUsageToggle_Modal.IsEnabled = provider == "lmstudio";
+                AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.LoadAdvanced", $"IncludeUsage loaded: {includeUsage} (enabled={provider == "lmstudio"})", null);
+            }
+            catch (Exception exUsage) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadAdvanced", "IncludeUsage load failed: " + exUsage.Message, exUsage); }
 
             // hydrate temperature and maxTokens - MODIFICADO - ID: 20260123_225602 - Usar DTOs
             try
@@ -307,14 +337,14 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // NUEVO METODO LoadIdiomaControls - ID: 20260124_001600
-        // E2: Cargar idiomas disponibles y habilitar RadioButtons según disponibilidad
-        // ARQUITECTURA: UI llama SOLO a LocalizationService (interface) - SIN lógica de negocio
+        // REESCRITO METODO LoadIdiomaControls - ID: 20260126_020500
+        // NUEVA ARQUITECTURA: Generación dinámica de grid basada en banderas PNG existentes
+        // Lógica: escanear Languages/flags/img/*.png → crear Border+Image+TextBlock+RadioButton → habilitar SI existe strings.json
         private void LoadIdiomaControls()
         {
             try
             {
-                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LoadIdioma", "LoadIdiomaControls: INICIO", null);
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LoadIdioma", "LoadIdiomaControls: INICIO (generación dinámica)", null);
 
                 var locService = AgenteIALocalVSIXPackage.LocalizationService;
                 if (locService == null)
@@ -323,47 +353,163 @@ namespace AgenteIALocalVSIX.ToolWindows
                     return;
                 }
 
-                // Obtener idiomas disponibles desde LocalizationService (NO en UI - cumple Clean Architecture)
+                // Limpiar grid existente (en caso de reload)
+                try
+                {
+                    LanguageGrid.Children.Clear();
+                }
+                catch (Exception exClear)
+                {
+                    AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadIdioma", "Grid.Clear failed: " + exClear.Message, exClear);
+                }
+
+                // Obtener idiomas disponibles desde LocalizationService
                 var available = locService.GetAvailableLanguages();
                 var currentLang = locService.CurrentLanguageCode ?? "es-AR";
 
-                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LoadIdioma", $"Current lang: {currentLang}, Available count: {System.Linq.Enumerable.Count(available)}", null);
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LoadIdioma", $"Current lang: {currentLang}, Languages: {System.Linq.Enumerable.Count(available)}", null);
 
-                // UI SOLO hace binding - NO tiene lógica de FileSystemWatcher ni detección
-                // Habilitar/deshabilitar RadioButtons según IsAvailable
+                // Generar controles dinámicamente
                 foreach (var lang in available)
                 {
                     try
                     {
-                        RadioButton radio = null;
-                        switch (lang.Code.ToLowerInvariant())
+                        // Crear Border contenedor
+                        var border = new System.Windows.Controls.Border
                         {
-                            case "es-ar": radio = Radio_esAR; break;
-                            case "en-us": radio = Radio_enUS; break;
-                            // pt-BR, fr-FR, de-DE, etc. - RadioButtons sin nombre en XAML actual
-                            // Futuro: generar dinámicamente o agregar nombres
+                            Margin = new Thickness(0, 0, 8, 8),
+                            Padding = new Thickness(12),
+                            Background = (System.Windows.Media.Brush)this.Resources["HeaderBackgroundBrush"],
+                            CornerRadius = new CornerRadius(8),
+                            Width = 120,
+                            Height = 140,
+                            Opacity = lang.IsAvailable ? 1.0 : 0.5
+                        };
+
+                        // StackPanel vertical interno
+                        var stack = new System.Windows.Controls.StackPanel
+                        {
+                            Orientation = System.Windows.Controls.Orientation.Vertical,
+                            HorizontalAlignment = System.Windows.HorizontalAlignment.Center
+                        };
+
+                        // Image (bandera PNG)
+                        var img = new System.Windows.Controls.Image
+                        {
+                            Width = 48,
+                            Height = 32,
+                            Margin = new Thickness(0, 8, 0, 8),
+                            Stretch = System.Windows.Media.Stretch.Uniform
+                        };
+
+                        // MODIFICADO - ID: 20260126_021500 - Cambio pack URI a FileSystem URI
+                        // Razón: <Content> crea archivos físicos, NO recursos embebidos (pack URI solo con <Resource>)
+                        // Solución: Cargar desde path absoluto del filesystem
+                        try
+                        {
+                            if (!string.IsNullOrEmpty(lang.FlagPath) && System.IO.File.Exists(lang.FlagPath))
+                            {
+                                var bmp = new System.Windows.Media.Imaging.BitmapImage();
+                                bmp.BeginInit();
+                                bmp.UriSource = new Uri(lang.FlagPath, UriKind.Absolute);
+                                bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                                bmp.EndInit();
+                                img.Source = bmp;
+                            }
+                            else
+                            {
+                                AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadIdioma", $"Flag not found: {lang.FlagPath}", null);
+                            }
+                        }
+                        catch (Exception exImg)
+                        {
+                            AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadIdioma", $"Flag image failed for {lang.Code}: {exImg.Message}", exImg);
                         }
 
-                        if (radio != null)
+
+                        // TextBlock (nombre nativo del idioma)
+                        var txt = new System.Windows.Controls.TextBlock
                         {
-                            radio.IsEnabled = lang.IsAvailable;
-                            radio.IsChecked = string.Equals(lang.Code, currentLang, StringComparison.OrdinalIgnoreCase);
-                            AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.LoadIdioma", $"{lang.Code}: enabled={lang.IsAvailable}, checked={radio.IsChecked}", null);
-                        }
+                            Style = (System.Windows.Style)this.Resources["Text.Body"],
+                            FontSize = 12,
+                            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                            Margin = new Thickness(0, 0, 0, 8),
+                            Text = lang.NativeName ?? lang.Name ?? lang.Code
+                        };
+
+                        // RadioButton (selección)
+                        var radio = new System.Windows.Controls.RadioButton
+                        {
+                            GroupName = "Language",
+                            IsEnabled = lang.IsAvailable,
+                            IsChecked = string.Equals(lang.Code, currentLang, StringComparison.OrdinalIgnoreCase),
+                            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                            Tag = lang.Code // Guardar código para event handler
+                        };
+
+                        // MODIFICADO - ID: 20260126_021600 - Wire event handler con logs comprehensivos
+                        radio.Checked += (s, e) =>
+                        {
+                            AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.IdiomaChange", $"RadioButton.Checked event fired (init flag={_isInitializingAdvancedUi})", null);
+                            
+                            if (_isInitializingAdvancedUi)
+                            {
+                                AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.IdiomaChange", "Skipped - initializing UI", null);
+                                return;
+                            }
+                            
+                            var langCode = (s as System.Windows.Controls.RadioButton)?.Tag as string;
+                            if (string.IsNullOrEmpty(langCode))
+                            {
+                                AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.IdiomaChange", "RadioButton.Tag is null or empty", null);
+                                return;
+                            }
+
+                            try
+                            {
+                                var svc = AgenteIALocalVSIXPackage.LocalizationService;
+                                if (svc == null)
+                                {
+                                    AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.IdiomaChange", "LocalizationService null - skip language change", null);
+                                    return;
+                                }
+
+                                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.IdiomaChange", $"Calling SetLanguage({langCode})...", null);
+                                svc.SetLanguage(langCode);
+                                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.IdiomaChange", $"✓ Language changed to {langCode}", null);
+                            }
+                            catch (Exception exSet)
+                            {
+                                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.IdiomaChange", $"{langCode} change failed: {exSet.Message}", exSet);
+                            }
+                        };
+
+
+                        // Ensamblar jerarquía
+                        stack.Children.Add(img);
+                        stack.Children.Add(txt);
+                        stack.Children.Add(radio);
+                        border.Child = stack;
+
+                        // Agregar al grid
+                        LanguageGrid.Children.Add(border);
+
+                        AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.LoadIdioma", $"✓ Created: {lang.Code} (enabled={lang.IsAvailable})", null);
                     }
                     catch (Exception exLang)
                     {
-                        AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadIdioma", $"Error loading {lang.Code}: {exLang.Message}", exLang);
+                        AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LoadIdioma", $"Error creating controls for {lang.Code}: {exLang.Message}", exLang);
                     }
                 }
 
-                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LoadIdioma", "LoadIdiomaControls: OK", null);
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LoadIdioma", $"LoadIdiomaControls: OK - {LanguageGrid.Children.Count} idiomas generados", null);
             }
             catch (Exception ex)
             {
                 AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LoadIdioma", "LoadIdiomaControls failed: " + ex.Message, ex);
             }
         }
+
 
         // NUEVO METODO WireAdvancedHandlersOnce - ID: 20250304_170002
         // MODIFICADO - ID: 20260122_040100 - Agregado logging en catch (pauta obligatoria)
@@ -449,12 +595,9 @@ namespace AgenteIALocalVSIX.ToolWindows
                 LoggingCriticalToggle_Modal.Checked += LoggingCriticalToggle_Modal_Checked;
                 LoggingCriticalToggle_Modal.Unchecked += LoggingCriticalToggle_Modal_Checked;
 
-                // NUEVO - ID: 20260124_001702 - Wire idioma RadioButtons
-                Radio_esAR.Checked -= Radio_esAR_Checked;
-                Radio_esAR.Checked += Radio_esAR_Checked;
-
-                Radio_enUS.Checked -= Radio_enUS_Checked;
-                Radio_enUS.Checked += Radio_enUS_Checked;
+                // MODIFICADO - ID: 20260126_020700 - Eliminado TODO wiring hardcoded RadioButtons
+                // Razón: Grid dinámico - TODOS los event handlers wired en LoadIdiomaControls() lambda
+                // (Radio_esAR, Radio_enUS, etc. YA NO EXISTEN en XAML - generados dinámicamente)
             }
             catch (Exception ex)
             {
@@ -462,7 +605,8 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // NUEVO METODO TrySelectComboByText - ID: 20260116_180500
+        // MODIFICADO METODO TrySelectComboByText - ID: 20260126_031000
+        // FIX: Extraer texto desde TextBlock.Text cuando Content es TextBlock (soporte i18n {loc:Translate})
         // Selects an existing ComboBox item by comparing display text case-insensitively.
         private bool TrySelectComboByText(ComboBox cb, string text)
         {
@@ -477,7 +621,17 @@ namespace AgenteIALocalVSIX.ToolWindows
                         var cbi = item as ComboBoxItem;
                         if (cbi != null)
                         {
-                            try { s = cbi.Content?.ToString(); } catch (Exception exContent) { s = null; AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.TrySelect", "ComboBoxItem.Content failed: " + exContent.Message, exContent); }
+                            // NUEVO - ID: 20260126_031000 - Extraer texto desde TextBlock.Text si Content es TextBlock
+                            var textBlock = cbi.Content as TextBlock;
+                            if (textBlock != null)
+                            {
+                                try { s = textBlock.Text ?? string.Empty; } catch (Exception exText) { s = null; AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.TrySelect", "TextBlock.Text failed: " + exText.Message, exText); }
+                            }
+                            else
+                            {
+                                // Fallback: Content directo como string o ToString()
+                                try { s = cbi.Content?.ToString(); } catch (Exception exContent) { s = null; AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.TrySelect", "ComboBoxItem.Content failed: " + exContent.Message, exContent); }
+                            }
                         }
                         if (string.IsNullOrEmpty(s))
                         {
@@ -518,15 +672,26 @@ namespace AgenteIALocalVSIX.ToolWindows
             catch (Exception ex) { AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.NormalizeProvider", "NormalizeProviderId failed: " + ex.Message, ex); return string.Empty; }
         }
 
-        // MODIFICADO METODO ProviderCombo_Modal_SelectionChanged - ID: 20260117_234000
+        // MODIFICADO METODO ProviderCombo_Modal_SelectionChanged - ID: 20260126_032200
+        // FIX: Leer Tag invariante de ComboBoxItem (NO texto)
         private void ProviderCombo_Modal_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_isInitializingAdvancedUi) return;
 
             try
             {
-                var providerId = NormalizeProviderId(GetSelectedComboContent(ProviderCombo_Modal));
+                // NUEVO - ID: 20260126_032200 - Leer Tag invariante directamente
+                var cbi = ProviderCombo_Modal?.SelectedItem as ComboBoxItem;
+                var providerId = (cbi?.Tag as string ?? string.Empty).ToLowerInvariant();
+                
+                if (string.IsNullOrWhiteSpace(providerId))
+                {
+                    AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.Provider", "Provider Tag is null - skipping", null);
+                    return;
+                }
+                
                 var targetServerId = string.Equals(providerId, "jan", StringComparison.OrdinalIgnoreCase) ? "jan-local" : "lmstudio-local";
+                AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.Provider", $"Provider from UI Tag: {providerId} → targetServerId: {targetServerId}", null);
 
                 var settings = AgentSettingsStore.Load() ?? new AgentSettings();
                 if (settings.Servers == null) settings.Servers = new List<ServerConfig>();
@@ -619,13 +784,13 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // MODIFICADO METODO IncludeUsageToggle_Modal_Checked - ID: 20260117_234000
+        // MODIFICADO METODO IncludeUsageToggle_Modal_Checked - ID: 20260126_032400
+        // FIX: Leer Provider Tag invariante (NO NormalizeProviderId con texto)
         private void IncludeUsageToggle_Modal_Checked(object sender, RoutedEventArgs e)
         {
             if (_isInitializingAdvancedUi) return;
             try
             {
-                var providerId = NormalizeProviderId(GetSelectedComboContent(ProviderCombo_Modal));
                 // Delegate to unified persister which sets includeUsage according to provider
                 PersistRequestDefaultsFromUi();
             }
@@ -869,109 +1034,70 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
-        // NUEVO METODO Radio_esAR_Checked - ID: 20260124_001700
-        // E3: Cambiar idioma a es-AR cuando usuario selecciona RadioButton
-        private void Radio_esAR_Checked(object sender, RoutedEventArgs e)
-        {
-            if (_isInitializingAdvancedUi) return;
-            try
-            {
-                var locService = AgenteIALocalVSIXPackage.LocalizationService;
-                if (locService == null)
-                {
-                    AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.IdiomaChange", "LocalizationService is null - skip language change", null);
-                    return;
-                }
+        // ELIMINADOS: Radio_esAR_Checked, Radio_enUS_Checked, Radio_ptBR_Checked, Radio_frFR_Checked, Radio_deDE_Checked - ID: 20260126_020800
+        // Razón: Grid dinámico - TODOS los event handlers generados en LoadIdiomaControls() (lambda en línea ~405)
+        // Ya NO existen RadioButtons individuales (Radio_esAR, Radio_enUS, etc.) - reemplazados por generación dinámica
 
-                // UI solo llama SetLanguage - NO tiene lógica de persistencia (está en LocalizationService)
-                locService.SetLanguage("es-AR");
-                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.IdiomaChange", "Language changed to es-AR", null);
-            }
-            catch (Exception ex)
-            {
-                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.IdiomaChange", "es-AR change failed: " + ex.Message, ex);
-            }
-        }
-
-        // NUEVO METODO Radio_enUS_Checked - ID: 20260124_001701
-        // E3: Cambiar idioma a en-US cuando usuario selecciona RadioButton
-        private void Radio_enUS_Checked(object sender, RoutedEventArgs e)
-        {
-            if (_isInitializingAdvancedUi) return;
-            try
-            {
-                var locService = AgenteIALocalVSIXPackage.LocalizationService;
-                if (locService == null)
-                {
-                    AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.IdiomaChange", "LocalizationService is null - skip language change", null);
-                    return;
-                }
-
-                // UI solo llama SetLanguage - NO tiene lógica de persistencia (está en LocalizationService)
-                locService.SetLanguage("en-US");
-                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.IdiomaChange", "Language changed to en-US", null);
-            }
-            catch (Exception ex)
-            {
-                AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.IdiomaChange", "en-US change failed: " + ex.Message, ex);
-            }
-        }
-
-        // NUEVO METODO OnLanguageChanged - ID: 20260124_001801
-        // E4: Reload UI cuando cambia idioma (TranslateExtension auto-update con data binding)
-        // ARQUITECTURA: UI solo reacciona al evento - NO tiene lógica de reload manual
+        // MODIFICADO METODO OnLanguageChanged - ID: 20260126_020900
+        // Grid dinámico: buscar RadioButton activo en LanguageGrid.Children
         private void OnLanguageChanged(object sender, EventArgs e)
         {
             try
             {
-                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LanguageChanged", "Language changed event received - TranslateExtension auto-updating", null);
-                
-                // TranslateExtension ya está suscrito a LanguageChanged y actualiza bindings automáticamente
-                // NO necesitamos código manual para actualizar TextBlocks
-                // Este método solo loguea el evento para troubleshooting
-                
-                // Opcional: Re-cargar RadioButtons para reflejar idioma actual (si hotreload agrega idiomas)
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LanguageChanged", "Language changed event - updating grid selection", null);
+
                 var locService = AgenteIALocalVSIXPackage.LocalizationService;
-                if (locService != null)
+                if (locService == null) return;
+
+                var currentLang = locService.CurrentLanguageCode ?? "es-AR";
+
+                // Recorrer grid dinámico y actualizar IsChecked
+                try
                 {
-                    try
+                    foreach (var child in LanguageGrid.Children)
                     {
-                        var currentLang = locService.CurrentLanguageCode ?? "es-AR";
-                        
-                        // Actualizar IsChecked de RadioButtons (solo si es diferente)
-                        if (Radio_esAR != null && !Radio_esAR.IsChecked.HasValue || !Radio_esAR.IsChecked.Value)
+                        var border = child as System.Windows.Controls.Border;
+                        if (border == null) continue;
+
+                        var stack = border.Child as System.Windows.Controls.StackPanel;
+                        if (stack == null) continue;
+
+                        // Buscar RadioButton (último hijo del StackPanel)
+                        System.Windows.Controls.RadioButton radio = null;
+                        foreach (var item in stack.Children)
                         {
-                            if (string.Equals(currentLang, "es-AR", StringComparison.OrdinalIgnoreCase))
-                            {
-                                _isInitializingAdvancedUi = true; // Evitar recursión
-                                Radio_esAR.IsChecked = true;
-                                _isInitializingAdvancedUi = false;
-                            }
+                            radio = item as System.Windows.Controls.RadioButton;
+                            if (radio != null) break;
                         }
 
-                        if (Radio_enUS != null && !Radio_enUS.IsChecked.HasValue || !Radio_enUS.IsChecked.Value)
+                        if (radio == null) continue;
+
+                        var langCode = radio.Tag as string;
+                        if (string.IsNullOrEmpty(langCode)) continue;
+
+                        // Actualizar IsChecked según idioma actual
+                        var shouldCheck = string.Equals(langCode, currentLang, StringComparison.OrdinalIgnoreCase);
+                        if (radio.IsChecked != shouldCheck)
                         {
-                            if (string.Equals(currentLang, "en-US", StringComparison.OrdinalIgnoreCase))
-                            {
-                                _isInitializingAdvancedUi = true; // Evitar recursión
-                                Radio_enUS.IsChecked = true;
-                                _isInitializingAdvancedUi = false;
-                            }
+                            _isInitializingAdvancedUi = true; // Evitar recursión
+                            radio.IsChecked = shouldCheck;
+                            _isInitializingAdvancedUi = false;
                         }
-                    }
-                    catch (Exception exRadio)
-                    {
-                        AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LanguageChanged", "RadioButton update failed: " + exRadio.Message, exRadio);
                     }
                 }
+                catch (Exception exGrid)
+                {
+                    AgenteIALocal.Logging.Log.Warning("-", 9100, "ConfigModal.LanguageChanged", "Grid update failed: " + exGrid.Message, exGrid);
+                }
 
-                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LanguageChanged", "Language change handled OK", null);
+                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.LanguageChanged", $"Language change handled OK - current: {currentLang}", null);
             }
             catch (Exception ex)
             {
                 AgenteIALocal.Logging.Log.Error("-", 9100, "ConfigModal.LanguageChanged", "OnLanguageChanged failed: " + ex.Message, ex);
             }
         }
+
 
         // MODIFICADO METODO ApplyModalLoggingToSettings - ID: 20260123_225609
         // E4: Aplicar TODOS los cambios de logging al presionar "Guardar" (usar DTOs)
@@ -1030,14 +1156,19 @@ namespace AgenteIALocalVSIX.ToolWindows
                 settings.GlobalSettings.RequestDefaults.Stream = true;
 
                 // streamOptions.includeUsage depends on provider
-                var providerId = NormalizeProviderId(GetSelectedComboContent(ProviderCombo_Modal));
-                if (string.Equals(providerId, "lmstudio", StringComparison.OrdinalIgnoreCase))
+                // MODIFICADO - ID: 20260126_032500 - Leer Provider Tag invariante
+                var cbi = ProviderCombo_Modal?.SelectedItem as ComboBoxItem;
+                var providerTag = (cbi?.Tag as string ?? string.Empty).ToLowerInvariant();
+                
+                if (string.Equals(providerTag, "lmstudio", StringComparison.OrdinalIgnoreCase))
                 {
                     settings.GlobalSettings.RequestDefaults.StreamOptions.IncludeUsage = IncludeUsageToggle_Modal.IsChecked == true;
+                    AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.RequestDefaults", $"IncludeUsage={IncludeUsageToggle_Modal.IsChecked} (provider Tag: {providerTag})", null);
                 }
                 else
                 {
                     settings.GlobalSettings.RequestDefaults.StreamOptions.IncludeUsage = false;
+                    AgenteIALocal.Logging.Log.Debug("-", 9100, "ConfigModal.RequestDefaults", $"IncludeUsage=false (provider Tag: {providerTag})", null);
                 }
 
                 // temperature - Parse robusto: acepta coma/punto, usa InvariantCulture
@@ -1168,13 +1299,28 @@ namespace AgenteIALocalVSIX.ToolWindows
             return 5;
         }
 
-        // NUEVO METODO GetSelectedComboContent - ID: 20250304_170014
+        // MODIFICADO METODO GetSelectedComboContent - ID: 20260126_031300
+        // FIX CRÍTICO: Extraer texto desde TextBlock.Text cuando Content es TextBlock
+        // Causa raíz bug: cbi.Content as string retornaba "" → SaveButton_Click guardaba valores vacíos
         private static string GetSelectedComboContent(ComboBox combo)
         {
             if (combo == null) return string.Empty;
             var item = combo.SelectedItem;
             var cbi = item as ComboBoxItem;
-            if (cbi != null) return cbi.Content as string ?? string.Empty;
+            
+            if (cbi != null)
+            {
+                // NUEVO - ID: 20260126_031300 - Extraer texto desde TextBlock.Text si Content es TextBlock
+                var textBlock = cbi.Content as TextBlock;
+                if (textBlock != null)
+                {
+                    return textBlock.Text ?? string.Empty;
+                }
+                
+                // Fallback: Content directo como string
+                return cbi.Content as string ?? string.Empty;
+            }
+            
             var s = item as string;
             if (!string.IsNullOrEmpty(s)) return s;
             return combo.Text ?? string.Empty;
@@ -2062,10 +2208,21 @@ namespace AgenteIALocalVSIX.ToolWindows
                     // runMode desde RunModeCombo_Modal
                     try
                     {
-                        var runModeText = GetSelectedComboContent(RunModeCombo_Modal);
-                        var runMode = string.Equals(runModeText, "Agente", StringComparison.OrdinalIgnoreCase) ? "agente" : "preguntar";
+                        // MODIFICADO - ID: 20260126_032000 - Leer Tag invariante (NO texto traducido)
+                        var cbi = RunModeCombo_Modal?.SelectedItem as ComboBoxItem;
+                        string runMode = "preguntar"; // default
+                        
+                        if (cbi != null)
+                        {
+                            var tag = cbi.Tag as string;
+                            if (!string.IsNullOrWhiteSpace(tag))
+                            {
+                                runMode = tag.ToLowerInvariant();
+                            }
+                        }
+                        
                         settings.GlobalSettings.RunMode = runMode;
-                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET runMode = {runMode} (from UI: {runModeText})", null);
+                        AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET runMode = {runMode} (from UI Tag)", null);
                     }
                     catch (Exception exRunMode)
                     {
@@ -2119,18 +2276,20 @@ namespace AgenteIALocalVSIX.ToolWindows
                         // includeUsage (solo LM Studio)
                         try
                         {
-                            var providerText = GetSelectedComboContent(ProviderCombo_Modal);
-                            var isLmStudio = string.Equals(providerText, "LM Studio", StringComparison.OrdinalIgnoreCase);
+                            // MODIFICADO - ID: 20260126_032300 - Leer Provider Tag invariante
+                            var cbi = ProviderCombo_Modal?.SelectedItem as ComboBoxItem;
+                            var providerTag = (cbi?.Tag as string ?? string.Empty).ToLowerInvariant();
+                            var isLmStudio = string.Equals(providerTag, "lmstudio", StringComparison.OrdinalIgnoreCase);
                             
                             if (isLmStudio && IncludeUsageToggle_Modal != null)
                             {
                                 settings.GlobalSettings.RequestDefaults.StreamOptions.IncludeUsage = IncludeUsageToggle_Modal.IsChecked == true;
-                                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET includeUsage = {IncludeUsageToggle_Modal.IsChecked} (LM Studio)", null);
+                                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET includeUsage = {IncludeUsageToggle_Modal.IsChecked} (provider Tag: {providerTag})", null);
                             }
                             else
                             {
                                 settings.GlobalSettings.RequestDefaults.StreamOptions.IncludeUsage = false;
-                                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET includeUsage = false (provider: {providerText})", null);
+                                AgenteIALocal.Logging.Log.Information("-", 9100, "ConfigModal.Save", $"SET includeUsage = false (provider Tag: {providerTag})", null);
                             }
                         }
                         catch (Exception exUsage)
