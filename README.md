@@ -60,7 +60,7 @@ git clone https://github.com/mdesantis1984/AgenteIALocal.git
 | **[⚙️ Configuración](docs/es/configuration.md)** | Guía de settings.json + language.json |
 | **[👨‍💻 Guía de Desarrollo](docs/es/development.md)** | Guía para contribuidores |
 | **[🔧 Troubleshooting](docs/es/troubleshooting.md)** | Resolución de problemas comunes |
-| **[🌐 Contribuir Idiomas](artifacts/LANGUAGE_CONTRIBUTION_GUIDE.md)** | Guía para agregar traducciones |
+| **[🌐 Contribuir Idiomas](docs/LANGUAGE_CONTRIBUTION_GUIDE.md)** | Guía para agregar traducciones |
 | **[📋 Reglas de Trabajo](src/Reglas.md)** | Flujo de trabajo y restricciones |
 
 ### 🏛️ Estructura del Proyecto
@@ -172,7 +172,7 @@ git clone https://github.com/mdesantis1984/AgenteIALocal.git
 | **[⚙️ Configuration](docs/en/configuration.md)** | Guide to settings.json + language.json |
 | **[👨‍💻 Development Guide](docs/en/development.md)** | Guide for contributors |
 | **[🔧 Troubleshooting](docs/en/troubleshooting.md)** | Common problems resolution |
-| **[🌐 Language Contributions](artifacts/LANGUAGE_CONTRIBUTION_GUIDE.md)** | Guide to add translations |
+| **[🌐 Language Contributions](docs/LANGUAGE_CONTRIBUTION_GUIDE.md)** | Guide to add translations |
 
 ### 🏛️ Project Structure
 

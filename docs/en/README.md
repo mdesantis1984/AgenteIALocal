@@ -19,7 +19,7 @@ This is the complete technical documentation for the **Agente IA Local** project
 | Document | Description |
 |----------|-------------|
 | **[i18n System](i18n.md)** | Complete internationalization system: LocalizationService, TranslateExtension, FileSystemWatcher, hot reload |
-| **[Language Contribution Guide](../../artifacts/LANGUAGE_CONTRIBUTION_GUIDE.md)** | Guide for external contributors who want to add translations |
+| **[Language Contribution Guide](../LANGUAGE_CONTRIBUTION_GUIDE.md)** | Guide for external contributors who want to add translations |
 
 ### 📝 Logging System
 
@@ -84,10 +84,10 @@ Historical documentation of development plans:
 
 | Plan | Description | Status |
 |------|-------------|--------|
-| **[PLAN_IDIOMA_1.0](../../artifacts/Plan_14-01-2026/PLAN_IDIOMA/PLAN_IDIOMA_1.0.md)** | Complete i18n system (44 tasks) | ✅ 100% Completed |
-| **[PLAN_SERILOG_1.3](../../artifacts/Plan_14-01-2026/PLAN_SERILOG/PLAN_SERILOG_1.3.md)** | Logging system with Serilog | ✅ Completed |
-| **[PLAN_LOG_CONFIG_1.0](../../artifacts/Plan_14-01-2026/PLAN_LOG_CONFIG/PLAN_LOG_CONFIG_1.0.md)** | Logging UI configuration | ✅ Completed |
-| **[PLAN_Provider_Configuracion_CONSOLIDATED_2.5](../../artifacts/Plan_14-01-2026/PLAN_Provider_Configuracion/)** | LLM providers configuration | ✅ Completed |
+| **[PLAN_IDIOMA_1.0](../plans/PLAN_IDIOMA_1.0.md)** | Complete i18n system (44 tasks) | ✅ 100% Completed |
+| **[PLAN_SERILOG_1.3](../plans/PLAN_SERILOG_1.3.md)** | Logging system with Serilog | ✅ Completed |
+| **[PLAN_Log_Configuracion_1.0](../plans/PLAN_Log_Configuracion_1.0.md)** | Logging UI configuration | ✅ Completed |
+| **[PLAN_Provider_Configuracion_2.5](../plans/PLAN_Provider_Configuracion_2.5.md)** | LLM providers configuration | ✅ Completed |
 
 ---
 
