@@ -110,7 +110,7 @@ Ejecución real:
   - “Changes accordion” con acciones.
   - Barra inferior con combos de modo/modelo/servidor y botón de ejecución.
 
-📎 Especificación UX completa: [Readme.UX.md](../Readme.UX.md)
+📎 Especificación UX completa: [Readme.UX.md](Readme.UX.md)
 
 ## Configuración (Tools > Options + settings.json + inline si existe)
 
@@ -211,6 +211,6 @@ Selección en ejecución:
 ## Documentación relacionada (links)
 
 - [README.en.md](../README.en.md)
-- [Readme.UX.md](../Readme.UX.md)
+- [Readme.UX.md](Readme.UX.md)
 - [README.architecture.es.md](../README.architecture.es.md)
 - [README.architecture.en.md](../README.architecture.en.md)
