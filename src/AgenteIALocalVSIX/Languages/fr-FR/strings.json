@@ -14,17 +14,35 @@
       },
       "sidebar": {
         "idioma": "Langue",
-        "llm": "LLM locaux",
-        "logging": "Journalisation"
+        "local_llms": "LLMs locaux",
+        "logging": "Enregistrement",
+        "agent": "Agent",
+        "general": "Général"
       },
       "buttons": {
         "save": "Enregistrer",
-        "cancel": "Annuler"
+        "cancel": "Annuler",
+        "apply": "Appliquer",
+        "reset": "Réinitialiser",
+        "test_connection": "Tester la connexion"
+      },
+      "changes": {
+        "title": "Modifications",
+        "count": "Modifications ({0})",
+        "unsaved": "Modifications non enregistrées",
+        "saved": "Modifications enregistrées"
+      },
+      "language": {
+        "title": "Sélectionner la langue",
+        "search_placeholder": "Rechercher une langue...",
+        "current": "Langue actuelle",
+        "available": "Langues disponibles",
+        "apply_restart": "Les modifications s'appliqueront après le redémarrage"
       },
       "idioma": {
         "page": {
           "title": "Configuration de la langue",
-          "description": "Sélectionnez la langue de l'interface"
+          "description": "Sélectionner la langue de l'interface"
         },
         "languages": {
           "es": "Espagnol",
@@ -45,84 +63,74 @@
         }
       },
       "llm": {
-        "page": {
-          "title": "Configuration des fournisseurs LLM locaux"
-        },
-        "provider": {
-          "label": "Fournisseur",
-          "lmstudio": "LM Studio",
-          "jan": "Jan"
-        },
+        "title": "Configuration LLM",
+        "provider": "Fournisseur",
+        "model": "Modèle",
+        "base_url": "URL de base",
+        "api_key": "Clé API",
+        "temperature": "Température",
+        "max_tokens": "Jetons maximum",
+        "add_server": "Ajouter un serveur",
+        "edit_server": "Modifier le serveur",
+        "delete_server": "Supprimer le serveur",
         "runmode": {
           "label": "Mode d'exécution",
           "preguntar": "Demander",
           "agente": "Agent"
-        },
-        "server": {
-          "activeServerId": "Identifiant du serveur actif",
-          "baseUrl": "URL de base",
-          "model": "Modèle",
-          "apiKey": "Clé API",
-          "pingError": "Le serveur ne répond pas (/v1/models)."
-        },
-        "requestDefaults": {
-          "stream": "Flux",
-          "includeUsage": "Inclure l'utilisation",
-          "temperature": "Température",
-          "maxTokens": "Nombre maximum de jetons"
-        },
-        "agent": {
-          "ideIntegration": "Intégration IDE",
-          "applyChanges": "Appliquer les modifications",
-          "maxSteps": "Nombre maximum d'étapes"
         }
       },
       "logging": {
+        "title": "Configuration d'enregistrement",
+        "enabled": "Activer l'enregistrement",
+        "level": "Niveau d'enregistrement",
+        "path": "Chemin du fichier",
+        "max_size": "Taille maximale",
+        "retention": "Rétention des fichiers",
         "page": {
-          "title": "Configuration de la journalisation"
+          "title": "Configuration d'enregistrement",
+          "description": "Configurer les niveaux d'enregistrement du système"
         },
-        "enabled": "Journalisation activée (active tous les niveaux)",
         "groups": {
           "basic": "Niveaux de base",
           "advanced": "Niveaux avancés"
         },
         "levels": {
-          "verbose": "Détaillé",
-          "debug": "Débogage",
           "information": "Information",
           "warning": "Avertissement",
           "error": "Erreur",
-          "critical": "Critique"
+          "critical": "Critique",
+          "verbose": "Détaillé",
+          "debug": "Débogage"
         },
         "tooltips": {
-          "enabled": "Active tous les niveaux de journalisation (remplace les paramètres individuels)",
+          "enabled": "Active tous les niveaux d'enregistrement (remplace les paramètres individuels)",
           "information": "Enregistre les événements informatifs généraux du système",
           "warning": "Enregistre les avertissements qui n'arrêtent pas l'exécution",
-          "error": "Enregistre les erreurs système récupérables",
-          "critical": "Enregistre les erreurs critiques pouvant arrêter le système",
+          "error": "Enregistre les erreurs récupérables du système",
+          "critical": "Enregistre les erreurs critiques qui peuvent arrêter le système",
           "verbose": "Enregistre des informations de diagnostic détaillées (volume élevé)",
-          "debug": "Enregistre des informations de débogage pour le développement (volume très élevé)"
+          "debug": "Enregistre les informations de débogage pour le développement (très haut volume)"
         }
       },
       "tooltips": {
         "sidebar": {
           "idioma": "Configurer la langue de l'interface",
           "llm": "Configurer les fournisseurs LLM locaux",
-          "logging": "Configurer les niveaux de journalisation du système"
+          "logging": "Configurer les niveaux d'enregistrement du système"
         },
         "llm": {
-          "provider": "Sélectionner le fournisseur LLM local (LM Studio ou Jan)",
-          "runMode": "Mode Demander : répond sans exécuter de code. Mode Agent : exécute du code avec confirmation",
+          "provider": "Sélectionnez le fournisseur LLM local (LM Studio ou Jan)",
+          "runMode": "Mode Demander: répond sans exécuter de code. Mode Agent: exécute le code avec confirmation",
           "activeServerId": "Identifiant du serveur actif",
-          "baseUrl": "URL de base du serveur compatible OpenAI (par ex. http://localhost:1234/v1)",
+          "baseUrl": "URL de base du serveur compatible OpenAI (ex: http://localhost:1234/v1)",
           "model": "Modèle LLM à utiliser pour les requêtes",
-          "apiKey": "Clé API (facultative pour les serveurs locaux)",
-          "stream": "Activer les réponses en flux (jeton par jeton)",
-          "includeUsage": "Inclure les statistiques d'utilisation des jetons dans les réponses (LM Studio uniquement)",
+          "apiKey": "Clé API (facultatif pour les serveurs locaux)",
+          "stream": "Active les réponses en streaming (jeton par jeton)",
+          "includeUsage": "Inclut les statistiques d'utilisation des jetons dans les réponses (LM Studio uniquement)",
           "temperature": "Contrôle la créativité des réponses (0.0-2.0). Plus élevé = plus créatif",
           "maxTokens": "Nombre maximum de jetons dans la réponse (0 = illimité)",
           "ideIntegration": "Permet à l'agent d'accéder aux fichiers et symboles du projet",
-          "applyChanges": "Applique automatiquement les modifications de code suggérées (nécessite confirmation)",
+          "applyChanges": "Applique automatiquement les modifications suggérées au code (nécessite confirmation)",
           "maxSteps": "Nombre maximum d'étapes que l'agent peut exécuter"
         },
         "buttons": {
@@ -134,31 +142,129 @@
           "enUS": "Anglais (États-Unis)",
           "ptBR": "Portugais (Brésil)",
           "frFR": "Français (France)",
-          "deDE": "Allemand (Allemagne)"
+          "deDE": "Allemand (Allemagne)",
+          "itIT": "Italien (Italie)",
+          "jaJP": "Japonais (Japon)",
+          "koKR": "Coréen (Corée du Sud)",
+          "zhCN": "Chinois (Simplifié)",
+          "ruRU": "Russe (Russie)",
+          "arSA": "Arabe (Arabie Saoudite)",
+          "hiIN": "Hindi (Inde)",
+          "trTR": "Turc (Turquie)",
+          "nlNL": "Néerlandais (Pays-Bas)",
+          "svSE": "Suédois (Suède)"
         }
       }
     },
     "chat": {
       "window": {
-        "title": "Chat de l'agent IA local"
+        "title": "Chat de l'Agent IA Local"
       },
-      "placeholder": "Tapez votre requête ici, vous pouvez appuyer sur # pour référencer une solution / un fichier de projet",
+      "new_chat": "Nouveau chat",
+      "placeholder": "Tapez votre requête ici, vous pouvez appuyer sur # pour référencer un fichier de solution / projet",
+      "ask_button": "Demander",
+      "stop_button": "Arrêter",
+      "clear_button": "Effacer",
       "labels": {
-        "mode": "Mode",
-        "log": "Journal"
+        "log": "Journal",
+        "changes_count": "Modifications ({0})"
+      },
+      "status": {
+        "not_configured": "Non configuré",
+        "ready": "Prêt",
+        "thinking": "Réflexion...",
+        "error": "Erreur"
       },
       "tooltips": {
-        "solution": "Solution",
-        "projects": "Projets",
-        "config": "Configuration",
-        "refresh": "Actualiser",
-        "copyAll": "Tout copier",
-        "openLog": "Ouvrir le fichier journal",
+        "solution": "Sélectionner la solution active",
+        "projects": "Voir les projets de la solution",
+        "config": "Ouvrir la configuration",
+        "refresh": "Actualiser la liste des projets",
+        "copyAll": "Copier tout le journal",
+        "openLog": "Ouvrir le fichier journal dans l'éditeur",
         "deleteLog": "Supprimer le fichier journal",
-        "newChat": "Nouveau chat",
-        "settings": "Paramètres",
-        "acceptChanges": "Accepter les modifications",
-        "rejectChanges": "Rejeter les modifications"
+        "newChat": "Démarrer un nouveau chat (efface l'historique)",
+        "settings": "Ouvrir les paramètres de l'agent",
+        "acceptChanges": "Accepter les modifications suggérées",
+        "rejectChanges": "Rejeter les modifications suggérées",
+        "about": "À propos de l'Agent IA Local"
+      }
+    },
+    "log": {
+      "panel_title": "Journal",
+      "clear": "Effacer",
+      "copy": "Copier",
+      "save": "Enregistrer",
+      "filter": "Filtrer...",
+      "levels": {
+        "verbose": "Détaillé",
+        "debug": "Débogage",
+        "info": "Information",
+        "warning": "Avertissement",
+        "error": "Erreur",
+        "fatal": "Fatal"
+      }
+    },
+    "common": {
+      "ok": "OK",
+      "cancel": "Annuler",
+      "yes": "Oui",
+      "no": "Non",
+      "close": "Fermer",
+      "save": "Enregistrer",
+      "delete": "Supprimer",
+      "edit": "Modifier",
+      "add": "Ajouter",
+      "remove": "Retirer",
+      "search": "Rechercher",
+      "filter": "Filtrer",
+      "loading": "Chargement...",
+      "error": "Erreur",
+      "success": "Succès",
+      "warning": "Avertissement",
+      "info": "Information"
+    },
+    "about": {
+      "window": {
+        "title": "À propos de l'Agent IA Local"
+      },
+      "buttons": {
+        "close": "Fermer"
+      },
+      "sections": {
+        "productInfo_name": "Nom et Description",
+        "credits": "Crédits et Licences",
+        "support_contact": "Contact",
+        "repository_docs": "Documentation",
+        "support_channels": "Canaux d'assistance",
+        "productInfo": "Informations sur le produit",
+        "productInfo_author": "Auteur",
+        "productInfo_version": "Version",
+        "credits_libraries": "Bibliothèques tierces",
+        "repository_issues": "Signaler des problèmes",
+        "legal_copyright": "Droits d'auteur",
+        "legal": "Légal",
+        "credits_license": "Licence du projet",
+        "repository_source": "Code source",
+        "compatibility": "Compatibilité",
+        "legal_terms": "Conditions d'utilisation",
+        "support": "Assistance",
+        "repository": "Dépôt et liens",
+        "compatibility_vs": "Visual Studio",
+        "compatibility_requirements": "Configuration requise"
+      },
+      "content": {
+        "repository_source_desc": "Voir le code source complet sur GitHub",
+        "repository_docs_desc": "Guides complets, références API et tutoriels",
+        "repository_issues_desc": "Vous avez trouvé un bug ou une demande de fonctionnalité ? Faites-le nous savoir !",
+        "github_repository": "Dépôt GitHub",
+        "documentation": "Documentation",
+        "changelog": "Historique des modifications",
+        "report_issue": "Signaler un problème",
+        "third_party_libraries": "Bibliothèques tierces",
+        "source_code": "Code source",
+        "report_issues": "Signaler des problèmes",
+        "website": "Site Web"
       }
     }
   }

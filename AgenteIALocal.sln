@@ -26,6 +26,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{551B24F1-2
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plans", "plans", "{93A81817-522D-4547-A9A7-76FA9AD54702}"
 	ProjectSection(SolutionItems) = preProject
+		docs\plans\PLAN_About_Window.md = docs\plans\PLAN_About_Window.md
 		docs\plans\PLAN_IDIOMA_1.0.md = docs\plans\PLAN_IDIOMA_1.0.md
 		docs\plans\PLAN_Log_Configuracion_1.0.md = docs\plans\PLAN_Log_Configuracion_1.0.md
 		docs\plans\PLAN_Provider_Configuracion_2.5.md = docs\plans\PLAN_Provider_Configuracion_2.5.md

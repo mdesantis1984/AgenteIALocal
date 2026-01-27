@@ -14,10 +14,11 @@ This extension supports **dynamic internationalization (i18n)**, allowing users 
 
 **Current supported languages:**
 - 🇦🇷 **Spanish (Argentina)** — `es-AR` (embedded fallback)
-- 🇺🇸 **English (United States)** — `en-US` (external)
-- 🇫🇷 **Français (France)** — `fr-FR` (external)
+- 🇺🇸 **English (United States)** — `en-US` (embedded)
+- 🇫🇷 **Français (France)** — `fr-FR` (embedded)
+- 🇯🇵 **日本語 (日本)** — `ja-JP` (external)
 
-**You can add:** Any language with ISO 639-1 code + region (e.g., `pt-BR`, `zh-CN`, `de-DE`, `ja-JP`, etc.)
+**You can add:** Any language with ISO 639-1 code + region (e.g., `pt-BR`, `zh-CN`, `de-DE`, `it-IT`, etc.)
 
 ---
 
@@ -56,7 +57,7 @@ src/AgenteIALocalVSIX/Languages/
 - **Location:** `src/AgenteIALocalVSIX/Languages/{code}/strings.json`
 - **Format:** JSON (nested structure)
 - **Encoding:** **UTF-8 with BOM** (required for Visual Studio resource loading)
-- **Size:** Typically 2-4 KB (53+ translation keys)
+- **Size:** Typically 6-10 KB (~200 translation keys)
 
 ### 2. Flag Image: `{code}.png` (optional but recommended)
 
@@ -92,163 +93,247 @@ Use **ISO 639-1** (2-letter language) + **ISO 3166-1** (2-letter region):
 
 ---
 
-## 📐 JSON Schema (Complete)
+## 📐 JSON Schema (Complete Template)
 
-### Required Structure
+### Full Translation Template (~200 keys)
+
+**Copy this template to create your translation:**
 
 ```json
 {
   "metadata": {
-    "code": "pt-BR",
-    "name": "Portuguese (Brazil)",
-    "nativeName": "Português (Brasil)",
-    "flag": "pt-BR.png",
+    "code": "xx-XX",
+    "name": "Language Name (Region)",
+    "nativeName": "Native Language Name",
+    "flag": "xx-XX.png",
     "version": "1.0.0",
-    "author": "Your Name or GitHub Username"
+    "author": "Your Name or GitHub @username"
   },
   "ui": {
     "config": {
       "window": {
-        "title": "Translation of: Local AI Agent Chat - Configuration"
+        "title": "Configuration"
       },
       "sidebar": {
-        "idioma": "Translation of: Language",
-        "llm": "Translation of: Local LLM's",
-        "logging": "Translation of: Logging"
+        "idioma": "Language",
+        "local_llms": "Local LLMs",
+        "logging": "Logging",
+        "agent": "Agent",
+        "general": "General"
       },
       "buttons": {
-        "save": "Translation of: Save",
-        "cancel": "Translation of: Cancel"
+        "save": "Save",
+        "cancel": "Cancel",
+        "apply": "Apply",
+        "reset": "Reset",
+        "test_connection": "Test connection"
+      },
+      "changes": {
+        "title": "Changes",
+        "count": "Changes ({0})",
+        "unsaved": "Unsaved changes",
+        "saved": "Changes saved"
+      },
+      "language": {
+        "title": "Select language",
+        "search_placeholder": "Search language...",
+        "current": "Current language",
+        "available": "Available languages",
+        "apply_restart": "Changes will be applied after restart"
       },
       "idioma": {
         "page": {
-          "title": "Translation of: Language Configuration",
-          "description": "Translation of: Select interface language"
+          "title": "Language Configuration",
+          "description": "Select interface language"
         },
         "languages": {
-          "es-AR": "Translation of: Spanish (Argentina)",
-          "en-US": "Translation of: English (United States)",
-          "fr-FR": "Translation of: French (France)",
-          "pt-BR": "Translation of: Portuguese (Brazil)",
-          "de-DE": "Translation of: German (Germany)"
+          "es": "Spanish",
+          "en": "English",
+          "pt": "Portuguese",
+          "fr": "French",
+          "de": "German",
+          "it": "Italian",
+          "ja": "Japanese",
+          "ko": "Korean",
+          "zh": "Chinese",
+          "ru": "Russian",
+          "ar": "Arabic"
         }
       },
       "llm": {
         "page": {
-          "title": "Translation of: Local LLM Configuration",
-          "description": "Translation of: Configure your local language model provider"
+          "title": "Local Provider Configuration"
         },
         "provider": {
-          "label": "Translation of: LLM Provider"
-        },
-        "server": {
-          "label": "Translation of: Active Server",
-          "activeServerId": "Translation of: Server ID",
-          "baseUrl": "Translation of: Base URL",
-          "model": "Translation of: Model",
-          "apiKey": "Translation of: API Key"
+          "label": "Provider",
+          "lmstudio": "LM Studio",
+          "jan": "Jan"
         },
         "runmode": {
-          "label": "Translation of: Run Mode",
-          "agente": "Translation of: Agent",
-          "preguntar": "Translation of: Ask"
+          "label": "Run Mode",
+          "preguntar": "Ask",
+          "agente": "Agent"
         },
-        "advanced": {
-          "title": "Translation of: Advanced Settings",
-          "temperature": "Translation of: Temperature",
-          "maxTokens": "Translation of: Max Tokens",
-          "includeUsage": "Translation of: Include usage statistics",
-          "ideIntegration": "Translation of: IDE Integration",
-          "applyChanges": "Translation of: Apply changes automatically",
-          "maxSteps": "Translation of: Max steps"
+        "server": {
+          "activeServerId": "Active Server ID",
+          "baseUrl": "Base URL",
+          "model": "Model",
+          "apiKey": "API Key",
+          "pingError": "Server not responding (/v1/models)."
+        },
+        "requestDefaults": {
+          "stream": "Stream",
+          "includeUsage": "Include usage",
+          "temperature": "Temperature",
+          "maxTokens": "Max tokens"
+        },
+        "agent": {
+          "ideIntegration": "IDE integration",
+          "applyChanges": "Apply changes",
+          "maxSteps": "Max steps"
         }
       },
       "logging": {
         "page": {
-          "title": "Translation of: Logging Configuration",
-          "description": "Translation of: Configure logging levels and output"
+          "title": "Logging Configuration"
         },
-        "enabled": "Translation of: Logging enabled",
-        "basic": "Translation of: Basic levels",
-        "advanced": "Translation of: Advanced levels",
+        "enabled": "Logging enabled (activates all levels)",
+        "groups": {
+          "basic": "Basic levels",
+          "advanced": "Advanced levels"
+        },
         "levels": {
-          "verbose": "Translation of: Verbose",
-          "debug": "Translation of: Debug",
-          "information": "Translation of: Information",
-          "warning": "Translation of: Warning",
-          "error": "Translation of: Error",
-          "critical": "Translation of: Critical"
+          "verbose": "Verbose",
+          "debug": "Debug",
+          "information": "Information",
+          "warning": "Warning",
+          "error": "Error",
+          "critical": "Critical"
         },
         "tooltips": {
-          "enabled": "Translation of: Enable/disable all logging",
-          "verbose": "Translation of: Detailed trace information",
-          "debug": "Translation of: Debug-level diagnostic information",
-          "information": "Translation of: General informational messages",
-          "warning": "Translation of: Warning messages (non-critical issues)",
-          "error": "Translation of: Error messages (failures)",
-          "critical": "Translation of: Critical failures (requires immediate attention)"
+          "enabled": "Enable all logging levels (overrides individual configuration)",
+          "information": "Log general system informational events",
+          "warning": "Log warnings that do not stop execution",
+          "error": "Log recoverable system errors",
+          "critical": "Log critical errors that may stop the system",
+          "verbose": "Log detailed diagnostic information (high volume)",
+          "debug": "Log debug information for development (very high volume)"
         }
       },
       "tooltips": {
         "sidebar": {
-          "idioma": "Translation of: Change interface language",
-          "llm": "Translation of: Configure local LLM providers",
-          "logging": "Translation of: Configure logging levels"
+          "idioma": "Configure interface language",
+          "llm": "Configure local LLM providers",
+          "logging": "Configure system logging levels"
         },
         "llm": {
-          "provider": "Translation of: Select your local LLM provider (LM Studio, JAN, etc.)",
-          "activeServerId": "Translation of: Unique identifier for this server configuration",
-          "baseUrl": "Translation of: HTTP endpoint URL (e.g., http://127.0.0.1:1234)",
-          "model": "Translation of: Model name or identifier",
-          "apiKey": "Translation of: API key (if required by provider)",
-          "runmode": "Translation of: Agent (autonomous) or Ask (single response)",
-          "temperature": "Translation of: Randomness in responses (0.0 = deterministic, 1.0 = creative)",
-          "maxTokens": "Translation of: Maximum response length (0 = unlimited)",
-          "includeUsage": "Translation of: Include token usage in response",
-          "ideIntegration": "Translation of: Enable Visual Studio integration features",
-          "applyChanges": "Translation of: Automatically apply suggested code changes",
-          "maxSteps": "Translation of: Maximum agent reasoning steps"
+          "provider": "Select local LLM provider (LM Studio or Jan)",
+          "runMode": "Ask mode: answers without executing code. Agent mode: executes code with confirmation",
+          "activeServerId": "Active server identifier",
+          "baseUrl": "OpenAI-compatible server base URL (e.g., http://localhost:1234/v1)",
+          "model": "LLM model to use for queries",
+          "apiKey": "API key (optional for local servers)",
+          "stream": "Enable streaming responses (token by token)",
+          "includeUsage": "Include token usage statistics in responses (LM Studio only)",
+          "temperature": "Controls response creativity (0.0-2.0). Higher = more creative",
+          "maxTokens": "Maximum number of tokens in response (0 = unlimited)",
+          "ideIntegration": "Allow agent to access project files and symbols",
+          "applyChanges": "Automatically apply suggested code changes (requires confirmation)",
+          "maxSteps": "Maximum number of steps the agent can execute"
         },
         "buttons": {
-          "save": "Translation of: Save all configuration changes",
-          "cancel": "Translation of: Cancel and discard changes"
+          "save": "Save configuration and close",
+          "cancel": "Discard changes and close"
         },
         "idioma": {
-          "select": "Translation of: Click to select this language"
+          "esAR": "Spanish (Argentina)",
+          "enUS": "English (United States)",
+          "ptBR": "Portuguese (Brazil)",
+          "frFR": "French (France)",
+          "deDE": "German (Germany)"
         }
       }
     },
     "chat": {
       "window": {
-        "title": "Translation of: Local AI Agent Chat"
+        "title": "Local AI Agent Chat"
       },
-      "placeholder": "Translation of: Type your message here, you can press # to reference files",
+      "placeholder": "Type your query here, you can press # to reference a solution/project file",
       "labels": {
-        "mode": "Translation of: Mode"
+        "mode": "Mode",
+        "log": "Log"
       },
       "tooltips": {
-        "solution": "Translation of: Current solution name",
-        "projects": "Translation of: Number of projects in solution",
-        "config": "Translation of: Current configuration status",
-        "settings": "Translation of: Open configuration window",
-        "newChat": "Translation of: Create new chat session",
-        "acceptChanges": "Translation of: Accept and apply suggested changes",
-        "rejectChanges": "Translation of: Reject and discard suggested changes",
-        "refresh": "Translation of: Refresh log from file",
-        "copyAll": "Translation of: Copy all log content to clipboard",
-        "openLog": "Translation of: Open log file in external editor",
-        "deleteLog": "Translation of: Delete log file from disk"
+        "solution": "Solution",
+        "projects": "Projects",
+        "config": "Configuration",
+        "refresh": "Refresh",
+        "copyAll": "Copy all",
+        "openLog": "Open log file",
+        "deleteLog": "Delete log file",
+        "about": "About Local AI Agent"
       }
     },
-    "errors": {
-      "llm": {
-        "connectionFailed": "Translation of: Could not connect to LLM provider",
-        "invalidUrl": "Translation of: Invalid endpoint URL",
-        "timeout": "Translation of: Request timeout"
+    "common": {
+      "ok": "OK",
+      "cancel": "Cancel",
+      "yes": "Yes",
+      "no": "No",
+      "close": "Close",
+      "save": "Save",
+      "delete": "Delete",
+      "edit": "Edit",
+      "add": "Add",
+      "remove": "Remove",
+      "search": "Search",
+      "filter": "Filter",
+      "loading": "Loading...",
+      "error": "Error",
+      "success": "Success",
+      "warning": "Warning",
+      "info": "Information"
+    },
+    "about": {
+      "window": {
+        "title": "About Local AI Agent"
       },
-      "settings": {
-        "loadFailed": "Translation of: Failed to load configuration",
-        "saveFailed": "Translation of: Failed to save configuration"
+      "buttons": {
+        "close": "Close"
+      },
+      "sections": {
+        "productInfo": "Product Information",
+        "productInfo_name": "Name and Description",
+        "productInfo_version": "Version",
+        "productInfo_author": "Author",
+        "credits": "Credits and Licenses",
+        "credits_libraries": "Third-Party Libraries",
+        "credits_license": "Project License",
+        "repository": "Repository and Links",
+        "repository_source": "Source Code",
+        "repository_docs": "Documentation",
+        "repository_issues": "Report Issues",
+        "compatibility": "Compatibility",
+        "compatibility_vs": "Visual Studio",
+        "compatibility_requirements": "System Requirements",
+        "support": "Support",
+        "support_contact": "Contact",
+        "support_channels": "Support Channels",
+        "legal": "Legal",
+        "legal_copyright": "Copyright",
+        "legal_terms": "Terms of Use"
+      },
+      "content": {
+        "source_code": "Source Code",
+        "documentation": "Documentation",
+        "report_issues": "Report Issues",
+        "repository_source_desc": "View the complete source code on GitHub",
+        "repository_docs_desc": "Complete guides, API references, and tutorials",
+        "repository_issues_desc": "Found a bug or have a feature request? Let us know!",
+        "github_repository": "GitHub Repository",
+        "changelog": "Changelog",
+        "report_issue": "Report Issue",
+        "third_party_libraries": "Third-Party Libraries",
+        "website": "Website"
       }
     }
   }
@@ -387,10 +472,10 @@ Use **ISO 639-1** (2-letter language) + **ISO 3166-1** (2-letter region):
 
 **Language:** [Native Name] ([code])  
 **Author:** [@YourGitHubUsername]  
-**Translation Coverage:** [X/53 keys] (100% if complete)
+**Translation Coverage:** [X/200 keys] (100% if complete)
 
 ### Checklist
-- [ ] `strings.json` created with all 53+ keys translated
+- [ ] `strings.json` created with all ~200 keys translated
 - [ ] Encoding is UTF-8 with BOM
 - [ ] Flag image `{code}.png` added (h40 dimensions)
 - [ ] Metadata fields completed (`code`, `name`, `nativeName`, `flag`, `version`, `author`)
@@ -745,7 +830,7 @@ Before submitting your PR, verify:
 - [ ] **Encoding:** UTF-8 with BOM (open in Notepad++ → Encoding → UTF-8-BOM)
 - [ ] **Valid JSON:** Paste into [jsonlint.com](https://jsonlint.com/) → should show "Valid JSON"
 - [ ] **Metadata complete:** All 6 fields (`code`, `name`, `nativeName`, `flag`, `version`, `author`)
-- [ ] **All keys present:** 53+ keys under `ui.*` (compare with `en-US/strings.json`)
+- [ ] **All keys present:** ~200 keys under `ui.*` (compare with template above)
 - [ ] **No key modifications:** Only values translated, keys unchanged
 - [ ] **Flag image:** `flags/img/{code}.png` present (h40 dimensions)
 - [ ] **Local testing:** Built + installed VSIX → language appears in grid → UI updates correctly
@@ -755,7 +840,7 @@ Before submitting your PR, verify:
 
 ## 🌐 Current Translation Keys (Reference)
 
-Total keys: **53+**
+**Total keys: ~200**
 
 ### Metadata (6 keys)
 ```
@@ -767,44 +852,70 @@ metadata.version
 metadata.author
 ```
 
-### Config Window (30+ keys)
+### Config Window (~120 keys)
 ```
 ui.config.window.title
-ui.config.sidebar.idioma
-ui.config.sidebar.llm
-ui.config.sidebar.logging
-ui.config.buttons.save
-ui.config.buttons.cancel
-ui.config.idioma.page.title
-ui.config.idioma.page.description
-ui.config.idioma.languages.*
-ui.config.llm.page.title
-ui.config.llm.page.description
-ui.config.llm.provider.label
-ui.config.llm.server.*
-ui.config.llm.runmode.*
-ui.config.llm.advanced.*
-ui.config.logging.page.*
-ui.config.logging.levels.*
-ui.config.logging.tooltips.*
-ui.config.tooltips.*
+ui.config.sidebar.*                      (5 keys)
+ui.config.buttons.*                      (5 keys)
+ui.config.changes.*                      (4 keys)
+ui.config.language.*                     (5 keys)
+ui.config.idioma.page.*                  (2 keys)
+ui.config.idioma.languages.*             (11 keys)
+ui.config.llm.page.*                     (1 key)
+ui.config.llm.provider.*                 (3 keys)
+ui.config.llm.runmode.*                  (3 keys)
+ui.config.llm.server.*                   (6 keys)
+ui.config.llm.requestDefaults.*          (4 keys)
+ui.config.llm.agent.*                    (3 keys)
+ui.config.logging.page.*                 (1 key)
+ui.config.logging.enabled
+ui.config.logging.groups.*               (2 keys)
+ui.config.logging.levels.*               (6 keys)
+ui.config.logging.tooltips.*             (7 keys)
+ui.config.tooltips.sidebar.*             (3 keys)
+ui.config.tooltips.llm.*                 (13 keys)
+ui.config.tooltips.buttons.*             (2 keys)
+ui.config.tooltips.idioma.*              (5 keys)
 ```
 
-### Chat Window (15+ keys)
+### Chat Window (~12 keys)
 ```
 ui.chat.window.title
 ui.chat.placeholder
-ui.chat.labels.mode
-ui.chat.tooltips.*
+ui.chat.labels.*                         (2 keys)
+ui.chat.tooltips.*                       (8 keys)
 ```
 
-### Errors (6 keys)
+### Common (~18 keys)
 ```
-ui.errors.llm.*
-ui.errors.settings.*
+ui.common.ok
+ui.common.cancel
+ui.common.yes
+ui.common.no
+ui.common.close
+ui.common.save
+ui.common.delete
+ui.common.edit
+ui.common.add
+ui.common.remove
+ui.common.search
+ui.common.filter
+ui.common.loading
+ui.common.error
+ui.common.success
+ui.common.warning
+ui.common.info
 ```
 
-**Total:** 53+ keys (may increase with future UI additions)
+### About Window (~44 keys)
+```
+ui.about.window.title
+ui.about.buttons.close
+ui.about.sections.*                      (22 keys)
+ui.about.content.*                       (11 keys)
+```
+
+**Grand Total:** 6 (metadata) + ~194 (ui.*) = **~200 keys**
 
 ---
 
@@ -825,7 +936,7 @@ Each variant needs its own folder + `strings.json` + flag.
 - Translated keys → your translation
 - Missing keys → raw key name (e.g., `ui.config.llm.provider.label`)
 
-We recommend **100% translation** for best user experience.
+We recommend **100% translation (~200 keys)** for best user experience.
 
 ### Q: Can I test without building the entire VSIX?
 

@@ -1,25 +1,5 @@
 {
   "ui": {
-    "chat": {
-      "window": {
-        "title": "Chat de Agente IA Local"
-      },
-      "new_chat": "Nuevo chat",
-      "placeholder": "Escribe tu consulta aquí, puedes presionar # para referenciar una solución / archivo de proyecto",
-      "ask_button": "Preguntar",
-      "stop_button": "Detener",
-      "clear_button": "Limpiar",
-      "labels": {
-        "log": "Registro",
-        "changes_count": "Cambios ({0})"
-      },
-      "status": {
-        "not_configured": "Sin configurar",
-        "ready": "Listo",
-        "thinking": "Pensando...",
-        "error": "Error"
-      }
-    },
     "config": {
       "window": {
         "title": "Configuración"
@@ -198,7 +178,8 @@
         "newChat": "Iniciar nuevo chat (limpia historial)",
         "settings": "Abrir configuración del agente",
         "acceptChanges": "Aceptar cambios sugeridos",
-        "rejectChanges": "Rechazar cambios sugeridos"
+        "rejectChanges": "Rechazar cambios sugeridos",
+        "about": "Acerca de Agente IA Local"
       }
     },
     "log": {
@@ -234,6 +215,49 @@
       "success": "Éxito",
       "warning": "Advertencia",
       "info": "Información"
+    },
+    "about": {
+      "window": {
+        "title": "Acerca de Agente IA Local"
+      },
+      "buttons": {
+        "close": "Cerrar"
+      },
+      "sections": {
+        "productInfo_name": "Nombre y Descripción",
+        "credits": "Créditos y Licencias",
+        "support_contact": "Contacto",
+        "repository_docs": "Documentación",
+        "support_channels": "Canales de Ayuda",
+        "productInfo": "Información del Producto",
+        "productInfo_author": "Autor",
+        "productInfo_version": "Versión",
+        "credits_libraries": "Librerías de Terceros",
+        "repository_issues": "Reportar Issues",
+        "legal_copyright": "Copyright",
+        "legal": "Legal",
+        "credits_license": "Licencia del Proyecto",
+        "repository_source": "Código Fuente",
+        "compatibility": "Compatibilidad",
+        "legal_terms": "Términos de Uso",
+        "support": "Soporte",
+        "repository": "Repositorio y Enlaces",
+        "compatibility_vs": "Visual Studio",
+        "compatibility_requirements": "Requisitos del Sistema"
+      },
+      "content": {
+        "repository_source_desc": "Ver el código fuente completo en GitHub",
+        "repository_docs_desc": "Guías completas, referencias de API y tutoriales",
+        "repository_issues_desc": "¿Encontraste un error o tienes una solicitud de función? ¡Háznoslo saber!",
+        "github_repository": "Repositorio GitHub",
+        "documentation": "Documentación",
+        "changelog": "Historial de Cambios",
+        "report_issue": "Reportar Problema",
+        "third_party_libraries": "Librerías de Terceros",
+        "source_code": "Código Fuente",
+        "report_issues": "Reportar Problemas",
+        "website": "Sitio Web"
+      }
     }
   }
 }

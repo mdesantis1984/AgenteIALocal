@@ -31,18 +31,54 @@ namespace AgenteIALocal.Localization
                 _languagesRoot = languagesRoot;
                 _settingsStore = new LanguageSettingsStore(languageSettingsPath);
                 
-                // MODIFICADO - ID: 20260126_023000 - Cargar es-AR embebido en _external
-                // Razón: GetAvailableLanguages() necesita metadata (Name, NativeName) desde _external
+                // MODIFICADO - ID: 20260126_171000 - Auto-discovery dinámico de TODOS los idiomas embebidos (Reflection)
+                // Razón: Escalabilidad - Agregar nuevo idioma = solo agregar propiedad en EmbeddedLocalization.cs (SIN recompilar este archivo)
+                // Arquitectura: Escanea todas las propiedades estáticas públicas tipo Dictionary<string, object> en EmbeddedLocalization
                 try
                 {
-                    var esArDict = EmbeddedLocalization.EsAR;
-                    var esArJObject = Newtonsoft.Json.Linq.JObject.FromObject(esArDict);
-                    _external["es-AR"] = esArJObject;
-                    System.Diagnostics.Trace.TraceInformation("[i18n.Ctor] ✓ es-AR embebido agregado a _external");
+                    var embeddedType = typeof(EmbeddedLocalization);
+                    var properties = embeddedType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                        .Where(p => p.PropertyType == typeof(Dictionary<string, object>));
+
+                    System.Diagnostics.Trace.TraceInformation($"[i18n.Ctor] Auto-discovery: {properties.Count()} idiomas embebidos encontrados");
+
+                    foreach (var prop in properties)
+                    {
+                        try
+                        {
+                            var dict = prop.GetValue(null) as Dictionary<string, object>;
+                            if (dict != null && dict.ContainsKey("metadata"))
+                            {
+                                var metadata = dict["metadata"] as Dictionary<string, object>;
+                                var code = metadata?["code"] as string ?? prop.Name;
+                                
+                                var jObject = Newtonsoft.Json.Linq.JObject.FromObject(dict);
+                                _external[code] = jObject;
+                                
+                                var nativeName = metadata?["nativeName"] as string ?? code;
+                                System.Diagnostics.Trace.TraceInformation($"[i18n.Ctor] ✓ {code} embebido ({nativeName}) - auto-discovery");
+                            }
+                        }
+                        catch (Exception exProp)
+                        {
+                            System.Diagnostics.Trace.TraceWarning($"[i18n.Ctor] Skip property {prop.Name}: {exProp.Message}");
+                        }
+                    }
+                    
+                    System.Diagnostics.Trace.TraceInformation($"[i18n.Ctor] Total embebidos cargados: {_external.Count}");
                 }
                 catch (Exception exEmbed)
                 {
-                    System.Diagnostics.Trace.TraceWarning($"[i18n.Ctor] WARNING: es-AR embed failed: {exEmbed.Message}");
+                    System.Diagnostics.Trace.TraceWarning($"[i18n.Ctor] WARNING: auto-discovery failed: {exEmbed.Message}");
+                    
+                    // Fallback ultra-defensivo: cargar solo es-AR si Reflection falla
+                    try
+                    {
+                        var esArDict = EmbeddedLocalization.EsAR;
+                        _external["es-AR"] = Newtonsoft.Json.Linq.JObject.FromObject(esArDict);
+                        System.Diagnostics.Trace.TraceWarning("[i18n.Ctor] Fallback: solo es-AR cargado");
+                    }
+                    catch { }
                 }
                 
                 EnsureDirectoryStructure();
@@ -308,26 +344,32 @@ namespace AgenteIALocal.Localization
             }
         }
 
+        // MODIFICADO - ID: 20260126_171001 - ActivateLanguage dinámico (usa _external siempre)
+        // Razón: Ya no necesita if/else hardcoded - todos los idiomas están en _external (auto-discovery)
         private void ActivateLanguage(string code)
         {
-            if (string.Equals(code, "es-AR", StringComparison.OrdinalIgnoreCase))
-            {
-                _active = JObject.FromObject(EmbeddedLocalization.EsAR);
-            }
-            else if (_external.TryGetValue(code, out var obj))
+            if (_external.TryGetValue(code, out var obj))
             {
                 _active = obj;
+                CurrentLanguageCode = code;
             }
             else
             {
-                _active = JObject.FromObject(EmbeddedLocalization.EsAR);
+                // Fallback: primer idioma disponible en _external (normalmente es-AR)
+                var fallback = _external.Keys.FirstOrDefault() ?? "es-AR";
+                _active = _external.TryGetValue(fallback, out var fallbackObj) 
+                    ? fallbackObj 
+                    : JObject.FromObject(EmbeddedLocalization.EsAR);
+                CurrentLanguageCode = fallback;
+                
+                System.Diagnostics.Trace.TraceWarning($"[i18n.Activate] {code} no encontrado, fallback: {fallback}");
             }
 
-            CurrentLanguageCode = code;
             LanguageChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        public bool IsLanguageAvailable(string code) => _external.ContainsKey(code) || string.Equals(code, "es-AR", StringComparison.OrdinalIgnoreCase);
+        // MODIFICADO - ID: 20260126_171002 - IsLanguageAvailable dinámico
+        public bool IsLanguageAvailable(string code) => _external.ContainsKey(code);
 
         // MODIFICADO GetAvailableLanguages - ID: 20260126_023100
         // NUEVA ARQUITECTURA ÓPTIMA: Escanear SOLO Languages/*/strings.json (idiomas traducidos)

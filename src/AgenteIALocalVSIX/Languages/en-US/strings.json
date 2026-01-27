@@ -14,12 +14,30 @@
       },
       "sidebar": {
         "idioma": "Language",
-        "llm": "Local LLM's",
-        "logging": "Logging"
+        "local_llms": "Local LLMs",
+        "logging": "Logging",
+        "agent": "Agent",
+        "general": "General"
       },
       "buttons": {
         "save": "Save",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "apply": "Apply",
+        "reset": "Reset",
+        "test_connection": "Test connection"
+      },
+      "changes": {
+        "title": "Changes",
+        "count": "Changes ({0})",
+        "unsaved": "Unsaved changes",
+        "saved": "Changes saved"
+      },
+      "language": {
+        "title": "Select language",
+        "search_placeholder": "Search language...",
+        "current": "Current language",
+        "available": "Available languages",
+        "apply_restart": "Changes will apply after restart"
       },
       "idioma": {
         "page": {
@@ -45,58 +63,48 @@
         }
       },
       "llm": {
-        "page": {
-          "title": "Local LLM Providers Configuration"
-        },
-        "provider": {
-          "label": "Provider",
-          "lmstudio": "LM Studio",
-          "jan": "Jan"
-        },
+        "title": "LLM Configuration",
+        "provider": "Provider",
+        "model": "Model",
+        "base_url": "Base URL",
+        "api_key": "API Key",
+        "temperature": "Temperature",
+        "max_tokens": "Max tokens",
+        "add_server": "Add server",
+        "edit_server": "Edit server",
+        "delete_server": "Delete server",
         "runmode": {
           "label": "Run Mode",
           "preguntar": "Ask",
           "agente": "Agent"
-        },
-        "server": {
-          "activeServerId": "Active Server Id",
-          "baseUrl": "Base URL",
-          "model": "Model",
-          "apiKey": "API Key",
-          "pingError": "Server not responding (/v1/models)."
-        },
-        "requestDefaults": {
-          "stream": "Stream",
-          "includeUsage": "Include usage",
-          "temperature": "Temperature",
-          "maxTokens": "Max tokens"
-        },
-        "agent": {
-          "ideIntegration": "IDE integration",
-          "applyChanges": "Apply changes",
-          "maxSteps": "Max steps"
         }
       },
       "logging": {
+        "title": "Logging configuration",
+        "enabled": "Enable logging",
+        "level": "Log level",
+        "path": "File path",
+        "max_size": "Max size",
+        "retention": "File retention",
         "page": {
-          "title": "Logging Configuration"
+          "title": "Logging Configuration",
+          "description": "Configure system log levels"
         },
-        "enabled": "Logging enabled (activates all levels)",
         "groups": {
           "basic": "Basic Levels",
           "advanced": "Advanced Levels"
         },
         "levels": {
-          "verbose": "Verbose",
-          "debug": "Debug",
           "information": "Information",
           "warning": "Warning",
           "error": "Error",
-          "critical": "Critical"
+          "critical": "Critical",
+          "verbose": "Verbose",
+          "debug": "Debug"
         },
         "tooltips": {
-          "enabled": "Activates all logging levels (overrides individual settings)",
-          "information": "Logs general informational system events",
+          "enabled": "Enable all log levels (overrides individual settings)",
+          "information": "Logs general system informational events",
           "warning": "Logs warnings that don't stop execution",
           "error": "Logs recoverable system errors",
           "critical": "Logs critical errors that may halt the system",
@@ -108,21 +116,21 @@
         "sidebar": {
           "idioma": "Configure interface language",
           "llm": "Configure local LLM providers",
-          "logging": "Configure system logging levels"
+          "logging": "Configure system log levels"
         },
         "llm": {
           "provider": "Select local LLM provider (LM Studio or Jan)",
-          "runMode": "Ask mode: responds without executing code. Agent mode: executes code with confirmation",
+          "runMode": "Ask mode: responds without code execution. Agent mode: executes code with confirmation",
           "activeServerId": "Active server identifier",
-          "baseUrl": "Base URL of OpenAI-compatible server (e.g., http://localhost:1234/v1)",
+          "baseUrl": "OpenAI-compatible server base URL (e.g., http://localhost:1234/v1)",
           "model": "LLM model to use for queries",
           "apiKey": "API key (optional for local servers)",
           "stream": "Enable streaming responses (token by token)",
           "includeUsage": "Include token usage statistics in responses (LM Studio only)",
           "temperature": "Controls response creativity (0.0-2.0). Higher = more creative",
           "maxTokens": "Maximum number of tokens in response (0 = unlimited)",
-          "ideIntegration": "Allows agent to access project files and symbols",
-          "applyChanges": "Automatically applies suggested code changes (requires confirmation)",
+          "ideIntegration": "Allow agent to access project files and symbols",
+          "applyChanges": "Automatically apply suggested code changes (requires confirmation)",
           "maxSteps": "Maximum number of steps the agent can execute"
         },
         "buttons": {
@@ -134,7 +142,17 @@
           "enUS": "English (United States)",
           "ptBR": "Portuguese (Brazil)",
           "frFR": "French (France)",
-          "deDE": "German (Germany)"
+          "deDE": "German (Germany)",
+          "itIT": "Italian (Italy)",
+          "jaJP": "Japanese (Japan)",
+          "koKR": "Korean (South Korea)",
+          "zhCN": "Chinese (Simplified)",
+          "ruRU": "Russian (Russia)",
+          "arSA": "Arabic (Saudi Arabia)",
+          "hiIN": "Hindi (India)",
+          "trTR": "Turkish (Turkey)",
+          "nlNL": "Dutch (Netherlands)",
+          "svSE": "Swedish (Sweden)"
         }
       }
     },
@@ -142,24 +160,113 @@
       "window": {
         "title": "Local AI Agent Chat"
       },
+      "new_chat": "New chat",
       "placeholder": "Type your query here, you can press # to reference a solution / project file",
+      "ask_button": "Ask",
+      "stop_button": "Stop",
+      "clear_button": "Clear",
       "labels": {
-        "mode": "Mode",
-        "log": "Log"
+        "log": "Log",
+        "changes_count": "Changes ({0})"
+      },
+      "status": {
+        "not_configured": "Not configured",
+        "ready": "Ready",
+        "thinking": "Thinking...",
+        "error": "Error"
       },
       "tooltips": {
-        "solution": "Solution",
-        "projects": "Projects",
-        "config": "Config",
-        "refresh": "Refresh",
-        "copyAll": "Copy all",
-        "openLog": "Open log file",
+        "solution": "Select active solution",
+        "projects": "View solution projects",
+        "config": "Open configuration",
+        "refresh": "Refresh project list",
+        "copyAll": "Copy all log",
+        "openLog": "Open log file in editor",
         "deleteLog": "Delete log file",
         "newChat": "Start new chat (clears history)",
         "settings": "Open agent settings",
         "acceptChanges": "Accept suggested changes",
-        "rejectChanges": "Reject suggested changes"
+        "rejectChanges": "Reject suggested changes",
+        "about": "About Local AI Agent"
+      }
+    },
+    "log": {
+      "panel_title": "Log",
+      "clear": "Clear",
+      "copy": "Copy",
+      "save": "Save",
+      "filter": "Filter...",
+      "levels": {
+        "verbose": "Verbose",
+        "debug": "Debug",
+        "info": "Information",
+        "warning": "Warning",
+        "error": "Error",
+        "fatal": "Fatal"
+      }
+    },
+    "common": {
+      "ok": "OK",
+      "cancel": "Cancel",
+      "yes": "Yes",
+      "no": "No",
+      "close": "Close",
+      "save": "Save",
+      "delete": "Delete",
+      "edit": "Edit",
+      "add": "Add",
+      "remove": "Remove",
+      "search": "Search",
+      "filter": "Filter",
+      "loading": "Loading...",
+      "error": "Error",
+      "success": "Success",
+      "warning": "Warning",
+      "info": "Information"
+    },
+    "about": {
+      "window": {
+        "title": "About Local AI Agent"
+      },
+      "buttons": {
+        "close": "Close"
+      },
+      "sections": {
+        "productInfo_name": "Name and Description",
+        "credits": "Credits and Licenses",
+        "support_contact": "Contact",
+        "repository_docs": "Documentation",
+        "support_channels": "Support Channels",
+        "productInfo": "Product Information",
+        "productInfo_author": "Author",
+        "productInfo_version": "Version",
+        "credits_libraries": "Third-Party Libraries",
+        "repository_issues": "Report Issues",
+        "legal_copyright": "Copyright",
+        "legal": "Legal",
+        "credits_license": "Project License",
+        "repository_source": "Source Code",
+        "compatibility": "Compatibility",
+        "legal_terms": "Terms of Use",
+        "support": "Support",
+        "repository": "Repository and Links",
+        "compatibility_vs": "Visual Studio",
+        "compatibility_requirements": "System Requirements"
+      },
+      "content": {
+        "repository_source_desc": "View complete source code on GitHub",
+        "repository_docs_desc": "Complete guides, API references, and tutorials",
+        "repository_issues_desc": "Found a bug or have a feature request? Let us know!",
+        "github_repository": "GitHub Repository",
+        "documentation": "Documentation",
+        "changelog": "Changelog",
+        "report_issue": "Report Issue",
+        "third_party_libraries": "Third-Party Libraries",
+        "source_code": "Source Code",
+        "report_issues": "Report Issues",
+        "website": "Website"
       }
     }
   }
 }
+

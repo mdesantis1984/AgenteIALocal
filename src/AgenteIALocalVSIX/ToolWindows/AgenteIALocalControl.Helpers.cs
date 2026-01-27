@@ -635,6 +635,31 @@ namespace AgenteIALocalVSIX.ToolWindows
             }
         }
 
+        // NUEVO METODO AboutButton_Click - ID: 20260126_130001
+        private void AboutButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var aboutWindow = new AgenteIALocalAboutWindow();
+
+                try
+                {
+                    var owner = Window.GetWindow(this);
+                    if (owner != null)
+                    {
+                        aboutWindow.Owner = owner;
+                    }
+                }
+                catch { }
+
+                aboutWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                try { AgenteIALocal.Logging.Log.Error("-", 9101, "Control.Helpers", "Failed to open About window", ex); } catch { }
+            }
+        }
+
         private void CopyLogAllButton_Click(object sender, RoutedEventArgs e)
         {
             try

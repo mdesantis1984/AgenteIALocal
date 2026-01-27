@@ -450,6 +450,24 @@ xmlns:local="clr-namespace:AgenteIALocalVSIX.ToolWindows" Loaded="UserControl_Lo
             </Grid>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+              <!-- NUEVO - ID: 20260126_130000 - About button -->
+              <Button x:Name="AboutButton"
+                      Width="32"
+                      Height="32"
+                      Style="{StaticResource IconButtonChromeStyle}"
+                      Background="Transparent"
+                      BorderBrush="Transparent"
+                      BorderThickness="0"
+                      Click="AboutButton_Click"
+                      ToolTip="{loc:Translate ui.chat.tooltips.about}"
+                      Margin="0,0,8,0">
+                <md:PackIcon Kind="Information"
+                             Width="16"
+                             Height="16"
+                             Style="{StaticResource IconHoverZoomPackIconStyle}"
+                             Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+              </Button>
+              
               <Button x:Name="SettingsButton"
                       Width="32"
                       Height="32"
@@ -465,18 +483,7 @@ xmlns:local="clr-namespace:AgenteIALocalVSIX.ToolWindows" Loaded="UserControl_Lo
                              Style="{StaticResource IconHoverZoomPackIconStyle}"
                              Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
               </Button>
-              <Button Width="32"
-                      Height="32"
-                      Margin="8,0,0,0"
-                      Style="{StaticResource HelpIconButtonStyle}"
-                      Background="Transparent"
-                      BorderBrush="Transparent"
-                      BorderThickness="0"
-                      ToolTip="Ayuda / Help">
-                <md:PackIcon Kind="HelpCircleOutline"
-                             Style="{StaticResource HelpPackIconZoomStyle}"
-                             Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-              </Button>
+             
             </StackPanel>
           </Grid>
         </Grid>

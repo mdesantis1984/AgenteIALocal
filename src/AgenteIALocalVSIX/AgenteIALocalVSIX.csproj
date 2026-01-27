@@ -71,6 +71,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AgenteIALocalVSIXPackage.cs" />
     <!-- ELIMINADO - ID: 20260123_221000 - Settings\VsWritableSettingsStoreAgentSettingsProvider.cs (legacy no usado) -->
+    <Compile Include="ToolWindows\AgenteIALocalAboutWindow.xaml.cs">
+      <DependentUpon>AgenteIALocalAboutWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="ToolWindows\AgenteIALocalConfigWindow.xaml.cs">
       <DependentUpon>AgenteIALocalConfigWindow.xaml</DependentUpon>
     </Compile>
@@ -89,6 +92,9 @@
     <Page Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Page>
+    <Page Include="ToolWindows\AgenteIALocalAboutWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="ToolWindows\AgenteIALocalConfigWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -178,6 +184,7 @@
   </ItemGroup>
   <ItemGroup>
     <!--<Content Include="AgenteIALocalVSIX.vsct" />-->
+    <Content Include="AgenteIALocalVSIX.vsct" />
     <Content Include="favicon-128.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
@@ -201,6 +208,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
+    <Content Include="Resources\Images\author-photo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\Images\author-photo.png" />
   </ItemGroup>
   <!-- NUEVO - ID: 20260124_002000 - Empaquetar archivos i18n en VSIX -->
   <ItemGroup>
@@ -215,11 +228,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-  </ItemGroup>
-  <ItemGroup>
-    <VSCTCompile Include="AgenteIALocalVSIX.vsct">
-      <ResourceName>Menus.ctmenu</ResourceName>
-    </VSCTCompile>
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Connected Services\" />

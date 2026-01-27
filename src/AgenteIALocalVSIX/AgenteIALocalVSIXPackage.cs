@@ -7,6 +7,9 @@ using System.Threading;
 using System.Threading.Tasks;
 // HABILITADO - ID: 20260124_001500 - Localization requerido para i18n UI
 using AgenteIALocal.Localization;
+// NUEVO - ID: 20260126_124000 - AboutInfoService para About window
+using AgenteIALocal.Core.Services;
+using AgenteIALocal.Application.Services;
 using Task = System.Threading.Tasks.Task;
 
 namespace AgenteIALocalVSIX
@@ -27,6 +30,12 @@ namespace AgenteIALocalVSIX
         
         // HABILITADO - ID: 20260124_001502 - Property pública accesible desde ConfigWindow
         public static ILocalizationService LocalizationService => _localizationService;
+
+        // NUEVO - ID: 20260126_124001 - AboutInfoService para About window
+        private static IAboutInfoService _aboutInfoService;
+        
+        // NUEVO - ID: 20260126_124002 - Property pública accesible desde AboutWindow
+        public static IAboutInfoService AboutInfoService => _aboutInfoService;
 
         // NUEVO METODO InitializeLocalizationServiceOnce - ID: 20260125_003001
         // Lazy init llamado desde ToolWindow constructor (garantiza ejecución)
@@ -309,6 +318,14 @@ namespace AgenteIALocalVSIX
                 // (Lazy init desde ToolWindow constructor - carga garantizada)
 
                 AgentComposition.EnsureComposition();
+                
+                // NUEVO - ID: 20260126_124003 - Inicializar AboutInfoService
+                if (_aboutInfoService == null)
+                {
+                    _aboutInfoService = new AboutInfoService();
+                    AgenteIALocal.Logging.Log.Information("-", 9007, "VSIX.Startup", "AboutInfoService initialized", null);
+                }
+                
                 AgenteIALocal.Logging.Log.Information("-", 9000, "VSIX.Startup", "VSIX initialized", null);
             }
             catch (Exception ex)
