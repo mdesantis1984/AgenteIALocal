@@ -1,0 +1,285 @@
+{
+  "$schema": "./schema.json",
+  "metadata": {
+    "code": "xx-XX",
+    "name": "Language Name (Region)",
+    "nativeName": "Native Language Name",
+    "flag": "xx-XX.png",
+    "version": "1.0.0",
+    "author": "Your Name or @github"
+  },
+  "ui": {
+    "config": {
+      "window": {
+        "title": ""
+      },
+      "sidebar": {
+        "idioma": "",
+        "local_llms": "",
+        "logging": "",
+        "agent": "",
+        "general": ""
+      },
+      "buttons": {
+        "save": "",
+        "cancel": "",
+        "apply": "",
+        "reset": "",
+        "test_connection": ""
+      },
+      "changes": {
+        "title": "",
+        "count": "",
+        "unsaved": "",
+        "saved": ""
+      },
+      "language": {
+        "title": "",
+        "search_placeholder": "",
+        "current": "",
+        "available": "",
+        "apply_restart": ""
+      },
+      "idioma": {
+        "page": {
+          "title": "",
+          "description": ""
+        },
+        "languages": {
+          "es": "",
+          "en": "",
+          "pt": "",
+          "fr": "",
+          "de": "",
+          "it": "",
+          "ja": "",
+          "ko": "",
+          "zh": "",
+          "ru": "",
+          "ar": "",
+          "hi": "",
+          "tr": "",
+          "nl": "",
+          "sv": ""
+        }
+      },
+      "llm": {
+        "page": {
+          "title": ""
+        },
+        "provider": {
+          "label": ""
+        },
+        "server": {
+          "activeServerId": "",
+          "baseUrl": "",
+          "model": "",
+          "apiKey": ""
+        },
+        "runmode": {
+          "label": "",
+          "preguntar": "",
+          "agente": ""
+        },
+        "requestDefaults": {
+          "stream": "",
+          "includeUsage": "",
+          "temperature": "",
+          "maxTokens": ""
+        },
+        "agent": {
+          "ideIntegration": "",
+          "applyChanges": "",
+          "maxSteps": ""
+        }
+      },
+      "logging": {
+        "title": "",
+        "enabled": "",
+        "level": "",
+        "path": "",
+        "max_size": "",
+        "retention": "",
+        "page": {
+          "title": "",
+          "description": ""
+        },
+        "groups": {
+          "basic": "",
+          "advanced": ""
+        },
+        "levels": {
+          "information": "",
+          "warning": "",
+          "error": "",
+          "critical": "",
+          "verbose": "",
+          "debug": ""
+        },
+        "tooltips": {
+          "enabled": "",
+          "information": "",
+          "warning": "",
+          "error": "",
+          "critical": "",
+          "verbose": "",
+          "debug": ""
+        }
+      },
+      "tooltips": {
+        "sidebar": {
+          "idioma": "",
+          "llm": "",
+          "logging": ""
+        },
+        "llm": {
+          "provider": "",
+          "runMode": "",
+          "activeServerId": "",
+          "baseUrl": "",
+          "model": "",
+          "apiKey": "",
+          "stream": "",
+          "includeUsage": "",
+          "temperature": "",
+          "maxTokens": "",
+          "ideIntegration": "",
+          "applyChanges": "",
+          "maxSteps": ""
+        },
+        "buttons": {
+          "save": "",
+          "cancel": ""
+        },
+        "idioma": {
+          "esAR": "",
+          "enUS": "",
+          "ptBR": "",
+          "frFR": "",
+          "deDE": "",
+          "itIT": "",
+          "jaJP": "",
+          "koKR": "",
+          "zhCN": "",
+          "ruRU": "",
+          "arSA": "",
+          "hiIN": "",
+          "trTR": "",
+          "nlNL": "",
+          "svSE": ""
+        }
+      }
+    },
+    "chat": {
+      "window": {
+        "title": ""
+      },
+      "new_chat": "",
+      "placeholder": "",
+      "ask_button": "",
+      "stop_button": "",
+      "clear_button": "",
+      "labels": {
+        "log": "",
+        "changes_count": ""
+      },
+      "status": {
+        "not_configured": "",
+        "ready": "",
+        "thinking": "",
+        "error": ""
+      },
+      "tooltips": {
+        "solution": "",
+        "projects": "",
+        "config": "",
+        "refresh": "",
+        "copyAll": "",
+        "openLog": "",
+        "deleteLog": "",
+        "newChat": "",
+        "settings": "",
+        "acceptChanges": "",
+        "rejectChanges": "",
+        "about": ""
+      }
+    },
+    "log": {
+      "panel_title": "",
+      "clear": "",
+      "copy": "",
+      "save": "",
+      "filter": "",
+      "levels": {
+        "verbose": "",
+        "debug": "",
+        "info": "",
+        "warning": "",
+        "error": "",
+        "fatal": ""
+      }
+    },
+    "common": {
+      "ok": "",
+      "cancel": "",
+      "yes": "",
+      "no": "",
+      "close": "",
+      "save": "",
+      "delete": "",
+      "edit": "",
+      "add": "",
+      "remove": "",
+      "search": "",
+      "filter": "",
+      "loading": "",
+      "error": "",
+      "success": "",
+      "warning": "",
+      "info": ""
+    },
+    "about": {
+      "window": {
+        "title": ""
+      },
+      "buttons": {
+        "close": ""
+      },
+      "sections": {
+        "productInfo_name": "",
+        "credits": "",
+        "support_contact": "",
+        "repository_docs": "",
+        "support_channels": "",
+        "productInfo": "",
+        "productInfo_author": "",
+        "productInfo_version": "",
+        "credits_libraries": "",
+        "repository_issues": "",
+        "legal_copyright": "",
+        "legal": "",
+        "credits_license": "",
+        "repository_source": "",
+        "compatibility": "",
+        "legal_terms": "",
+        "support": "",
+        "repository": "",
+        "compatibility_vs": "",
+        "compatibility_requirements": ""
+      },
+      "content": {
+        "repository_source_desc": "",
+        "repository_docs_desc": "",
+        "repository_issues_desc": "",
+        "github_repository": "",
+        "documentation": "",
+        "changelog": "",
+        "report_issue": "",
+        "third_party_libraries": "",
+        "source_code": "",
+        "report_issues": "",
+        "website": ""
+      }
+    }
+  }
+}

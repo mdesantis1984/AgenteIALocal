@@ -40,5 +40,36 @@ namespace AgenteIALocal.Core.Configuration
         /// (AppName, LogDirectory, etc. se configuran en inicialización de Serilog)
         /// </summary>
         public AgenteIALocal.Logging.LogSettings Logging { get; set; } = new AgenteIALocal.Logging.LogSettings();
+
+        /// <summary>
+        /// Configuración de Telegram Bot para form de contacto
+        /// NUEVO - ID: 20260126_140000
+        /// </summary>
+        public TelegramSettings Telegram { get; set; } = new TelegramSettings();
+    }
+
+    /// <summary>
+    /// DTO para configuración de Telegram Bot (form contacto)
+    /// MODIFICADO - ID: 20260126_184200 - Defaults VACÍOS (config viene de TelegramConfig.txt ofuscado)
+    /// </summary>
+    public class TelegramSettings
+    {
+        /// <summary>
+        /// Si el bot de Telegram está habilitado
+        /// NOTA: Config real viene de TelegramConfig.txt ofuscado (NO de settings.json)
+        /// </summary>
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>
+        /// Token del bot de Telegram (obtenido de @BotFather)
+        /// PLACEHOLDER - Config real viene de TelegramConfig.txt ofuscado
+        /// </summary>
+        public string BotToken { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Chat ID del destinatario (ID de Telegram del soporte)
+        /// PLACEHOLDER - Config real viene de TelegramConfig.txt ofuscado
+        /// </summary>
+        public string ChatId { get; set; } = string.Empty;
     }
 }

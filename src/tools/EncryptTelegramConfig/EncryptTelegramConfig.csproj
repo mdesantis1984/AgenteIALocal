@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>EncryptTelegramConfig</AssemblyName>
+    <RootNamespace>AgenteIALocal.Tools</RootNamespace>
+  </PropertyGroup>
+
+  <!-- MODIFICADO - ID: 20260126_190000 - Sin dependencias (standalone) -->
+  <!-- Algoritmo de encriptación embebido en Program.cs -->
+
+</Project>

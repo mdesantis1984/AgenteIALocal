@@ -1,0 +1,171 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/mdesantis1984/AgenteIALocal/schemas/language-strings.json",
+  "title": "Agente IA Local - Language Strings Schema",
+  "description": "JSON Schema for validating language translation files (strings.json)",
+  "type": "object",
+  "required": ["metadata", "ui"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Language metadata (required for all translations)",
+      "required": ["code", "name", "nativeName", "flag", "version", "author"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "ISO 639-1 language code + ISO 3166-1 region (e.g., en-US, es-AR, pt-BR)",
+          "pattern": "^[a-z]{2}-[A-Z]{2}$",
+          "examples": ["en-US", "es-AR", "fr-FR", "zh-CN"]
+        },
+        "name": {
+          "type": "string",
+          "description": "Language name in English (e.g., 'Spanish (Argentina)')",
+          "minLength": 1
+        },
+        "nativeName": {
+          "type": "string",
+          "description": "Language name in the target language (e.g., 'Español (Argentina)')",
+          "minLength": 1
+        },
+        "flag": {
+          "type": "string",
+          "description": "Flag image filename (e.g., 'es-AR.png'). Must match code + .png",
+          "pattern": "^[a-z]{2}-[A-Z]{2}\\.png$",
+          "examples": ["en-US.png", "es-AR.png"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Translation version (semantic versioning)",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "examples": ["1.0.0", "1.2.3"]
+        },
+        "author": {
+          "type": "string",
+          "description": "Author name or GitHub username (e.g., 'John Doe' or '@johndoe')",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "ui": {
+      "type": "object",
+      "description": "UI translation strings (nested structure)",
+      "required": ["config", "chat", "log", "common", "about"],
+      "properties": {
+        "config": {
+          "type": "object",
+          "required": ["window", "sidebar", "buttons", "changes", "language", "idioma", "llm", "logging", "tooltips"],
+          "properties": {
+            "window": { "$ref": "#/definitions/stringObject" },
+            "sidebar": { "$ref": "#/definitions/stringObject" },
+            "buttons": { "$ref": "#/definitions/stringObject" },
+            "changes": { "$ref": "#/definitions/stringObject" },
+            "language": { "$ref": "#/definitions/stringObject" },
+            "idioma": {
+              "type": "object",
+              "required": ["page", "languages"],
+              "properties": {
+                "page": { "$ref": "#/definitions/stringObject" },
+                "languages": { "$ref": "#/definitions/stringObject" }
+              }
+            },
+            "llm": {
+              "type": "object",
+              "required": ["title", "provider", "model", "base_url", "api_key", "temperature", "max_tokens", "add_server", "edit_server", "delete_server", "runmode"],
+              "properties": {
+                "title": { "type": "string" },
+                "provider": { "type": "string" },
+                "model": { "type": "string" },
+                "base_url": { "type": "string" },
+                "api_key": { "type": "string" },
+                "temperature": { "type": "string" },
+                "max_tokens": { "type": "string" },
+                "add_server": { "type": "string" },
+                "edit_server": { "type": "string" },
+                "delete_server": { "type": "string" },
+                "runmode": { "$ref": "#/definitions/stringObject" }
+              }
+            },
+            "logging": {
+              "type": "object",
+              "required": ["title", "enabled", "level", "path", "max_size", "retention", "page", "groups", "levels", "tooltips"],
+              "properties": {
+                "title": { "type": "string" },
+                "enabled": { "type": "string" },
+                "level": { "type": "string" },
+                "path": { "type": "string" },
+                "max_size": { "type": "string" },
+                "retention": { "type": "string" },
+                "page": { "$ref": "#/definitions/stringObject" },
+                "groups": { "$ref": "#/definitions/stringObject" },
+                "levels": { "$ref": "#/definitions/stringObject" },
+                "tooltips": { "$ref": "#/definitions/stringObject" }
+              }
+            },
+            "tooltips": {
+              "type": "object",
+              "required": ["sidebar", "llm", "buttons", "idioma"],
+              "properties": {
+                "sidebar": { "$ref": "#/definitions/stringObject" },
+                "llm": { "$ref": "#/definitions/stringObject" },
+                "buttons": { "$ref": "#/definitions/stringObject" },
+                "idioma": { "$ref": "#/definitions/stringObject" }
+              }
+            }
+          }
+        },
+        "chat": {
+          "type": "object",
+          "required": ["window", "new_chat", "placeholder", "ask_button", "stop_button", "clear_button", "labels", "status", "tooltips"],
+          "properties": {
+            "window": { "$ref": "#/definitions/stringObject" },
+            "new_chat": { "type": "string" },
+            "placeholder": { "type": "string" },
+            "ask_button": { "type": "string" },
+            "stop_button": { "type": "string" },
+            "clear_button": { "type": "string" },
+            "labels": { "$ref": "#/definitions/stringObject" },
+            "status": { "$ref": "#/definitions/stringObject" },
+            "tooltips": { "$ref": "#/definitions/stringObject" }
+          }
+        },
+        "log": {
+          "type": "object",
+          "required": ["panel_title", "clear", "copy", "save", "filter", "levels"],
+          "properties": {
+            "panel_title": { "type": "string" },
+            "clear": { "type": "string" },
+            "copy": { "type": "string" },
+            "save": { "type": "string" },
+            "filter": { "type": "string" },
+            "levels": { "$ref": "#/definitions/stringObject" }
+          }
+        },
+        "common": { "$ref": "#/definitions/stringObject" },
+        "about": {
+          "type": "object",
+          "required": ["window", "buttons", "sections", "content"],
+          "properties": {
+            "window": { "$ref": "#/definitions/stringObject" },
+            "buttons": { "$ref": "#/definitions/stringObject" },
+            "sections": { "$ref": "#/definitions/stringObject" },
+            "content": { "$ref": "#/definitions/stringObject" }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "stringObject": {
+      "type": "object",
+      "description": "Object with string values only (no nesting)",
+      "patternProperties": {
+        "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

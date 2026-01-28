@@ -1,4 +1,13 @@
 {
+  "$schema": "../schema.json",
+  "metadata": {
+    "code": "es-AR",
+    "name": "Español (Argentina)",
+    "nativeName": "Español (Argentina)",
+    "flag": "es-AR.png",
+    "version": "1.0.0",
+    "author": "AgenteIALocal Team"
+  },
   "ui": {
     "config": {
       "window": {
@@ -55,20 +64,33 @@
         }
       },
       "llm": {
-        "title": "Configuración de LLM",
-        "provider": "Proveedor",
-        "model": "Modelo",
-        "base_url": "URL base",
-        "api_key": "Clave API",
-        "temperature": "Temperatura",
-        "max_tokens": "Tokens máximos",
-        "add_server": "Agregar servidor",
-        "edit_server": "Editar servidor",
-        "delete_server": "Eliminar servidor",
+        "page": {
+          "title": "Configuración de LLM"
+        },
+        "provider": {
+          "label": "Proveedor"
+        },
+        "server": {
+          "activeServerId": "ID del Servidor",
+          "baseUrl": "URL Base",
+          "model": "Modelo",
+          "apiKey": "Clave API"
+        },
         "runmode": {
           "label": "Modo de Ejecución",
           "preguntar": "Preguntar",
           "agente": "Agente"
+        },
+        "requestDefaults": {
+          "stream": "Stream",
+          "includeUsage": "Incluir uso",
+          "temperature": "Temperatura",
+          "maxTokens": "Tokens máximos"
+        },
+        "agent": {
+          "ideIntegration": "Integración IDE",
+          "applyChanges": "Aplicar cambios",
+          "maxSteps": "Pasos máximos"
         }
       },
       "logging": {

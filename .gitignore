@@ -17,3 +17,9 @@ Thumbs.db
 # Generated local artifacts
 /artifacts/
 
+# NUEVO - ID: 20260126_184100 - Archivo sensible ofuscado (NUNCA versionar)
+# TelegramConfig.txt contiene token/chatId encriptados
+# Se genera localmente con tools/EncryptTelegramConfig ANTES del build
+# CRÍTICO: El archivo en repo debe tener contenido DUMMY/PLACEHOLDER
+src/AgenteIALocalVSIX/TelegramConfig.txt
+

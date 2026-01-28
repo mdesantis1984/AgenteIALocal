@@ -1,12 +1,13 @@
 {
-  "metadata": {
-    "code": "fr-FR",
-    "name": "Français (France)",
-    "nativeName": "Français (France)",
-    "flag": "fr-FR.png",
-    "version": "1.0.0",
-    "author": "AgenteIALocal Team"
-  },
+"$schema": "../schema.json",
+"metadata": {
+  "code": "fr-FR",
+  "name": "Français (France)",
+  "nativeName": "Français (France)",
+  "flag": "fr-FR.png",
+  "version": "1.0.0",
+  "author": "AgenteIALocal Team"
+},
   "ui": {
     "config": {
       "window": {
@@ -63,20 +64,33 @@
         }
       },
       "llm": {
-        "title": "Configuration LLM",
-        "provider": "Fournisseur",
-        "model": "Modèle",
-        "base_url": "URL de base",
-        "api_key": "Clé API",
-        "temperature": "Température",
-        "max_tokens": "Jetons maximum",
-        "add_server": "Ajouter un serveur",
-        "edit_server": "Modifier le serveur",
-        "delete_server": "Supprimer le serveur",
+        "page": {
+          "title": "Configuration LLM"
+        },
+        "provider": {
+          "label": "Fournisseur"
+        },
+        "server": {
+          "activeServerId": "ID du Serveur",
+          "baseUrl": "URL de base",
+          "model": "Modèle",
+          "apiKey": "Clé API"
+        },
         "runmode": {
           "label": "Mode d'exécution",
           "preguntar": "Demander",
           "agente": "Agent"
+        },
+        "requestDefaults": {
+          "stream": "Stream",
+          "includeUsage": "Inclure l'utilisation",
+          "temperature": "Température",
+          "maxTokens": "Jetons maximum"
+        },
+        "agent": {
+          "ideIntegration": "Intégration IDE",
+          "applyChanges": "Appliquer les modifications",
+          "maxSteps": "Étapes maximales"
         }
       },
       "logging": {

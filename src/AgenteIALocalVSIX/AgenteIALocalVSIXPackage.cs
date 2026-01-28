@@ -320,10 +320,12 @@ namespace AgenteIALocalVSIX
                 AgentComposition.EnsureComposition();
                 
                 // NUEVO - ID: 20260126_124003 - Inicializar AboutInfoService
+                // MODIFICADO - ID: 20260128_020101 - Pasar assembly VSIX al constructor
                 if (_aboutInfoService == null)
                 {
-                    _aboutInfoService = new AboutInfoService();
-                    AgenteIALocal.Logging.Log.Information("-", 9007, "VSIX.Startup", "AboutInfoService initialized", null);
+                    var vsixAssembly = System.Reflection.Assembly.GetExecutingAssembly();
+                    _aboutInfoService = new AboutInfoService(vsixAssembly);
+                    AgenteIALocal.Logging.Log.Information("-", 9007, "VSIX.Startup", $"AboutInfoService initialized with assembly: {vsixAssembly.FullName}", null);
                 }
                 
                 AgenteIALocal.Logging.Log.Information("-", 9000, "VSIX.Startup", "VSIX initialized", null);

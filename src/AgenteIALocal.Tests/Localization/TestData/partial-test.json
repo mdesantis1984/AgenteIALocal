@@ -1,0 +1,17 @@
+{
+  "metadata": {
+    "code": "partial-PA",
+    "name": "Partial Language",
+    "nativeName": "Partial Language",
+    "flag": "partial-PA.png",
+    "version": "1.0.0",
+    "author": "Test"
+  },
+  "ui": {
+    "config": {
+      "window": {
+        "title": "Partial Config"
+      }
+    }
+  }
+}

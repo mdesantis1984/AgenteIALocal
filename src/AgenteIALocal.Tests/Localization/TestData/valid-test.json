@@ -1,0 +1,22 @@
+{
+  "$schema": "../schema.json",
+  "metadata": {
+    "code": "test-TE",
+    "name": "Test Language",
+    "nativeName": "Test Language",
+    "flag": "test-TE.png",
+    "version": "1.0.0",
+    "author": "Test Author"
+  },
+  "ui": {
+    "config": {
+      "window": {
+        "title": "Test Configuration"
+      }
+    },
+    "common": {
+      "ok": "Test OK",
+      "cancel": "Test Cancel"
+    }
+  }
+}

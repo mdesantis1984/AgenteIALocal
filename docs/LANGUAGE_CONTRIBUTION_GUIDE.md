@@ -10,13 +10,12 @@
 
 Thank you for your interest in contributing a language translation to **Agente IA Local**!
 
-This extension supports **dynamic internationalization (i18n)**, allowing users to switch the UI language without restarting Visual Studio. Language files are loaded from external JSON files at runtime, making it easy for the community to contribute new translations.
+This extension supports **dynamic internationalization (i18n)**, allowing users to switch the UI language without restarting Visual Studio. All language files are loaded from external JSON files at runtime, making it easy for the community to contribute new translations.
 
 **Current supported languages:**
-- 🇦🇷 **Spanish (Argentina)** — `es-AR` (embedded fallback)
-- 🇺🇸 **English (United States)** — `en-US` (embedded)
-- 🇫🇷 **Français (France)** — `fr-FR` (embedded)
-- 🇯🇵 **日本語 (日本)** — `ja-JP` (external)
+- 🇦🇷 **Spanish (Argentina)** — `es-AR` (external JSON)
+- 🇺🇸 **English (United States)** — `en-US` (external JSON)
+- 🇫🇷 **Français (France)** — `fr-FR` (external JSON)
 
 **You can add:** Any language with ISO 639-1 code + region (e.g., `pt-BR`, `zh-CN`, `de-DE`, `it-IT`, etc.)
 
@@ -28,6 +27,8 @@ All language files are stored in the VSIX package under:
 
 ```
 src/AgenteIALocalVSIX/Languages/
+├── template-master.json      ← Master template with all 198 keys (empty values)
+├── schema.json               ← JSON Schema for validation
 ├── en-US/
 │   └── strings.json          ← Translation file (UTF-8 with BOM)
 ├── fr-FR/
@@ -44,6 +45,11 @@ src/AgenteIALocalVSIX/Languages/
 **At runtime**, these files are copied to:
 ```
 %LOCALAPPDATA%/AgenteIALocal/languages/
+├── template-master.json
+├── schema.json
+├── es-AR/strings.json
+├── en-US/strings.json
+└── fr-FR/strings.json
 ```
 
 **Users can also manually add/edit translations** in the `%LOCALAPPDATA%` folder for local customization.
@@ -52,12 +58,20 @@ src/AgenteIALocalVSIX/Languages/
 
 ## 📝 Required Files
 
+### 0. Template Reference: `template-master.json` (read-only)
+
+- **Location:** `src/AgenteIALocalVSIX/Languages/template-master.json`
+- **Purpose:** Master template with all 198 translation keys (empty values)
+- **Usage:** Copy this file as starting point for your translation
+- **Do NOT modify:** This file is maintained by the project team
+
 ### 1. Translation File: `strings.json`
 
 - **Location:** `src/AgenteIALocalVSIX/Languages/{code}/strings.json`
 - **Format:** JSON (nested structure)
 - **Encoding:** **UTF-8 with BOM** (required for Visual Studio resource loading)
 - **Size:** Typically 6-10 KB (~200 translation keys)
+- **Validation:** Must pass `schema.json` validation before submitting PR
 
 ### 2. Flag Image: `{code}.png` (optional but recommended)
 
@@ -410,9 +424,18 @@ Use **ISO 639-1** (2-letter language) + **ISO 3166-1** (2-letter region):
    src/AgenteIALocalVSIX/Languages/pt-BR/strings.json
    ```
 
-5. **Copy template** from `en-US/strings.json` (see section "Complete Examples" below)
+5. **Copy template-master.json** as starting point:
+   ```bash
+   cp src/AgenteIALocalVSIX/Languages/template-master.json src/AgenteIALocalVSIX/Languages/pt-BR/strings.json
+   ```
 
-6. **Translate all values** (keep keys unchanged)
+6. **Edit metadata** section:
+   - Change `"code"` to your language code (e.g., `"pt-BR"`)
+   - Update `"name"`, `"nativeName"`, `"flag"`, `"author"`
+
+7. **Translate all values** (keep keys unchanged)
+   - Replace all empty strings `""` with your translations
+   - Preserve placeholders like `{0}` in format strings
 
 ### Step 2: Add Flag Image (Optional but Recommended)
 
@@ -428,6 +451,28 @@ Use **ISO 639-1** (2-letter language) + **ISO 3166-1** (2-letter region):
    ```
 
 3. **Verify dimensions:** 60×40px (or similar proportional h40)
+
+### Step 2.5: Validate Your Translation
+
+**Before testing**, validate your JSON file against the schema:
+
+**Option 1: VS Code (automatic)**
+1. Open your `strings.json` file in VS Code
+2. Ensure the first line has `"$schema": "../schema.json"`
+3. VS Code will show errors/warnings inline if validation fails
+4. Fix all errors before proceeding
+
+**Option 2: Online validator**
+1. Go to [jsonschemavalidator.net](https://www.jsonschemavalidator.net/)
+2. Copy content of `src/AgenteIALocalVSIX/Languages/schema.json` → paste in **left panel**
+3. Copy content of your `strings.json` → paste in **right panel**
+4. Click "Validate" → should show "No errors"
+
+**Common validation errors:**
+- Missing required key (e.g., forgot `ui.chat.tooltips.about`)
+- Wrong `metadata.code` format (must be `xx-XX`, e.g., `pt-BR`)
+- Wrong flag filename (must match `{code}.png`, e.g., `pt-BR.png`)
+- Empty string values (all ~200 keys must have translations)
 
 ### Step 3: Test Locally
 
@@ -477,10 +522,17 @@ Use **ISO 639-1** (2-letter language) + **ISO 3166-1** (2-letter region):
 ### Checklist
 - [ ] `strings.json` created with all ~200 keys translated
 - [ ] Encoding is UTF-8 with BOM
+- [ ] **Validated with schema.json** (paste validation result below)
 - [ ] Flag image `{code}.png` added (h40 dimensions)
 - [ ] Metadata fields completed (`code`, `name`, `nativeName`, `flag`, `version`, `author`)
 - [ ] Tested locally (F5 debug, language appears in grid, UI updates correctly)
 - [ ] Screenshot attached showing UI with new language active
+
+### Validation Result
+```
+Paste output from jsonschemavalidator.net or VS Code validation here.
+Should show "No errors" or "Valid JSON".
+```
 
 ### Screenshot
 ![UI in {Language}](screenshot.png)
@@ -829,9 +881,11 @@ Before submitting your PR, verify:
 - [ ] **File location:** `src/AgenteIALocalVSIX/Languages/{code}/strings.json`
 - [ ] **Encoding:** UTF-8 with BOM (open in Notepad++ → Encoding → UTF-8-BOM)
 - [ ] **Valid JSON:** Paste into [jsonlint.com](https://jsonlint.com/) → should show "Valid JSON"
+- [ ] **Schema validation:** Validated with `schema.json` (VS Code or [jsonschemavalidator.net](https://www.jsonschemavalidator.net/)) → **0 errors**
 - [ ] **Metadata complete:** All 6 fields (`code`, `name`, `nativeName`, `flag`, `version`, `author`)
-- [ ] **All keys present:** ~200 keys under `ui.*` (compare with template above)
+- [ ] **All keys present:** ~200 keys under `ui.*` (compare with template-master.json)
 - [ ] **No key modifications:** Only values translated, keys unchanged
+- [ ] **Placeholders preserved:** Format strings like `{0}` kept intact
 - [ ] **Flag image:** `flags/img/{code}.png` present (h40 dimensions)
 - [ ] **Local testing:** Built + installed VSIX → language appears in grid → UI updates correctly
 - [ ] **Screenshot:** Captured with new language active

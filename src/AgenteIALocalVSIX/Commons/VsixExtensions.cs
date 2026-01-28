@@ -1,87 +1,33 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+﻿// MODIFICADO - ID: 20260128_020300 - Delegar a VsixVersionHelper compartido (evitar duplicación)
+using System;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
+using AgenteIALocal.Application.Utilities;
 
 namespace AgenteIALocalVSIX.Commons
 {
+    /// <summary>
+    /// VSIX Extension methods
+    /// MODIFICADO - ID: 20260128_020300 - Ahora delega a VsixVersionHelper compartido
+    /// </summary>
     public static class VsixExtensions
     {
-        // Uso: typeof(MiPackage).GetVsixVersionString()
+        /// <summary>
+        /// Get VSIX version string from Type
+        /// MODIFICADO - ID: 20260128_020300 - Delegar a helper compartido
+        /// </summary>
         public static string GetVsixVersionString(this Type typeFromYourVsix, string fallback = "desconocida")
         {
-            if (typeFromYourVsix == null) return fallback;
-            return GetVsixVersionString(typeFromYourVsix.Assembly, fallback);
+            return VsixVersionHelper.GetVsixVersionString(typeFromYourVsix, fallback);
         }
 
-        // Uso: typeof(MiPackage).Assembly.GetVsixVersionString()
+        /// <summary>
+        /// Get VSIX version string from Assembly
+        /// MODIFICADO - ID: 20260128_020300 - Delegar a helper compartido
+        /// </summary>
         public static string GetVsixVersionString(this Assembly assembly, string fallback = "desconocida")
         {
-            if (assembly == null) return fallback;
-
-            // 1) Intentar leer la versión desde el manifest del VSIX instalado
-            var v = TryReadVsixManifestVersion(assembly);
-            if (!string.IsNullOrWhiteSpace(v)) return v;
-
-            // 2) Fallback: versiones del assembly (si las sincronizas con el VSIX, coincidirán)
-            v = TryReadAssemblyVersion(assembly);
-            if (!string.IsNullOrWhiteSpace(v)) return v;
-
-            return fallback;
-        }
-
-        private static string TryReadVsixManifestVersion(Assembly assembly)
-        {
-            var asmPath = assembly.Location;
-            if (string.IsNullOrWhiteSpace(asmPath)) return null;
-
-            var dir = Path.GetDirectoryName(asmPath);
-            if (string.IsNullOrWhiteSpace(dir)) return null;
-
-            // En instalado suele ser "extension.vsixmanifest"
-            // En algunos escenarios de dev puede existir "source.extension.vsixmanifest"
-            var candidates = new[]
-            {
-                Path.Combine(dir, "extension.vsixmanifest"),
-                Path.Combine(dir, "source.extension.vsixmanifest")
-            };
-
-            var manifestPath = candidates.FirstOrDefault(File.Exists);
-            if (manifestPath == null) return null;
-
-            try
-            {
-                var doc = XDocument.Load(manifestPath);
-
-                // No dependemos de namespaces: buscamos por LocalName
-                var identity = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "Identity");
-                if (identity == null) return null;
-
-                var versionAttr = identity.Attributes().FirstOrDefault(a => a.Name.LocalName == "Version");
-                return versionAttr == null ? null : versionAttr.Value;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static string TryReadAssemblyVersion(Assembly assembly)
-        {
-            var info = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
-            if (info != null && !string.IsNullOrWhiteSpace(info.InformationalVersion))
-                return info.InformationalVersion;
-
-            var file = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
-            if (file != null && !string.IsNullOrWhiteSpace(file.Version))
-                return file.Version;
-
-            var v = assembly.GetName().Version;
-            return v == null ? null : v.ToString();
+            return VsixVersionHelper.GetVsixVersionString(assembly, fallback);
         }
     }
 }
+

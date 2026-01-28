@@ -31,55 +31,9 @@ namespace AgenteIALocal.Localization
                 _languagesRoot = languagesRoot;
                 _settingsStore = new LanguageSettingsStore(languageSettingsPath);
                 
-                // MODIFICADO - ID: 20260126_171000 - Auto-discovery dinámico de TODOS los idiomas embebidos (Reflection)
-                // Razón: Escalabilidad - Agregar nuevo idioma = solo agregar propiedad en EmbeddedLocalization.cs (SIN recompilar este archivo)
-                // Arquitectura: Escanea todas las propiedades estáticas públicas tipo Dictionary<string, object> en EmbeddedLocalization
-                try
-                {
-                    var embeddedType = typeof(EmbeddedLocalization);
-                    var properties = embeddedType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-                        .Where(p => p.PropertyType == typeof(Dictionary<string, object>));
-
-                    System.Diagnostics.Trace.TraceInformation($"[i18n.Ctor] Auto-discovery: {properties.Count()} idiomas embebidos encontrados");
-
-                    foreach (var prop in properties)
-                    {
-                        try
-                        {
-                            var dict = prop.GetValue(null) as Dictionary<string, object>;
-                            if (dict != null && dict.ContainsKey("metadata"))
-                            {
-                                var metadata = dict["metadata"] as Dictionary<string, object>;
-                                var code = metadata?["code"] as string ?? prop.Name;
-                                
-                                var jObject = Newtonsoft.Json.Linq.JObject.FromObject(dict);
-                                _external[code] = jObject;
-                                
-                                var nativeName = metadata?["nativeName"] as string ?? code;
-                                System.Diagnostics.Trace.TraceInformation($"[i18n.Ctor] ✓ {code} embebido ({nativeName}) - auto-discovery");
-                            }
-                        }
-                        catch (Exception exProp)
-                        {
-                            System.Diagnostics.Trace.TraceWarning($"[i18n.Ctor] Skip property {prop.Name}: {exProp.Message}");
-                        }
-                    }
-                    
-                    System.Diagnostics.Trace.TraceInformation($"[i18n.Ctor] Total embebidos cargados: {_external.Count}");
-                }
-                catch (Exception exEmbed)
-                {
-                    System.Diagnostics.Trace.TraceWarning($"[i18n.Ctor] WARNING: auto-discovery failed: {exEmbed.Message}");
-                    
-                    // Fallback ultra-defensivo: cargar solo es-AR si Reflection falla
-                    try
-                    {
-                        var esArDict = EmbeddedLocalization.EsAR;
-                        _external["es-AR"] = Newtonsoft.Json.Linq.JObject.FromObject(esArDict);
-                        System.Diagnostics.Trace.TraceWarning("[i18n.Ctor] Fallback: solo es-AR cargado");
-                    }
-                    catch { }
-                }
+                // MODIFICADO - ID: 20260127_010000 - REFACTOR JSON-only: eliminado auto-discovery de EmbeddedLocalization
+                // Razón: Opción 1 - Todos los idiomas (incluso es-AR) son archivos JSON externos
+                // NO hay fallback embebido - Si falta JSON, UI muestra keys raw
                 
                 EnsureDirectoryStructure();
                 LoadExternalLanguages();
@@ -209,6 +163,24 @@ namespace AgenteIALocal.Localization
                             System.Diagnostics.Trace.TraceInformation($"[i18n.CopyDefaults] ✓ Copiada bandera: {flagName} ({new FileInfo(vsixFlag).Length} bytes)");
                         }
                     }
+                }
+
+                // NUEVO - ID: 20260127_010400 - Copiar template-master.json + schema.json (archivos de referencia)
+                // Razón: Contributors necesitan estos archivos en %LOCALAPPDATA% para validar traducciones
+                var templateMasterSource = Path.Combine(vsixLanguagesDir, "template-master.json");
+                var templateMasterDest = Path.Combine(_languagesRoot, "template-master.json");
+                if (File.Exists(templateMasterSource) && !File.Exists(templateMasterDest))
+                {
+                    File.Copy(templateMasterSource, templateMasterDest, overwrite: false);
+                    System.Diagnostics.Trace.TraceInformation($"[i18n.CopyDefaults] ✓ Copiado: template-master.json ({new FileInfo(templateMasterSource).Length} bytes)");
+                }
+
+                var schemaSource = Path.Combine(vsixLanguagesDir, "schema.json");
+                var schemaDest = Path.Combine(_languagesRoot, "schema.json");
+                if (File.Exists(schemaSource) && !File.Exists(schemaDest))
+                {
+                    File.Copy(schemaSource, schemaDest, overwrite: false);
+                    System.Diagnostics.Trace.TraceInformation($"[i18n.CopyDefaults] ✓ Copiado: schema.json ({new FileInfo(schemaSource).Length} bytes)");
                 }
 
                 System.Diagnostics.Trace.TraceInformation("[i18n.CopyDefaults] Copy defaults OK");
@@ -355,14 +327,24 @@ namespace AgenteIALocal.Localization
             }
             else
             {
-                // Fallback: primer idioma disponible en _external (normalmente es-AR)
-                var fallback = _external.Keys.FirstOrDefault() ?? "es-AR";
-                _active = _external.TryGetValue(fallback, out var fallbackObj) 
-                    ? fallbackObj 
-                    : JObject.FromObject(EmbeddedLocalization.EsAR);
-                CurrentLanguageCode = fallback;
+                // MODIFICADO - ID: 20260127_010200 - REFACTOR JSON-only: fallback sin EmbeddedLocalization
+                // Razón: Si idioma no existe, intentar primer idioma disponible o crear JObject vacío
+                // UI mostrará keys raw si no hay diccionario
+                var fallback = _external.Keys.FirstOrDefault();
                 
-                System.Diagnostics.Trace.TraceWarning($"[i18n.Activate] {code} no encontrado, fallback: {fallback}");
+                if (fallback != null && _external.TryGetValue(fallback, out var fallbackObj))
+                {
+                    _active = fallbackObj;
+                    CurrentLanguageCode = fallback;
+                    System.Diagnostics.Trace.TraceWarning($"[i18n.Activate] {code} no encontrado, fallback: {fallback}");
+                }
+                else
+                {
+                    // Sin idiomas disponibles - crear JObject vacío
+                    _active = new JObject();
+                    CurrentLanguageCode = code;
+                    System.Diagnostics.Trace.TraceError($"[i18n.Activate] ERROR: No languages available. UI will show raw keys.");
+                }
             }
 
             LanguageChanged?.Invoke(this, EventArgs.Empty);
@@ -386,8 +368,8 @@ namespace AgenteIALocal.Localization
                 {
                     System.Diagnostics.Trace.TraceWarning($"[i18n.GetAvailable] Languages root not found: {_languagesRoot}");
                     
-                    // MODIFICADO - ID: 20260126_023100 - Leer metadata desde EmbeddedLocalization (NO hardcode)
-                    result.Add(CreateEmbeddedLanguageInfo());
+                    // MODIFICADO - ID: 20260127_010300 - REFACTOR JSON-only: sin fallback embebido
+                    // Razón: Si no existe carpeta Languages/, retornar lista vacía (UI mostrará error)
                     return result;
                 }
 
@@ -459,57 +441,12 @@ namespace AgenteIALocal.Localization
                 System.Diagnostics.Trace.TraceError($"[i18n.GetAvailable] ERROR: {ex.Message}");
             }
 
-            // MODIFICADO - ID: 20260126_023100 - Fallback final sin hardcode
-            if (result.Count == 0)
-            {
-                result.Add(CreateEmbeddedLanguageInfo());
-            }
+            // MODIFICADO - ID: 20260127_010100 - REFACTOR JSON-only: eliminado fallback embebido
+            // Razón: Si no hay JSONs, retornar lista vacía (UI mostrará mensaje/error)
+            // NO crear LanguageInfo falso para es-AR embebido
 
             return result;
         }
-
-        // NUEVO METODO CreateEmbeddedLanguageInfo - ID: 20260126_023100
-        // Factory: Crea LanguageInfo para es-AR embebido leyendo metadata desde EmbeddedLocalization
-        // Razón: Eliminar strings hardcoded ("Spanish (Argentina)", "Español (Argentina)")
-        // Escalabilidad: Si se agregan más idiomas embebidos, este método es genérico
-        private LanguageInfo CreateEmbeddedLanguageInfo()
-        {
-            try
-            {
-                var esArDict = EmbeddedLocalization.EsAR;
-                var metadata = esArDict["metadata"] as Dictionary<string, object>;
-                
-                var code = metadata?["code"] as string ?? "es-AR";
-                var name = metadata?["name"] as string ?? "es-AR";
-                var nativeName = metadata?["nativeName"] as string ?? "es-AR";
-                var flagFile = metadata?["flag"] as string ?? "es-AR.png";
-                
-                return new LanguageInfo
-                {
-                    Code = code,
-                    Name = name,
-                    NativeName = nativeName,
-                    FlagPath = Path.Combine(_languagesRoot, "flags", "img", flagFile),
-                    IsAvailable = true
-                };
-            }
-            catch (Exception exFactory)
-            {
-                System.Diagnostics.Trace.TraceWarning($"[i18n.CreateEmbedded] Factory failed: {exFactory.Message}");
-                
-                // Fallback ultra-defensivo si falla lectura de metadata
-                return new LanguageInfo
-                {
-                    Code = "es-AR",
-                    Name = "es-AR",
-                    NativeName = "es-AR",
-                    FlagPath = Path.Combine(_languagesRoot, "flags", "img", "es-AR.png"),
-                    IsAvailable = true
-                };
-            }
-        }
-
-
 
 
 

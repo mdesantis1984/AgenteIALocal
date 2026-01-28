@@ -384,7 +384,7 @@
                         <ToggleButton x:Name="NavLlmToggle" IsChecked="True" Margin="0,0,0,12" Height="56" Style="{StaticResource SidebarNavToggleStyle}" Checked="NavToggle_Checked" ToolTip="{loc:Translate ui.config.tooltips.sidebar.llm}">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <md:PackIcon Kind="Brain" Width="20" Height="20" Foreground="{StaticResource HeaderHighEmphasisBrush}" />
-                                <TextBlock Text="{loc:Translate ui.config.sidebar.llm}" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <TextBlock Text="{loc:Translate ui.config.sidebar.local_llms}" Style="{StaticResource Text.Body}" Foreground="{StaticResource HeaderHighEmphasisBrush}" Margin="12,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
                         </ToggleButton>
 

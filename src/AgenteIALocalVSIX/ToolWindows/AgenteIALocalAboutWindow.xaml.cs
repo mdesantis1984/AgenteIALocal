@@ -772,6 +772,35 @@ namespace AgenteIALocalVSIX.ToolWindows
                     BorderThickness = new Thickness(0),
                     IsEnabled = false
                 };
+
+                // NUEVO - ID: 20260126_194000 - Template para estado disabled (fondo gris oscuro, NO blanco)
+                var buttonTemplate = new ControlTemplate(typeof(Button));
+                var borderFactory = new FrameworkElementFactory(typeof(Border));
+                borderFactory.Name = "BorderElement";
+                borderFactory.SetValue(Border.BackgroundProperty, new System.Windows.TemplateBindingExtension(Button.BackgroundProperty));
+                borderFactory.SetValue(Border.BorderBrushProperty, new System.Windows.TemplateBindingExtension(Button.BorderBrushProperty));
+                borderFactory.SetValue(Border.BorderThicknessProperty, new System.Windows.TemplateBindingExtension(Button.BorderThicknessProperty));
+                borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
+                borderFactory.SetValue(Border.PaddingProperty, new System.Windows.TemplateBindingExtension(Button.PaddingProperty));
+
+                var contentPresenterFactory = new FrameworkElementFactory(typeof(System.Windows.Controls.ContentPresenter));
+                contentPresenterFactory.SetValue(System.Windows.Controls.ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+                contentPresenterFactory.SetValue(System.Windows.Controls.ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+                borderFactory.AppendChild(contentPresenterFactory);
+
+                buttonTemplate.VisualTree = borderFactory;
+
+                // Trigger para estado Disabled (fondo gris oscuro + texto gris)
+                var disabledTrigger = new System.Windows.Trigger
+                {
+                    Property = Button.IsEnabledProperty,
+                    Value = false
+                };
+                disabledTrigger.Setters.Add(new System.Windows.Setter(Button.BackgroundProperty, new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(128, 60, 60, 60)))); // Gris oscuro semi-transparente
+                disabledTrigger.Setters.Add(new System.Windows.Setter(Button.ForegroundProperty, new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(128, 200, 200, 200)))); // Texto gris claro
+                buttonTemplate.Triggers.Add(disabledTrigger);
+
+                sendButton.Template = buttonTemplate;
                 sendButton.Click += ContactSend_Click;
                 stack.Children.Add(sendButton);
 
@@ -1182,6 +1211,11 @@ namespace AgenteIALocalVSIX.ToolWindows
             sendButton.IsEnabled = isEmailValid && isMessageValid;
         }
 
+        /// <summary>
+        /// Contact form send button - Try Telegram → Fallback mailto:
+        /// MODIFICADO - ID: 20260126_180000
+        /// ARQUITECTURA: Telegram Bot API (HttpClient POST) + mailto: fallback
+        /// </summary>
         private async void ContactSend_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
@@ -1211,35 +1245,152 @@ namespace AgenteIALocalVSIX.ToolWindows
             var email = emailBox.Text;
             var message = messageBox.Text;
 
-            // Disable button and show loading
+            // MODIFICADO - ID: 20260126_192000 - Fix UX botón (mantener Content siempre)
             button.IsEnabled = false;
             button.Content = "Sending...";
 
             try
             {
-                // Open mailto: as fallback (E4 - mailto: fallback implementation)
-                var subject = Uri.EscapeDataString("Contact from Agente IA Local");
-                var body = Uri.EscapeDataString($"From: {email}\n\nMessage:\n{message}");
-                var mailtoUrl = $"mailto:soporte@mdesantis.com.ar?subject={subject}&body={body}";
+                // Try Telegram first
+                var telegramSuccess = await SendToTelegramAsync(email, message);
 
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(mailtoUrl) { UseShellExecute = true });
-
-                // Clear form
-                emailBox.Clear();
-                messageBox.Clear();
-
-                // Show success
-                MessageBox.Show("Your default email client has been opened with the message. Please send it from there.", "Message Prepared", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (telegramSuccess)
+                {
+                    // Success - clear form and show confirmation
+                    emailBox.Clear();
+                    messageBox.Clear();
+                    MessageBox.Show("Message sent successfully! We'll respond soon.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    // Telegram failed - fallback to mailto:
+                    OpenMailtoFallback(email, message);
+                    
+                    // Clear form
+                    emailBox.Clear();
+                    messageBox.Clear();
+                    
+                    MessageBox.Show("Your default email client has been opened with the message. Please send it from there.", "Message Prepared", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                AgenteIALocal.Logging.Log.Error("-", 5001, "AboutWindow", "Error sending contact message", ex);
+                
+                // On any error, try mailto: as final fallback
+                try
+                {
+                    OpenMailtoFallback(email, message);
+                    MessageBox.Show("Your default email client has been opened. Please send the message from there.", "Email Client Opened", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch
+                {
+                    MessageBox.Show($"Could not send message. Please email directly to: soporte@mdesantis.com.ar", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
             finally
             {
-                button.IsEnabled = true;
+                // MODIFICADO - ID: 20260126_192000 - Restaurar Content SIEMPRE
                 button.Content = "Send Message";
+                // IsEnabled se actualiza automáticamente por validación al hacer Clear()
             }
+        }
+
+        /// <summary>
+        /// Send contact message to Telegram Bot
+        /// MODIFICADO - ID: 20260126_184000
+        /// ARQUITECTURA: Lee config ofuscada desde TelegramConfig.txt embebido (NO settings.json)
+        /// </summary>
+        private async System.Threading.Tasks.Task<bool> SendToTelegramAsync(string email, string message)
+        {
+            try
+            {
+                // MODIFICADO - ID: 20260126_184000 - Leer config ofuscada embebida
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                
+                // NUEVO - ID: 20260126_192001 - Logging detallado para debugging
+                AgenteIALocal.Logging.Log.Information("-", 5010, "AboutWindow", $"Reading Telegram config from assembly: {assembly.FullName}", null);
+                
+                var (botToken, chatId) = AgenteIALocal.Infrastructure.Security.SecureConfigReader.ReadTelegramConfig(assembly);
+
+                // NUEVO - ID: 20260126_192001 - Logging config status
+                var tokenStatus = string.IsNullOrWhiteSpace(botToken) ? "EMPTY" : $"OK (length: {botToken.Length})";
+                var chatIdStatus = string.IsNullOrWhiteSpace(chatId) ? "EMPTY" : $"OK (value: {chatId})";
+                AgenteIALocal.Logging.Log.Information("-", 5011, "AboutWindow", $"Telegram config read - Token: {tokenStatus}, ChatId: {chatIdStatus}", null);
+
+                if (string.IsNullOrWhiteSpace(botToken) || string.IsNullOrWhiteSpace(chatId))
+                {
+                    AgenteIALocal.Logging.Log.Warning("-", 5002, "AboutWindow", "Telegram not configured - skipping", null);
+                    return false;
+                }
+
+                // Build Telegram message
+                var telegramMessage = $"📧 *Contact Form - Agente IA Local*\n\n" +
+                                    $"*From:* {email}\n\n" +
+                                    $"*Message:*\n{message}\n\n" +
+                                    $"_Sent: {DateTime.Now:yyyy-MM-dd HH:mm:ss}_";
+
+                // Telegram API endpoint
+                var url = $"https://api.telegram.org/bot{botToken}/sendMessage";
+
+                // Create JSON payload (manual serialization - NO dependencies on JSON libraries in UI)
+                var jsonPayload = $"{{\"chat_id\":\"{chatId}\",\"text\":\"{EscapeJsonString(telegramMessage)}\",\"parse_mode\":\"Markdown\"}}";
+
+                using (var client = new System.Net.Http.HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(10);
+                    var content = new System.Net.Http.StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json");
+                    
+                    var response = await client.PostAsync(url, content);
+                    
+                    if (response.IsSuccessStatusCode)
+                    {
+                        AgenteIALocal.Logging.Log.Information("-", 5003, "AboutWindow", "Message sent successfully to Telegram", null);
+                        return true;
+                    }
+                    else
+                    {
+                        var errorBody = await response.Content.ReadAsStringAsync();
+                        AgenteIALocal.Logging.Log.Warning("-", 5004, "AboutWindow", $"Telegram API error: {response.StatusCode} - {errorBody}", null);
+                        return false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AgenteIALocal.Logging.Log.Error("-", 5005, "AboutWindow", "Exception sending to Telegram", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Fallback: Open default email client with mailto: URL
+        /// NUEVO - ID: 20260126_180002
+        /// </summary>
+        private void OpenMailtoFallback(string senderEmail, string message)
+        {
+            var subject = Uri.EscapeDataString("Contact from Agente IA Local");
+            var body = Uri.EscapeDataString($"From: {senderEmail}\n\nMessage:\n{message}");
+            var mailtoUrl = $"mailto:soporte@mdesantis.com.ar?subject={subject}&body={body}";
+
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(mailtoUrl) { UseShellExecute = true });
+            AgenteIALocal.Logging.Log.Information("-", 5006, "AboutWindow", "Opened default email client", null);
+        }
+
+        /// <summary>
+        /// Escape string for JSON (manual - no JSON library dependency in UI)
+        /// NUEVO - ID: 20260126_180003
+        /// </summary>
+        private string EscapeJsonString(string str)
+        {
+            if (string.IsNullOrEmpty(str)) return string.Empty;
+            
+            return str
+                .Replace("\\", "\\\\")
+                .Replace("\"", "\\\"")
+                .Replace("\n", "\\n")
+                .Replace("\r", "\\r")
+                .Replace("\t", "\\t");
         }
     }
 }

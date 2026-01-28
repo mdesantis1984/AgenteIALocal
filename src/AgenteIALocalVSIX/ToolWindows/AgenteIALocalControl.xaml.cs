@@ -165,17 +165,31 @@ namespace AgenteIALocalVSIX.ToolWindows
 
         // MODIFICADO METODO TypeActivitie_SelectionChanged - ID: 20260126_031800
         // FIX: Leer Tag invariante de ComboBoxItem (NO texto traducido)
+        // MEJORADO - ID: 20260128_000400 - Logging diagnóstico mejorado
         private void TypeActivitie_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             try
             {
-                if (!IsLoaded) return;
-                if (_isRefreshingFromSettings) return; // avoid persisting during programmatic refresh
+                if (!IsLoaded)
+                {
+                    AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.TypeActivitie", "SKIP - UserControl not loaded yet", null);
+                    return;
+                }
+                
+                if (_isRefreshingFromSettings)
+                {
+                    AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.TypeActivitie", "SKIP - Refreshing from settings (avoid loop)", null);
+                    return; // avoid persisting during programmatic refresh
+                }
 
                 var cb = sender as ComboBox;
                 var cbi = cb?.SelectedItem as ComboBoxItem;
                 
-                if (cbi == null) return;
+                if (cbi == null)
+                {
+                    AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.TypeActivitie", "SelectedItem is null - skipping", null);
+                    return;
+                }
                 
                 // NUEVO - ID: 20260126_031800 - Leer Tag invariante ("agente"/"preguntar")
                 var tag = cbi.Tag as string;
@@ -186,27 +200,52 @@ namespace AgenteIALocalVSIX.ToolWindows
                 }
 
                 string normalized = tag.ToLowerInvariant();
-                AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.TypeActivitie", $"RunMode from UI Tag: {normalized}", null);
+                AgenteIALocal.Logging.Log.Information("-", 9100, "Control.TypeActivitie", 
+                    $"USER changed RunMode in toolbox: Tag={tag}, Normalized={normalized}, SelectedIndex={cb.SelectedIndex}", null);
 
                 try
                 {
                     var settings = AgentSettingsStore.Load() ?? new AgentSettings();
                     var current = settings.GlobalSettings?.RunMode ?? string.Empty;
+                    
                     if (!string.Equals(current, normalized ?? string.Empty, StringComparison.OrdinalIgnoreCase))
                     {
+                        AgenteIALocal.Logging.Log.Information("-", 9100, "Control.TypeActivitie", 
+                            $"PERSISTING RunMode change: '{current}' → '{normalized}'", null);
+                        
                         // Persist new runMode value (this will raise SettingsSaved event) - MODIFICADO - ID: 20260123_225700
                         try
                         {
                             if (settings.GlobalSettings == null) settings.GlobalSettings = new GlobalSettings();
                             settings.GlobalSettings.RunMode = normalized;
                             AgentSettingsStore.Save(settings);
+                            
+                            AgenteIALocal.Logging.Log.Information("-", 9100, "Control.TypeActivitie", 
+                                $"✓ RunMode saved to settings: {normalized}", null);
                         }
-                        catch (Exception exSave) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.TypeActivitie", "Save runMode failed: " + exSave.Message, exSave); }
+                        catch (Exception exSave) 
+                        { 
+                            AgenteIALocal.Logging.Log.Error("-", 9100, "Control.TypeActivitie", 
+                                "Save runMode FAILED: " + exSave.Message, exSave); 
+                        }
+                    }
+                    else
+                    {
+                        AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.TypeActivitie", 
+                            $"SKIP save - RunMode unchanged: {normalized}", null);
                     }
                 }
-                catch (Exception exOuter) { AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.TypeActivitie", "Load settings failed: " + exOuter.Message, exOuter); }
+                catch (Exception exOuter) 
+                { 
+                    AgenteIALocal.Logging.Log.Error("-", 9100, "Control.TypeActivitie", 
+                        "Load settings FAILED: " + exOuter.Message, exOuter); 
+                }
             }
-            catch (Exception ex) { AgenteIALocal.Logging.Log.Error("-", 9100, "Control.TypeActivitie", "TypeActivitie_SelectionChanged failed: " + ex.Message, ex); }
+            catch (Exception ex) 
+            { 
+                AgenteIALocal.Logging.Log.Error("-", 9100, "Control.TypeActivitie", 
+                    "TypeActivitie_SelectionChanged FAILED: " + ex.Message, ex); 
+            }
         }
 
         // MODIFICADO METODO GetRunModeNormalized - ID: 20260126_031700
@@ -320,6 +359,48 @@ namespace AgenteIALocalVSIX.ToolWindows
                             // Load settings and decide whether activeServerId changed
                             var settings = AgentSettingsStore.Load();
                             var activeId = settings != null ? settings.ActiveServerId : null;
+                            
+                            // NUEVO - ID: 20260127_234500 - Sincronizar RunMode entre Config y Toolbox
+                            // CORREGIDO - ID: 20260128_000100 - Mapping índices: agente=0, preguntar=1
+                            // MEJORADO - ID: 20260128_000300 - Logging diagnóstico detallado
+                            try
+                            {
+                                var runMode = settings?.GlobalSettings?.RunMode ?? "preguntar";
+                                // FIX: agente=index 0, preguntar=index 1 (orden en XAML)
+                                int targetIndex = runMode.Equals("agente", StringComparison.OrdinalIgnoreCase) ? 0 : 1;
+                                
+                                AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.OnSettingsSaved.RunModeSync", 
+                                    $"DIAGNOSTICO: runMode={runMode}, targetIndex={targetIndex}, TypeActivitie.SelectedIndex={TypeActivitie?.SelectedIndex ?? -999}, IsLoaded={IsLoaded}", null);
+                                
+                                if (TypeActivitie == null)
+                                {
+                                    AgenteIALocal.Logging.Log.Warning("-", 9100, "Control.OnSettingsSaved.RunModeSync", 
+                                        "TypeActivitie combo es NULL - no se puede sincronizar", null);
+                                    return;
+                                }
+                                
+                                if (TypeActivitie.SelectedIndex != targetIndex)
+                                {
+                                    AgenteIALocal.Logging.Log.Information("-", 9100, "Control.OnSettingsSaved.RunModeSync", 
+                                        $"SINCRONIZANDO: {TypeActivitie.SelectedIndex} → {targetIndex} (runMode={runMode})", null);
+                                    
+                                    TypeActivitie.SelectedIndex = targetIndex;
+                                    
+                                    AgenteIALocal.Logging.Log.Information("-", 9100, "Control.OnSettingsSaved.RunModeSync", 
+                                        $"✓ RunMode sincronizado exitosamente: {runMode} → index {targetIndex}", null);
+                                }
+                                else
+                                {
+                                    AgenteIALocal.Logging.Log.Debug("-", 9100, "Control.OnSettingsSaved.RunModeSync", 
+                                        $"SKIP sincronización - índice ya correcto: {targetIndex} (runMode={runMode})", null);
+                                }
+                            }
+                            catch (Exception exRunMode)
+                            {
+                                AgenteIALocal.Logging.Log.Error("-", 9100, "Control.OnSettingsSaved.RunModeSync", 
+                                    "RunMode sync FAILED: " + exRunMode.Message, exRunMode);
+                            }
+                            
                             if (string.Equals(_lastActiveServerIdUi ?? string.Empty, activeId ?? string.Empty, StringComparison.OrdinalIgnoreCase))
                             {
                                 // No change in active server -> refresh UI but skip models fetch

@@ -3,19 +3,29 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using AgenteIALocal.Core.Services;
+using AgenteIALocal.Application.Utilities; // NUEVO - ID: 20260128_020300
 
 namespace AgenteIALocal.Application.Services
 {
     /// <summary>
     /// About information service - provides product, author, libraries, license, compatibility, and repository data
     /// NUEVO - ID: 20260126_123500
+    /// MODIFICADO - ID: 20260128_020100 - Recibir assembly VSIX en constructor
     /// </summary>
     public class AboutInfoService : IAboutInfoService
     {
         private readonly string _licenseText;
+        private readonly Assembly _vsixAssembly;
         
-        public AboutInfoService()
+        /// <summary>
+        /// Constructor
+        /// MODIFICADO - ID: 20260128_020100 - Recibir assembly VSIX para obtener versión correcta
+        /// </summary>
+        /// <param name="vsixAssembly">Assembly del VSIX (para obtener versión correcta)</param>
+        public AboutInfoService(Assembly vsixAssembly = null)
         {
+            _vsixAssembly = vsixAssembly;
+            
             // TODO: Read LICENSE from embedded resource or file system (Application layer can do this)
             _licenseText = "Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted.\n\n" +
                           "THE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. " +
@@ -26,18 +36,20 @@ namespace AgenteIALocal.Application.Services
         /// <summary>
         /// Get product information
         /// NUEVO - ID: 20260126_123501
+        /// MODIFICADO - ID: 20260128_020300 - Usar VsixVersionHelper compartido (NO duplicar código)
         /// </summary>
         public AboutInfo GetProductInfo()
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var version = assembly.GetName().Version;
-
+            // MODIFICADO - ID: 20260128_020300 - Usar helper compartido en lugar de código duplicado
+            var assembly = _vsixAssembly ?? Assembly.GetExecutingAssembly();
+            string versionString = assembly.GetVsixVersionString("1.0.0");
+            
             return new AboutInfo
             {
                 ProductName = "Agente IA Local",
                 Description = "Extensión VSIX para Visual Studio que integra chat con agentes de IA locales directamente en el IDE. " +
                              "Soporta múltiples proveedores LLM (LM Studio, JAN, llama.cpp, Ollama) con capacidades de agente autónomo.",
-                Version = version != null ? $"{version.Major}.{version.Minor}.{version.Build}" : "1.0.0",
+                Version = versionString,
                 BuildDate = GetBuildDate(assembly),
                 Author = "Marco Alejandro De Santis",
                 Organization = null,

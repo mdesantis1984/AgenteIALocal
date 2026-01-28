@@ -1,12 +1,13 @@
 {
-  "metadata": {
-    "code": "en-US",
-    "name": "English (United States)",
-    "nativeName": "English (United States)",
-    "flag": "en-US.png",
-    "version": "1.0.0",
-    "author": "AgenteIALocal Team"
-  },
+"$schema": "../schema.json",
+"metadata": {
+  "code": "en-US",
+  "name": "English (United States)",
+  "nativeName": "English (United States)",
+  "flag": "en-US.png",
+  "version": "1.0.0",
+  "author": "AgenteIALocal Team"
+},
   "ui": {
     "config": {
       "window": {
@@ -63,20 +64,33 @@
         }
       },
       "llm": {
-        "title": "LLM Configuration",
-        "provider": "Provider",
-        "model": "Model",
-        "base_url": "Base URL",
-        "api_key": "API Key",
-        "temperature": "Temperature",
-        "max_tokens": "Max tokens",
-        "add_server": "Add server",
-        "edit_server": "Edit server",
-        "delete_server": "Delete server",
+        "page": {
+          "title": "LLM Configuration"
+        },
+        "provider": {
+          "label": "Provider"
+        },
+        "server": {
+          "activeServerId": "Server ID",
+          "baseUrl": "Base URL",
+          "model": "Model",
+          "apiKey": "API Key"
+        },
         "runmode": {
           "label": "Run Mode",
           "preguntar": "Ask",
           "agente": "Agent"
+        },
+        "requestDefaults": {
+          "stream": "Stream",
+          "includeUsage": "Include usage",
+          "temperature": "Temperature",
+          "maxTokens": "Max tokens"
+        },
+        "agent": {
+          "ideIntegration": "IDE Integration",
+          "applyChanges": "Apply changes",
+          "maxSteps": "Max steps"
         }
       },
       "logging": {
